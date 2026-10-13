@@ -335,7 +335,7 @@ def api_ask(body: Pregunta):
 
 
 def _fuentes(chunks: list[dict], answer: str) -> list[dict]:
-    citados = {int(n) for n in re.findall(r"\[(\d+)\]", answer)}
+    citados = {int(n) for n in re.findall(r"[\[【](\d+)[\]】]", answer)}
     return [{"n": i, "source": c["source"], "page": c["page"], "score": c["score"],
              "snippet": (c["text"][:240] + "...") if len(c["text"]) > 240 else c["text"],
              "cited": i in citados} for i, c in enumerate(chunks, 1)]
