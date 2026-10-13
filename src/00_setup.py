@@ -35,6 +35,7 @@ for _n in (CATALOG, SCHEMA):
 # En Free Edition el catálogo `workspace` ya existe; no se crea ningún catálogo.
 spark.sql(f"CREATE SCHEMA IF NOT EXISTS `{CATALOG}`.`{SCHEMA}` COMMENT 'Mantenimiento predictivo de turbinas (demo)'")
 spark.sql(f"CREATE VOLUME IF NOT EXISTS `{CATALOG}`.`{SCHEMA}`.`raw` COMMENT 'Ficheros C-MAPSS FD001 (entrada del pipeline)'")
+spark.sql(f"CREATE VOLUME IF NOT EXISTS `{CATALOG}`.`{SCHEMA}`.`codigo` COMMENT 'Copia del paquete lib (workaround de lectura de workspace files)'")
 spark.sql(f"CREATE VOLUME IF NOT EXISTS `{CATALOG}`.`{SCHEMA}`.`manuales` COMMENT 'PDF de manuales para el RAG (subidos a mano)'")
 
 RAW_DIR = f"/Volumes/{CATALOG}/{SCHEMA}/raw/cmapss"
@@ -70,6 +71,10 @@ copiados, omitidos = [], []
 for nombre in FICHEROS:
     origen = os.path.join(SRC_DIR, nombre)
     destino = os.path.join(RAW_DIR, nombre)
+    if os.path.exists(destino) and nombre in ESPERADO:
+        # Ya subido (p. ej. con `databricks fs cp`): no se lee el workspace (ver workaround de I/O).
+        omitidos.append(nombre)
+        continue
     if not os.path.exists(origen):
         raise FileNotFoundError(f"No encuentro {origen}. Despliega el repositorio completo (incluida data/cmapss).")
     if os.path.exists(destino) and os.path.getsize(destino) == os.path.getsize(origen):

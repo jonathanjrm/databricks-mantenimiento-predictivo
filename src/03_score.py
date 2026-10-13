@@ -34,7 +34,19 @@ def _src_dir():
     except Exception:  # verificar en docs
         return os.getcwd()
 
-sys.path.insert(0, _src_dir())
+# Workaround: en runtimes recientes leer ficheros normales del workspace puede fallar con
+# "OSError: [Errno 5] Input/output error" (incidencia abierta en el foro de Databricks).
+# Por eso el paquete `lib` se publica también en el volume `codigo` y tiene prioridad.
+def _code_dirs():
+    try:
+        cat, sch = dbutils.widgets.get("catalog"), dbutils.widgets.get("schema")
+    except Exception:
+        cat, sch = "workspace", "mantenimiento"
+    return [f"/Volumes/{cat}/{sch}/codigo", _src_dir()]
+
+for _d in reversed(_code_dirs()):
+    if _d not in sys.path:
+        sys.path.insert(0, _d)
 
 from lib.cmapss import (ACTIVE_SENSORS, HEALTHY_CYCLES, classify_state, feature_columns,  # noqa: E402
                         occlusion_contributions, phm08_score, rmse, top_k_sensors)

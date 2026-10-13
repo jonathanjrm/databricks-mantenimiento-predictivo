@@ -12,4 +12,4 @@ resources:
             include: ../src/pipeline/**
       configuration:
         mantenimiento.raw_path: /Volumes/${var.catalog}/${var.schema}/raw/cmapss
-        mantenimiento.src_root: ${workspace.file_path}/src
+        mantenimiento.src_root: /Volumes/${var.catalog}/${var.schema}/codigo   # ver workaround de I/O en README
