@@ -22,4 +22,4 @@ env:
   - name: LLM_ENDPOINT
     value: databricks-gpt-oss-120b
   - name: RAG_K
-    value: "4"
+    value: "6"

@@ -278,19 +278,41 @@ def extract_text(resp: dict) -> str:
     return (content or "").strip()
 
 
-def call_llm(messages: list[dict]) -> str:
+def call_llm(messages: list[dict], max_tokens: int = 800) -> str:
     from databricks.sdk import WorkspaceClient
     w = WorkspaceClient()
     resp = w.api_client.do("POST", f"/serving-endpoints/{LLM_ENDPOINT}/invocations",
-                           body={"messages": messages, "max_tokens": 800, "temperature": 0.1})
+                           body={"messages": messages, "max_tokens": max_tokens, "temperature": 0.1})
     return extract_text(resp)
+
+
+REWRITE_PROMPT = (
+    "Convierte la pregunta del usuario en una consulta de búsqueda en INGLES para un manual "
+    "técnico de motores de aviación (FAA Powerplant Handbook) y un artículo de NASA sobre "
+    "degradación de turbofanes. Usa la terminología técnica estándar en inglés (por ejemplo "
+    "exhaust gas temperature, EGT, high pressure compressor, borescope inspection) e incluye "
+    "sinónimos útiles. Devuelve SOLO la consulta, en una línea, sin explicaciones."
+)
+
+
+def rewrite_query(question: str) -> str:
+    """Los manuales y el modelo de embeddings (gte-large-en) están en inglés: traducir y
+    expandir la pregunta mejora mucho el retrieval. Si falla, se usa la pregunta original."""
+    try:
+        q = call_llm([{"role": "system", "content": REWRITE_PROMPT},
+                      {"role": "user", "content": question}], max_tokens=400)
+        q = " ".join(q.split())[:400]
+        return q or question
+    except Exception as e:  # el retrieval sigue funcionando con la pregunta original
+        log.warning("Reescritura de consulta no disponible: %s", str(e)[:200])
+        return question
 
 
 @app.post("/api/ask")
 def api_ask(body: Pregunta):
     q = body.question.strip()
     try:
-        chunks = retrieve(q)
+        chunks = retrieve(rewrite_query(q))
     except Exception as e:
         log.warning("AI Search no disponible: %s", str(e)[:300])
         return JSONResponse(status_code=503, content={
