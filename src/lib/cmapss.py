@@ -246,13 +246,38 @@ def phm08_score(y_true, y_pred) -> float:
     return float(np.sum(np.where(d < 0, np.exp(-d / 13.0) - 1.0, np.exp(d / 10.0) - 1.0)))
 
 
+STATES = ("critical", "watch", "healthy")
+_LEGACY_STATES = {"critico": "critical", "vigilar": "watch", "sano": "healthy"}
+
+
 def classify_state(rul: float, critical: float = 20.0, watch: float = 35.0) -> str:
-    """Estado a partir de la RUL estimada: critico <= critical < vigilar <= watch < sano."""
+    """State from the estimated RUL: critical <= critical < watch <= watch < healthy."""
     if rul <= critical:
-        return "critico"
+        return "critical"
     if rul <= watch:
-        return "vigilar"
-    return "sano"
+        return "watch"
+    return "healthy"
+
+
+def normalize_state(state: str) -> str:
+    """Maps legacy Spanish state values (critico, vigilar, sano) to the English ones."""
+    s = (state or "").strip().lower()
+    return _LEGACY_STATES.get(s, s)
+
+
+def recommended_action(state: str, rul: float, sensors: Iterable[str] = ()) -> str:
+    """Generic recommended action text for an engine, from its state, RUL and top sensors."""
+    n = int(round(max(float(rul), 0.0)))
+    sens = [s for s in sensors if s][:2]
+    state = normalize_state(state)
+    if state == "critical":
+        txt = f"Schedule shutdown and replacement within {n} cycles."
+        if sens:
+            txt += " Inspect " + " and ".join(sens) + " now."
+        return txt
+    if state == "watch":
+        return f"Increase inspection frequency and plan the intervention within the {n}-cycle window."
+    return "Normal operation. Keep the usual maintenance plan."
 
 
 def occlusion_contributions(predict_fn, X: pd.DataFrame, baseline: pd.Series,

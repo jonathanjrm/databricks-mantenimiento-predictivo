@@ -5,6 +5,7 @@ pytest.importorskip("httpx")
 from fastapi.testclient import TestClient  # noqa: E402
 
 import app as A  # noqa: E402
+import rag  # noqa: E402
 from health_projection import project_health  # noqa: E402
 
 ROWS = [
@@ -14,7 +15,7 @@ ROWS = [
     {"unit": 2, "cycle": 90, "rul_pred": 30.0, "rul_real": 28, "error": 2.0, "estado": "vigilar",
      "sensor_1": "s4", "contrib_1": 5.0, "sensor_2": "s11", "contrib_2": 3.0, "sensor_3": "s2",
      "contrib_3": 1.0, "model_version": 3, "scored_at": "2026-10-13T00:00:00"},
-    {"unit": 3, "cycle": 80, "rul_pred": 90.0, "rul_real": 95, "error": -5.0, "estado": "sano",
+    {"unit": 3, "cycle": 80, "rul_pred": 90.0, "rul_real": 95, "error": -5.0, "estado": "healthy",
      "sensor_1": "s4", "contrib_1": 5.0, "sensor_2": "s11", "contrib_2": 3.0, "sensor_3": "s2",
      "contrib_3": 1.0, "model_version": 3, "scored_at": "2026-10-13T00:00:00"},
 ]
@@ -45,14 +46,14 @@ def _fake(sql, params=None):
 def test_overview_con_datos(monkeypatch):
     monkeypatch.setattr(A, "run_query", _fake)
     j = TestClient(A.app).get("/api/overview").json()
-    assert j["ready"] and j["kpis"]["motores"] == 3 and j["kpis"]["criticos"] == 1
-    assert j["kpis"]["rul_media"] == pytest.approx(43.3, abs=0.1)
+    assert j["ready"] and j["kpis"]["engines"] == 3 and j["kpis"]["critical"] == 1
+    assert j["kpis"]["mean_rul"] == pytest.approx(43.3, abs=0.1)
     assert j["kpis"]["rmse"] == 18.5 and j["model"]["version"] == 3
 
 
 def test_estado_vacio_si_faltan_tablas(monkeypatch):
     def vacio(sql, params=None):
-        raise A.TablaNoDisponible("TABLE_OR_VIEW_NOT_FOUND")
+        raise A.TableUnavailable("TABLE_OR_VIEW_NOT_FOUND")
     monkeypatch.setattr(A, "run_query", vacio)
     c = TestClient(A.app)
     o = c.get("/api/overview")
@@ -79,41 +80,111 @@ def test_proyeccion_sin_tendencia():
     assert project_health([(1, 0.1)])["slope"] is None
 
 
-def test_ask_cita_fuentes(monkeypatch):
-    chunks = [{"chunk_id": "a", "source": "manual.pdf", "page": 7, "text": "Revisar cada 500 horas.", "score": 0.9},
-              {"chunk_id": "b", "source": "otro.pdf", "page": 2, "text": "Texto no relacionado.", "score": 0.4}]
-    monkeypatch.setattr(A, "retrieve", lambda q, k=4: chunks)
+def _chunks():
+    return [
+        {"chunk_id": "a", "source": "manual.pdf", "page": 7, "text": "Inspect every 500 hours. " * 40, "score": 0.9,
+         "rrf": 0.03, "kind": "body"},
+        {"chunk_id": "b", "source": "other.pdf", "page": 2, "text": "Unrelated text.", "score": 0.4, "kind": "glossary"},
+    ]
+
+
+def _answer(status="insufficient_evidence"):
+    return rag.Answer(
+        config="v2", question="q", queries=["borescope inspection"],
+        retrieval_trace=[{"query": "borescope inspection", "results": [
+            {"chunk_id": "a", "source": "manual.pdf", "page": 7, "score": 0.9, "kind": "body"}]}],
+        chunks=_chunks(), status=status, summary="Related coverage only.",
+        claims=[{"text": "Inspect every 500 hours.", "citations": [1], "verdict": "SUPPORTED"},
+                {"text": "Partly stated.", "citations": [1], "verdict": "PARTIAL"}],
+        removed_claims=[{"text": "Invented limit.", "citations": [2], "verdict": "NOT_SUPPORTED", "reason": "not in passage"}],
+        gaps="Engine-specific intervals.", manufacturer_note="Refer to the manufacturer manual.")
+
+
+def test_ask_devuelve_respuesta_estructurada(monkeypatch, caplog):
     seen = {}
 
-    def llm(messages):
-        seen["m"] = messages
-        return "Cada 500 horas [1]."
-    monkeypatch.setattr(A, "call_llm", llm)
-    j = TestClient(A.app).post("/api/ask", json={"question": "cada cuanto reviso?"}).json()
-    assert j["answer"] == "Cada 500 horas [1]."
-    assert [s["cited"] for s in j["sources"]] == [True, False]
-    assert j["sources"][0]["source"] == "manual.pdf" and j["sources"][0]["page"] == 7
-    assert "[1] (manual.pdf, p. 7)" in seen["m"][1]["content"]
+    def fake_answer(question, llm, search, config, kinds=None):
+        seen.update(question=question, config=config, kinds=kinds)
+        return _answer()
+    monkeypatch.setattr(A, "get_clients", lambda: (lambda m, t=800: "", lambda q, n: []))
+    monkeypatch.setattr(A, "get_kinds", lambda: {("manual.pdf", 7): "body"})
+    monkeypatch.setattr(A.rag, "answer", fake_answer)
+    with caplog.at_level("INFO", logger="maintenance"):
+        j = TestClient(A.app).post("/api/ask", json={"question": "how often to inspect?"}).json()
+    assert seen["config"] == "v2" and seen["kinds"] == {("manual.pdf", 7): "body"}
+    assert j["status"] == "insufficient_evidence" and j["gaps"] and j["manufacturer_note"]
+    assert [c["verdict"] for c in j["claims"]] == ["SUPPORTED", "PARTIAL"]
+    assert j["removed_claims"][0]["reason"] == "not in passage" and "reason" not in j["claims"][0]
+    s0, s1 = j["sources"]
+    assert s0["cited"] is True and s1["cited"] is False        # [2] only cited by a REMOVED claim
+    assert len(s0["snippet"]) == 300 and s0["kind"] == "body" and s0["rrf"] == 0.03
+    assert j["trace"]["config"] == "v2" and j["trace"]["queries"] == ["borescope inspection"]
+    assert j["trace"]["retrieval"][0]["results"][0]["page"] == 7
+    line = [r.getMessage() for r in caplog.records if r.getMessage().startswith("ask ")][0]
+    assert "status=insufficient_evidence" in line and "claims=2" in line and "removed=1" in line
+    assert "manual.pdf:p7" in line and "Inspect every" not in line
+
+
+def test_ask_con_rag_real_y_clientes_falsos(monkeypatch):
+    def llm(messages, max_tokens=800):
+        sysm = messages[0]["content"]
+        if "search query" in sysm.lower() or "queries" in sysm.lower():
+            return '["borescope inspection"]'
+        if "check whether a claim" in sysm:
+            return '{"verdict": "SUPPORTED", "reason": "stated"}'
+        return ('{"status": "answered", "summary": "Yes.", "claims": [{"text": "Inspect every 500 hours.", '
+                '"citations": [1]}], "gaps": "", "manufacturer_note": ""}')
+    monkeypatch.setattr(A, "get_clients", lambda: (llm, lambda q, n: _chunks()))
+    monkeypatch.setattr(A, "get_kinds", lambda: None)
+    j = TestClient(A.app).post("/api/ask", json={"question": "how often to inspect?"}).json()
+    # "how often" asks for an interval: values are withheld and the manufacturer is required.
+    assert j["status"] == "requires_manufacturer_documentation" and j["sources"][0]["source"] == "manual.pdf"
+    assert j["claims"] == [] and j["removed_claims"][0]["verdict"] == "WITHHELD"
+    assert "trace" in j and j["trace"]["config"] == "v2"
+    assert any("requires_manufacturer_documentation" in x for x in j["trace"]["adjustments"])
 
 
 def test_ask_errores_claros(monkeypatch):
-    def boom(q, k=4):
+    def boom(q, n):
         raise RuntimeError("index not found")
-    monkeypatch.setattr(A, "retrieve", boom)
-    r = TestClient(A.app).post("/api/ask", json={"question": "hola mundo"})
-    assert r.status_code == 503 and r.json()["error"] == "indice_no_disponible"
-    monkeypatch.setattr(A, "retrieve", lambda q, k=4: [])
-    assert "No encuentro" in TestClient(A.app).post("/api/ask", json={"question": "hola mundo"}).json()["answer"]
+    monkeypatch.setattr(A, "get_clients", lambda: (lambda m, t=800: "[]", boom))
+    monkeypatch.setattr(A, "get_kinds", lambda: None)
+    r = TestClient(A.app).post("/api/ask", json={"question": "hello world"})
+    assert r.status_code == 503 and r.json()["error"] == "index_unavailable"
+    assert "not available" in r.json()["message"]
+
+    def llm_boom(m, t=800):
+        raise RuntimeError("endpoint down")
+    monkeypatch.setattr(A, "get_clients", lambda: (llm_boom, lambda q, n: _chunks()))
+    r = TestClient(A.app).post("/api/ask", json={"question": "hello world"})
+    assert r.status_code == 502 and r.json()["error"] == "llm_unavailable" and "Could not query" in r.json()["message"]
     assert TestClient(A.app).post("/api/ask", json={"question": "a"}).status_code == 422
 
 
-def test_extract_text_acepta_bloques():
-    resp = {"choices": [{"message": {"content": [{"type": "reasoning", "text": "pienso"},
-                                                  {"type": "text", "text": "respuesta"}]}}]}
-    assert A.extract_text(resp) == "respuesta"
-    assert A.extract_text({"choices": [{"message": {"content": " hola "}}]}) == "hola"
+def test_get_kinds_cacheado_y_tolerante(monkeypatch):
+    calls = []
+
+    def q(sql, params=None):
+        calls.append(sql)
+        return [{"source": "m.pdf", "page": 3, "text": "G-3 Glossary entry"}]
+    monkeypatch.setattr(A, "run_query", q)
+    monkeypatch.setattr(A, "_kinds", (0.0, None))
+    assert A.get_kinds() == {("m.pdf", 3): "glossary"} and A.get_kinds() is not None
+    assert len(calls) == 1 and "chunk_idx = 0" in calls[0]
+    monkeypatch.setattr(A, "_kinds", (0.0, None))
+    monkeypatch.setattr(A, "run_query", lambda s, p=None: (_ for _ in ()).throw(RuntimeError("x")))
+    assert A.get_kinds() is None
+
+
+def test_estados_antiguos_y_acciones_en_ingles(monkeypatch):
+    monkeypatch.setattr(A, "run_query", _fake)
+    j = TestClient(A.app).get("/api/engines").json()
+    assert [e["estado"] for e in j["engines"]] == ["critical", "watch", "healthy"]
+    assert j["engines"][0]["action"] == "Schedule shutdown and replacement within 10 cycles. Inspect s4 and s11 now."
+    assert j["engines"][2]["action"].startswith("Normal operation")
+    assert j["sensor_names"]["s4"] == "T50 LPT outlet temperature"
 
 
 def test_pagina_principal():
     r = TestClient(A.app).get("/")
-    assert r.status_code == 200 and "Mantenimiento predictivo" in r.text
+    assert r.status_code == 200 and "Predictive turbine maintenance" in r.text

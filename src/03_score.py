@@ -4,7 +4,7 @@
 # MAGIC
 # MAGIC Carga `models:/<catálogo>.<schema>.rul_model@champion`, puntua el **último ciclo observado** de los
 # MAGIC 100 motores de test y escribe `gold_predicciones`: RUL estimada, RUL real, estado
-# MAGIC (critico, vigilar, sano) y los 3 sensores que mas explican la predicción.
+# MAGIC (critical, watch, healthy) y los 3 sensores que mas explican la predicción.
 # MAGIC
 # MAGIC ## Como se calculan los 3 sensores principales (y que NO es)
 # MAGIC Para cada motor y cada sensor se sustituyen **todas** las variables derivadas de ese sensor (valor,
@@ -49,12 +49,12 @@ for _d in reversed(_code_dirs()):
         sys.path.insert(0, _d)
 
 from lib.cmapss import (ACTIVE_SENSORS, HEALTHY_CYCLES, classify_state, feature_columns,  # noqa: E402
-                        occlusion_contributions, phm08_score, rmse, top_k_sensors)
+                        occlusion_contributions, phm08_score, recommended_action, rmse, top_k_sensors)
 
 dbutils.widgets.text("catalog", "workspace", "Catálogo")
 dbutils.widgets.text("schema", "mantenimiento", "Schema")
-dbutils.widgets.text("umbral_critico", "20", "RUL <= umbral: critico")
-dbutils.widgets.text("umbral_vigilar", "35", "RUL <= umbral: vigilar")
+dbutils.widgets.text("umbral_critico", "20", "RUL <= umbral: critical")
+dbutils.widgets.text("umbral_vigilar", "35", "RUL <= umbral: watch")
 CATALOG = dbutils.widgets.get("catalog").strip()
 SCHEMA = dbutils.widgets.get("schema").strip()
 for _n in (CATALOG, SCHEMA):
@@ -111,6 +111,7 @@ out["estado"] = [classify_state(r, UMBRAL_CRITICO, UMBRAL_VIGILAR) for r in out[
 for i in range(3):
     out[f"sensor_{i+1}"] = [t[i][0] for t in top]
     out[f"contrib_{i+1}"] = [round(t[i][1], 3) for t in top]
+out["accion"] = [recommended_action(r.estado, r.rul_pred, [r.sensor_1, r.sensor_2]) for r in out.itertuples()]
 out["umbral_critico"] = UMBRAL_CRITICO
 out["umbral_vigilar"] = UMBRAL_VIGILAR
 out["model_name"] = MODEL_NAME

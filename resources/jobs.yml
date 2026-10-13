@@ -76,3 +76,27 @@ resources:
             base_parameters:
               catalog: "{{job.parameters.catalog}}"
               schema: "{{job.parameters.schema}}"
+
+    mantenimiento_eval_assistant:
+      name: mantenimiento_eval_assistant_${bundle.target}
+      description: evaluación de recuperación y fundamentación de citas del asistente (antes/después)
+      max_concurrent_runs: 1
+      environments:
+        - environment_key: serverless
+          spec:
+            environment_version: ${var.serverless_env_version}
+      parameters:
+        - name: configs
+          default: v1_baseline,v2
+        - name: label
+          default: ""
+      tasks:
+        - task_key: eval
+          environment_key: serverless
+          notebook_task:
+            notebook_path: ../src/07_eval_assistant.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema}
+              configs: "{{job.parameters.configs}}"
+              label: "{{job.parameters.label}}"

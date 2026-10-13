@@ -135,10 +135,10 @@ def test_rmse():
 
 
 def test_classify_state_umbrales():
-    assert C.classify_state(5) == "critico" and C.classify_state(20) == "critico"
-    assert C.classify_state(20.1) == "vigilar" and C.classify_state(35) == "vigilar"
-    assert C.classify_state(35.1) == "sano"
-    assert C.classify_state(30, critical=40, watch=50) == "critico"
+    assert C.classify_state(5) == "critical" and C.classify_state(20) == "critical"
+    assert C.classify_state(20.1) == "watch" and C.classify_state(35) == "watch"
+    assert C.classify_state(35.1) == "healthy"
+    assert C.classify_state(30, critical=40, watch=50) == "critical"
 
 
 # ---------------- indicador de salud y contribuciones ----------------
@@ -172,3 +172,12 @@ def test_occlusion_contributions_modelo_lineal():
     assert c.loc[0, "s3"] == pytest.approx(0.0)              # s3 ya estaba en su valor sano
     top = C.top_k_sensors(c, k=2)
     assert top[0][0][0] == "s2" and len(top[0]) == 2
+
+
+def test_normalize_state_y_accion():
+    assert [C.normalize_state(s) for s in ("critico", "vigilar", "sano", "watch")] == ["critical", "watch", "healthy", "watch"]
+    a = C.recommended_action("critico", 12.4, ["s4", "s11", "s2"])
+    assert a == "Schedule shutdown and replacement within 12 cycles. Inspect s4 and s11 now."
+    assert "within the 30-cycle window" in C.recommended_action("watch", 30.0)
+    assert C.recommended_action("healthy", 90).startswith("Normal operation")
+    assert C.recommended_action("critical", -3, []) == "Schedule shutdown and replacement within 0 cycles."

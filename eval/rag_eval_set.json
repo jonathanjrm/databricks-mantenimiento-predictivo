@@ -1,0 +1,90 @@
+{
+  "description": "RAG evaluation set for the maintenance assistant. Gold pages were identified by searching and reading the extracted PDF text (pypdf, same extraction as the index). Page numbers are 1-based PDF page indexes, as stored in manual_chunks.page. accepted_status lists the statuses that count as correct.",
+  "created": "2026-10-13",
+  "questions": [
+    {
+      "id": "hpc_inspection",
+      "question": "¿Cómo se inspecciona el compresor de alta presión?",
+      "gold": [{"source": "amt_powerplant_handbook.pdf", "pages": [413, 414, 415]}],
+      "accepted_status": ["insufficient_evidence", "requires_manufacturer_documentation"],
+      "notes": "The handbook has no HPC-specific inspection procedure (no match for HPC/high-pressure compressor near inspect). Generic compressor section inspection is on pp. 413-415 (manual pages 10-45 to 10-47), which states that limits come from the manufacturer."
+    },
+    {
+      "id": "compressor_blade_blending",
+      "question": "¿Cómo se inspeccionan los álabes del compresor y cuándo se pueden reparar con blending?",
+      "gold": [{"source": "amt_powerplant_handbook.pdf", "pages": [413, 414, 415]}],
+      "accepted_status": ["answered", "requires_manufacturer_documentation"],
+      "notes": "p.413 Inspection & Cleaning: minor damage repairable within manufacturer limits; magnetic particle or fluorescent penetrant after repair; no cracks tolerated."
+    },
+    {
+      "id": "egt_rise",
+      "question": "¿Qué puede indicar una temperatura de gases de escape (EGT) alta?",
+      "gold": [{"source": "amt_powerplant_handbook.pdf", "pages": [413, 422, 427, 428, 486]}],
+      "accepted_status": ["answered"],
+      "notes": "p.428 troubleshooting table (high EGT: turbine damage, compressor damage, thermocouple/instrument); p.427 excess EGT reduces turbine life; p.413 dirty compressor causes high EGT."
+    },
+    {
+      "id": "borescope",
+      "question": "¿Qué es un boroscopio y para qué se usa en un motor de turbina?",
+      "gold": [{"source": "amt_powerplant_handbook.pdf", "pages": [462]}],
+      "accepted_status": ["answered"],
+      "notes": "Glossary definition on p.462 (G-4)."
+    },
+    {
+      "id": "hot_section",
+      "question": "¿Qué se revisa en una inspección de la sección caliente (combustión y turbina)?",
+      "gold": [{"source": "amt_powerplant_handbook.pdf", "pages": [415, 416, 417, 418]}],
+      "accepted_status": ["answered", "requires_manufacturer_documentation"],
+      "notes": "p.415 Combustion Section Inspection; the text says clearances are illustrative and to follow manufacturer manuals."
+    },
+    {
+      "id": "hpc_definition",
+      "question": "¿Qué es el compresor de alta presión (N2) en un motor de doble eje?",
+      "gold": [{"source": "amt_powerplant_handbook.pdf", "pages": [57, 71, 472]}],
+      "accepted_status": ["answered"],
+      "notes": "Glossary p.472 and spool description pp.57 and 71."
+    },
+    {
+      "id": "cmapss_degradation",
+      "question": "¿Cómo se simula la degradación de los motores en C-MAPSS?",
+      "gold": [{"source": "2008_IEEEPHM_CMAPPSDamagePropagation.pdf", "pages": [1, 2, 3, 4, 6]}],
+      "accepted_status": ["answered"],
+      "notes": "Health parameters (flow and efficiency of rotating modules) with exponential degradation."
+    },
+    {
+      "id": "phm08_score",
+      "question": "¿Qué función de puntuación se usa para evaluar las predicciones de vida útil restante en PHM08?",
+      "gold": [{"source": "2008_IEEEPHM_CMAPPSDamagePropagation.pdf", "pages": [7, 8]}],
+      "accepted_status": ["answered"],
+      "notes": "Asymmetric scoring function described on pp.7-8."
+    },
+    {
+      "id": "blade_limits_steel",
+      "question": "¿Cuáles son los límites exactos de reparación de los álabes de compresor de acero de las etapas 1 a 4?",
+      "gold": [{"source": "amt_powerplant_handbook.pdf", "pages": [413, 414]}],
+      "accepted_status": ["insufficient_evidence", "requires_manufacturer_documentation"],
+      "notes": "Fig. 10-57 (p.414) shows TYPICAL limits only and its text extraction is garbled; actual limits come from the engine manufacturer (p.413)."
+    },
+    {
+      "id": "oem_torque",
+      "question": "¿Cuál es el par de apriete de los pernos del compresor de alta presión del CFM56-7B?",
+      "gold": [],
+      "accepted_status": ["requires_manufacturer_documentation", "not_found"],
+      "notes": "Engine-model-specific value; not in the handbook. Must not produce a number."
+    },
+    {
+      "id": "oem_interval",
+      "question": "¿Cada cuántos ciclos hay que hacer la inspección boroscópica del HPC del PW1100G?",
+      "gold": [],
+      "accepted_status": ["requires_manufacturer_documentation", "not_found"],
+      "notes": "Engine-model-specific interval; not in the handbook."
+    },
+    {
+      "id": "out_of_scope_price",
+      "question": "¿Cuánto cuesta un álabe de turbina nuevo?",
+      "gold": [],
+      "accepted_status": ["not_found"],
+      "notes": "Out of scope of both documents."
+    }
+  ]
+}
