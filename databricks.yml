@@ -1,0 +1,45 @@
+# Declarative Automation Bundle (antes Databricks Asset Bundles).
+# Despliegue:  databricks bundle validate -t dev && databricks bundle deploy -t dev
+# El host del workspace NO se escribe aquí: usa un perfil de la CLI o DATABRICKS_HOST.
+bundle:
+  name: mantenimiento-predictivo
+
+include:
+  - resources/pipelines.yml
+  - resources/jobs.yml
+  - resources/app.yml
+  # El endpoint de serving necesita que exista una versión del modelo (la crea el job de
+  # entrenamiento). En el primer despliegue comenta la línea siguiente; ver README, "Orden de ejecución".
+  - resources/serving.yml
+
+variables:
+  catalog:
+    description: Catálogo de Unity Catalog (en Free Edition ya existe `workspace`)
+    default: workspace
+  schema:
+    description: Schema del proyecto
+    default: mantenimiento
+  warehouse_id:
+    description: ID del SQL warehouse 2X-Small (Compute > SQL warehouses > Connection details)
+    default: ""
+  model_version:
+    description: Versión de rul_model que sirve el endpoint (entity_version no admite alias)
+    default: "1"
+  serverless_env_version:
+    description: Versión del entorno serverless de los jobs. verificar en docs la última disponible
+    default: "6"
+
+targets:
+  dev:
+    mode: development     # prefija recursos con [dev usuario] y pausa los schedules
+    default: true
+
+  prod:
+    mode: production      # exige rama main; en Free Edition no hay service principals de cuenta
+    git:
+      branch: main
+    workspace:
+      root_path: /Workspace/Shared/.bundle/${bundle.name}/${bundle.target}
+    permissions:
+      - user_name: ${workspace.current_user.userName}
+        level: CAN_MANAGE

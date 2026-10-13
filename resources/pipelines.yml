@@ -1,0 +1,15 @@
+resources:
+  pipelines:
+    mantenimiento_pipeline:
+      name: mantenimiento_pipeline_${bundle.target}
+      catalog: ${var.catalog}
+      schema: ${var.schema}
+      serverless: true          # Free Edition: solo serverless
+      continuous: false         # triggered: se lanza desde el job (un pipeline activo por tipo)
+      channel: CURRENT
+      libraries:
+        - glob:
+            include: ../src/pipeline/**
+      configuration:
+        mantenimiento.raw_path: /Volumes/${var.catalog}/${var.schema}/raw/cmapss
+        mantenimiento.src_root: ${workspace.file_path}/src

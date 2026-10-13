@@ -1,0 +1,19 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+.databricks/
+.env
+*.egg-info/
+.DS_Store
+metastore_db/
+spark-warehouse/
+derby.log
+# PDF de los manuales: se suben al volume, no al repositorio
+*.pdf
+herramientas/
+logs/
+cola/
+*.bat
+.databricks/

@@ -1,0 +1,78 @@
+resources:
+  jobs:
+    mantenimiento_end_to_end:
+      name: mantenimiento_end_to_end_${bundle.target}
+      description: setup, pipeline bronze/silver/gold, entrenamiento y puntuación
+      max_concurrent_runs: 1
+      environments:
+        - environment_key: serverless
+          spec:
+            environment_version: ${var.serverless_env_version}
+      parameters:
+        - name: catalog
+          default: ${var.catalog}
+        - name: schema
+          default: ${var.schema}
+      tasks:
+        - task_key: setup
+          environment_key: serverless
+          notebook_task:
+            notebook_path: ../src/00_setup.py
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+        - task_key: pipeline
+          depends_on:
+            - task_key: setup
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.mantenimiento_pipeline.id}
+            full_refresh: false
+        - task_key: train
+          depends_on:
+            - task_key: pipeline
+          environment_key: serverless
+          notebook_task:
+            notebook_path: ../src/02_train.py
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+        - task_key: score
+          depends_on:
+            - task_key: train
+          environment_key: serverless
+          notebook_task:
+            notebook_path: ../src/03_score.py
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+
+    mantenimiento_rag:
+      name: mantenimiento_rag_${bundle.target}
+      description: indexa los PDF del volume manuales en AI Search y evalúa el retrieval
+      max_concurrent_runs: 1
+      environments:
+        - environment_key: serverless
+          spec:
+            environment_version: ${var.serverless_env_version}
+      parameters:
+        - name: catalog
+          default: ${var.catalog}
+        - name: schema
+          default: ${var.schema}
+      tasks:
+        - task_key: index
+          environment_key: serverless
+          notebook_task:
+            notebook_path: ../src/04_rag_index.py
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+        - task_key: eval
+          depends_on:
+            - task_key: index
+          environment_key: serverless
+          notebook_task:
+            notebook_path: ../src/05_eval_rag.py
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"

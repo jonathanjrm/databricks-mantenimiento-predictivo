@@ -1,0 +1,11 @@
+resources:
+  model_serving_endpoints:
+    rul_endpoint:
+      name: rul-model-${bundle.target}
+      config:
+        served_entities:
+          - name: rul-model
+            entity_name: ${var.catalog}.${var.schema}.rul_model
+            entity_version: ${var.model_version}   # el endpoint no sigue al alias: actualiza la variable tras promover
+            workload_size: Small                   # CPU, sin GPU (Free Edition)
+            scale_to_zero_enabled: true

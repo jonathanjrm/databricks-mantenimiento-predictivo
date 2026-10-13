@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mantenimiento predictivo</title>
+<meta name="description" content="Sala de control de la flota de turbinas: vida útil restante, estado y asistente de manuales.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0B0E13; --panel:#10151D; --panel-2:#121821; --line:#1F2732;
+  --text:#E6EAF0; --muted:#8A96A8;
+  --critico:#FF6B3D; --vigilar:#F2B33D; --sano:#3FC1B0;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--text);font:400 14px/1.5 var(--sans);-webkit-font-smoothing:antialiased}
+.wrap{max-width:1360px;margin:0 auto;padding:0 16px 40px}
+header.top{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;justify-content:space-between;padding:18px 0;border-bottom:1px solid var(--line)}
+.brand{display:flex;flex-direction:column;gap:2px}
+.brand .k{font:500 11px var(--mono);letter-spacing:.14em;color:var(--muted);text-transform:uppercase}
+.brand h1{margin:0;font:600 20px/1.2 var(--sans);letter-spacing:-.01em}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid var(--line);background:var(--panel);border-radius:4px;font:400 12px var(--mono);color:var(--muted)}
+.chip b{font-weight:500;color:var(--text)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex:none}
+.dot.ok{background:var(--sano)} .dot.warn{background:var(--vigilar)}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:6px}
+.panel.alt{background:var(--panel-2)}
+.kpi{padding:14px 16px}
+.kpi .l{font:500 11px var(--mono);letter-spacing:.08em;color:var(--muted);text-transform:uppercase}
+.kpi .v{font:500 32px/1.15 var(--mono);margin-top:6px;letter-spacing:-.02em}
+.kpi .s{font:400 12px var(--sans);color:var(--muted);margin-top:2px}
+.kpi.crit .v{color:var(--critico)}
+.lineage{display:flex;align-items:stretch;overflow-x:auto;margin-bottom:16px;padding:0}
+.lineage .st{flex:1 0 140px;padding:10px 14px;border-right:1px solid var(--line);position:relative}
+.lineage .st:last-child{border-right:0}
+.lineage .st .n{font:500 11px var(--mono);letter-spacing:.08em;color:var(--muted);text-transform:uppercase}
+.lineage .st .c{font:500 16px var(--mono);margin-top:2px}
+.lineage .st .d{font-size:11px;color:var(--muted)}
+.lineage .st:not(:last-child)::after{content:"";position:absolute;right:-5px;top:50%;width:9px;height:9px;margin-top:-5px;border-top:1px solid var(--muted);border-right:1px solid var(--muted);transform:rotate(45deg);background:var(--panel)}
+.lineage .st.off .c{color:var(--muted)}
+.grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:12px;align-items:start}
+.col{display:flex;flex-direction:column;gap:12px;min-width:0}
+.ph{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:12px 16px;border-bottom:1px solid var(--line)}
+.ph h2{margin:0;font:600 13px var(--sans);letter-spacing:.02em}
+.ph .sub{font:400 12px var(--sans);color:var(--muted)}
+.pb{padding:12px 16px 16px}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font:400 12px var(--mono);color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+svg{display:block;width:100%;height:auto}
+.eng{cursor:pointer;outline:none}
+.eng .top{transition:filter .12s}
+.eng:hover .top,.eng:focus-visible .top{filter:brightness(1.25)}
+.eng.sel .top{stroke:#fff;stroke-width:1.5}
+.eng:focus-visible .top{stroke:#fff;stroke-width:1.5}
+.axis text{font:400 10px var(--mono);fill:var(--muted)}
+.empty{padding:28px 16px;color:var(--muted);text-align:center}
+.empty b{display:block;color:var(--text);font-weight:500;margin-bottom:6px}
+.empty code{font:400 12px var(--mono);background:var(--bg);border:1px solid var(--line);padding:1px 6px;border-radius:3px;color:var(--text)}
+.detail .big{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.detail .rul{font:500 52px/1 var(--mono);letter-spacing:-.03em}
+.detail .u{font:400 13px var(--mono);color:var(--muted)}
+.badge{display:inline-block;padding:2px 9px;border-radius:3px;font:500 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:#0B0E13}
+.badge.critico{background:var(--critico)} .badge.vigilar{background:var(--vigilar)} .badge.sano{background:var(--sano)}
+.dl{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:14px 0;font-size:13px}
+.dl dt{color:var(--muted)} .dl dd{margin:0;font-family:var(--mono);text-align:right}
+.action{border-left:3px solid var(--muted);padding:6px 0 6px 12px;margin:12px 0;color:var(--text)}
+.action.critico{border-color:var(--critico)} .action.vigilar{border-color:var(--vigilar)} .action.sano{border-color:var(--sano)}
+.bars h3{margin:16px 0 8px;font:500 11px var(--mono);letter-spacing:.08em;color:var(--muted);text-transform:uppercase}
+.bar{margin:8px 0}
+.bar .t{display:flex;justify-content:space-between;gap:8px;font-size:12px}
+.bar .t span:first-child{color:var(--text)} .bar .t span:last-child{font-family:var(--mono);color:var(--muted)}
+.bar .tr{height:6px;background:var(--bg);border:1px solid var(--line);border-radius:3px;margin-top:4px;overflow:hidden}
+.bar .tr i{display:block;height:100%;background:var(--critico)}
+.note{font-size:12px;color:var(--muted);margin-top:10px}
+.chat{display:flex;flex-direction:column;gap:10px}
+.msgs{display:flex;flex-direction:column;gap:10px;max-height:380px;overflow-y:auto;padding-right:4px}
+.m{padding:9px 12px;border-radius:5px;font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere}
+.m.u{background:var(--bg);border:1px solid var(--line);align-self:flex-end;max-width:92%}
+.m.a{background:var(--panel-2);border:1px solid var(--line)}
+.m.err{border-color:var(--critico)}
+.src{margin-top:8px;font:400 12px var(--mono);color:var(--muted);white-space:normal}
+.src div{margin-top:3px} .src .c{color:var(--text)}
+.sug{display:flex;flex-wrap:wrap;gap:6px}
+.sug button{font:400 12px var(--sans);background:transparent;color:var(--muted);border:1px solid var(--line);border-radius:14px;padding:4px 10px;cursor:pointer}
+.sug button:hover{color:var(--text);border-color:var(--muted)}
+form.ask{display:flex;gap:8px}
+form.ask input{flex:1;min-width:0;background:var(--bg);border:1px solid var(--line);color:var(--text);border-radius:4px;padding:9px 10px;font:400 13px var(--sans)}
+form.ask input:focus{outline:2px solid var(--sano);outline-offset:-1px}
+form.ask button,.sug button:focus-visible{font:500 13px var(--sans)}
+form.ask button{background:var(--text);color:var(--bg);border:0;border-radius:4px;padding:0 14px;cursor:pointer}
+form.ask button:disabled{opacity:.5;cursor:default}
+button:focus-visible{outline:2px solid var(--sano);outline-offset:2px}
+.tip{position:fixed;pointer-events:none;z-index:5;background:var(--panel-2);border:1px solid var(--line);padding:6px 9px;border-radius:4px;font:400 12px var(--mono);display:none;white-space:nowrap}
+footer{margin-top:24px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
+@media (max-width:980px){.grid{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:520px){.kpi .v{font-size:26px}.detail .rul{font-size:44px}.brand h1{font-size:18px}.kpis{gap:8px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <span class="k">Sala de control</span>
+      <h1>Mantenimiento predictivo de turbinas</h1>
+    </div>
+    <div class="chips" id="chips" aria-live="polite">
+      <span class="chip"><span class="dot"></span>Cargando estado…</span>
+    </div>
+  </header>
+
+  <section class="kpis" aria-label="Indicadores de la flota">
+    <div class="panel kpi"><div class="l">Motores</div><div class="v" id="k-motores">--</div><div class="s">en el conjunto de test FD001</div></div>
+    <div class="panel kpi crit"><div class="l">Críticos</div><div class="v" id="k-criticos">--</div><div class="s" id="k-criticos-s">RUL por debajo del umbral</div></div>
+    <div class="panel kpi"><div class="l">Vida útil media</div><div class="v" id="k-rul">--</div><div class="s">ciclos de RUL estimada</div></div>
+    <div class="panel kpi"><div class="l">RMSE real</div><div class="v" id="k-rmse">--</div><div class="s" id="k-rmse-s">ciclos, test FD001</div></div>
+  </section>
+
+  <section class="panel lineage" aria-label="Linaje de datos" id="lineage"></section>
+
+  <main class="grid">
+    <div class="col">
+      <section class="panel">
+        <div class="ph"><h2>Flota</h2><span class="sub">Altura = vida útil restante. Color = estado. Los más urgentes, al frente.</span></div>
+        <div class="pb">
+          <div id="fleet"></div>
+          <div class="legend" style="margin-top:10px">
+            <span><i style="background:var(--critico)"></i>Crítico</span>
+            <span><i style="background:var(--vigilar)"></i>Vigilar</span>
+            <span><i style="background:var(--sano)"></i>Sano</span>
+            <span id="thr"></span>
+          </div>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="ph"><h2 id="curve-title">Curva de salud</h2><span class="sub">Indicador derivado de los sensores, no una predicción</span></div>
+        <div class="pb"><div id="curve"></div><div class="note" id="curve-note"></div></div>
+      </section>
+    </div>
+
+    <div class="col">
+      <section class="panel detail" aria-live="polite">
+        <div class="ph"><h2>Motor</h2><span class="sub" id="d-sub">Selecciona uno en la flota</span></div>
+        <div class="pb" id="detail"><div class="empty">Sin motor seleccionado.</div></div>
+      </section>
+      <section class="panel">
+        <div class="ph"><h2>Asistente de manuales</h2><span class="sub">Responde solo con los PDF indexados</span></div>
+        <div class="pb chat">
+          <div class="msgs" id="msgs" aria-live="polite"></div>
+          <div class="sug" id="sug"></div>
+          <form class="ask" id="ask" autocomplete="off">
+            <input id="q" type="text" maxlength="500" placeholder="Pregunta sobre los manuales" aria-label="Pregunta sobre los manuales">
+            <button type="submit" id="send">Enviar</button>
+          </form>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer>
+    Datos: NASA C-MAPSS FD001 (Saxena et al., 2008, dominio público). Proyecto de demostración; no usar para decisiones reales de mantenimiento.
+  </footer>
+</div>
+<div class="tip" id="tip"></div>
+
+<script>
+"use strict";
+const COLORS = {critico:"#FF6B3D", vigilar:"#F2B33D", sano:"#3FC1B0"};
+const LABEL = {critico:"Crítico", vigilar:"Vigilar", sano:"Sano"};
+const NS = "http://www.w3.org/2000/svg";
+const state = {engines:[], names:{}, sel:null, overview:null};
+
+const $ = (id) => document.getElementById(id);
+const el = (tag, attrs={}, text) => { const e=document.createElement(tag); for(const k in attrs) e.setAttribute(k,attrs[k]); if(text!==undefined) e.textContent=text; return e; };
+const sv = (tag, attrs={}) => { const e=document.createElementNS(NS,tag); for(const k in attrs) e.setAttribute(k,attrs[k]); return e; };
+const fmt = (n, d=0) => (n===null||n===undefined||Number.isNaN(n)) ? "--" : Number(n).toLocaleString("es-ES",{minimumFractionDigits:d,maximumFractionDigits:d});
+async function getJSON(url, opts){ const r = await fetch(url, opts); let j=null; try{ j = await r.json(); }catch(_){} return {ok:r.ok, status:r.status, data:j}; }
+
+function mix(hex, k){ // oscurece un color hex multiplicando por k
+  const n=parseInt(hex.slice(1),16); const c=[n>>16&255,n>>8&255,n&255].map(v=>Math.round(v*k));
+  return "rgb("+c.join(",")+")";
+}
+
+/* ---------- cabecera, KPIs y linaje ---------- */
+function ago(iso){
+  if(!iso) return null; const t=new Date(iso); if(isNaN(t)) return null;
+  const m=Math.round((Date.now()-t)/60000);
+  if(m<1) return "ahora"; if(m<60) return "hace "+m+" min"; if(m<1440) return "hace "+Math.round(m/60)+" h"; return "hace "+Math.round(m/1440)+" d";
+}
+function renderOverview(o){
+  state.overview=o;
+  const chips=$("chips"); chips.replaceChildren();
+  const upd=ago(o.pipeline.last_update);
+  const c1=el("span",{class:"chip"}); c1.append(el("span",{class:"dot "+(o.ready?"ok":"warn")}));
+  c1.append(document.createTextNode("Pipeline "), el("b",{}, upd?("datos "+upd):(o.ready?"sin fecha":"sin datos"))); chips.append(c1);
+  const c2=el("span",{class:"chip"}); c2.append(el("span",{class:"dot "+(o.model.version?"ok":"warn")}));
+  const mn=(o.model.name||"rul_model").split(".").pop();
+  c2.append(document.createTextNode("Modelo "), el("b",{}, o.model.version? (mn+"@"+o.model.alias+" v"+o.model.version) : (mn+" sin champion")));
+  chips.append(c2);
+  const k=o.kpis;
+  $("k-motores").textContent=o.ready?fmt(k.motores):"--";
+  $("k-criticos").textContent=o.ready?fmt(k.criticos):"--";
+  $("k-criticos-s").textContent=o.ready?("y "+fmt(k.vigilar)+" en vigilancia"):"RUL por debajo del umbral";
+  $("k-rul").textContent=o.ready?fmt(k.rul_media,1):"--";
+  $("k-rmse").textContent=k.rmse!==null&&k.rmse!==undefined?fmt(k.rmse,2):"--";
+  $("k-rmse-s").textContent=k.phm08?("ciclos, test FD001 | PHM08 "+fmt(k.phm08)):"ciclos, test FD001";
+  const L=$("lineage"); L.replaceChildren();
+  const L0=o.pipeline.layers;
+  const steps=[["Bronze",L0.bronze,"lecturas ingeridas"],["Silver",L0.silver,"validadas, sin constantes"],["Gold",L0.gold,"filas con variables"],
+               ["Modelo",o.model.version?("v"+o.model.version):null,"rul_model@champion"],["Predicciones",L0.predicciones,"motores puntuados"]];
+  steps.forEach(([n,c,d])=>{ const s=el("div",{class:"st"+((c===null||c===undefined)?" off":"")});
+    s.append(el("div",{class:"n"},n), el("div",{class:"c"}, (c===null||c===undefined)?"--":(typeof c==="number"?fmt(c):c)), el("div",{class:"d"},d)); L.append(s); });
+}
+
+/* ---------- flota isometrica ---------- */
+const TW=54, TH=27, COLS=10;
+function renderFleet(){
+  const box=$("fleet"); box.replaceChildren();
+  if(!state.engines.length){
+    const miss=(state.overview&&state.overview.missing||[]).join(", ");
+    const d=el("div",{class:"empty"}); d.append(el("b",{},"Aún no hay predicciones"));
+    d.append(document.createTextNode("Ejecuta el job "), el("code",{},"mantenimiento_end_to_end"), document.createTextNode(" para crear las tablas gold y puntuar la flota."));
+    if(miss){ d.append(el("div",{class:"note"},"Tablas no disponibles: "+miss)); }
+    box.append(d); return;
+  }
+  const rows=Math.ceil(state.engines.length/COLS), maxH=66;
+  const W=COLS*TW+TW, H=(rows+COLS)*TH/2+maxH+30, ox=(rows*TW)/2+TW/2, oy=maxH+14;
+  const svg=sv("svg",{viewBox:`0 0 ${W} ${H}`,role:"group","aria-label":"Flota de motores en vista isometrica"});
+  // Orden por urgencia: los motores con menos RUL van delante (filas inferiores) para que nunca los tape uno mas alto.
+  const asc=[...state.engines].sort((a,b)=>a.rul_pred-b.rul_pred||a.unit-b.unit);
+  const order=asc.map((e,i)=>({e,r:rows-1-Math.floor(i/COLS),c:i%COLS})).sort((a,b)=>(a.r+a.c)-(b.r+b.c)||a.r-b.r);
+  for(const {e,r,c} of order){
+    const x=ox+(c-r)*TW/2, y=oy+(c+r)*TH/2, h=6+Math.min(Math.max(e.rul_pred,0),125)/125*(maxH-6);
+    const a=TW/2*0.68, b=TH/2*0.68, col=COLORS[e.estado]||"#8A96A8";
+    const g=sv("g",{class:"eng"+(state.sel===e.unit?" sel":""),tabindex:"0",role:"button","data-unit":e.unit,
+      "aria-label":`Motor ${e.unit}, vida útil ${fmt(e.rul_pred,0)} ciclos, ${LABEL[e.estado]||e.estado}`});
+    g.append(sv("polygon",{points:`${x-a},${y-h} ${x},${y-h+b} ${x},${y+b} ${x-a},${y}`,fill:mix(col,.5)}));
+    g.append(sv("polygon",{points:`${x},${y-h+b} ${x+a},${y-h} ${x+a},${y} ${x},${y+b}`,fill:mix(col,.72)}));
+    g.append(sv("polygon",{points:`${x},${y-h-b} ${x+a},${y-h} ${x},${y-h+b} ${x-a},${y-h}`,fill:col,class:"top"}));
+    g.addEventListener("click",()=>select(e.unit));
+    g.addEventListener("keydown",(ev)=>{ if(ev.key==="Enter"||ev.key===" "){ ev.preventDefault(); select(e.unit);} });
+    g.addEventListener("mousemove",(ev)=>tip(ev,`Motor ${e.unit} | RUL ${fmt(e.rul_pred,0)} | ${LABEL[e.estado]||e.estado}`));
+    g.addEventListener("mouseleave",()=>tip(null));
+    svg.append(g);
+  }
+  box.append(svg);
+  const u=state.engines[0]; $("thr").textContent=u&&u.umbral_critico?`Umbrales: crítico ≤ ${u.umbral_critico}, vigilar ≤ ${u.umbral_vigilar}`:"";
+}
+function tip(ev,text){ const t=$("tip"); if(!ev){ t.style.display="none"; return; } t.textContent=text; t.style.display="block"; t.style.left=(ev.clientX+14)+"px"; t.style.top=(ev.clientY+14)+"px"; }
+
+/* ---------- detalle ---------- */
+const ACCION = {
+  critico:(e)=>`Programar parada y sustitución dentro de ${fmt(Math.max(e.rul_pred,0),0)} ciclos. Inspeccionar ya ${e.sensor_1}${e.sensor_2?" y "+e.sensor_2:""}.`,
+  vigilar:(e)=>`Aumentar la frecuencia de inspección y planificar la intervención en la ventana de ${fmt(Math.max(e.rul_pred,0),0)} ciclos.`,
+  sano:()=>"Operación normal. Mantener el plan de mantenimiento habitual."
+};
+function select(unit){
+  state.sel=unit; renderFleet();
+  const e=state.engines.find(x=>x.unit===unit); if(!e) return;
+  $("d-sub").textContent=`Motor ${e.unit} | ciclo observado ${e.cycle}`;
+  const d=$("detail"); d.replaceChildren();
+  const big=el("div",{class:"big"}); big.append(el("span",{class:"rul"},fmt(Math.max(e.rul_pred,0),0)), el("span",{class:"u"},"ciclos de RUL estimada"), el("span",{class:"badge "+e.estado},LABEL[e.estado]||e.estado));
+  d.append(big);
+  const dl=el("dl",{class:"dl"});
+  [["RUL real (test)",fmt(e.rul_real,0)],["Error (pred. − real)",(e.error>0?"+":"")+fmt(e.error,1)],["Versión del modelo","v"+e.model_version]].forEach(([k,v])=>{dl.append(el("dt",{},k),el("dd",{},v));});
+  d.append(dl);
+  d.append(el("div",{class:"action "+e.estado},(ACCION[e.estado]||ACCION.sano)(e)));
+  const bars=el("div",{class:"bars"}); bars.append(el("h3",{},"Sensores que más explican la predicción"));
+  const items=[1,2,3].map(i=>({s:e["sensor_"+i],v:e["contrib_"+i]})).filter(x=>x.s);
+  const mx=Math.max(...items.map(x=>Math.abs(x.v)),1e-9);
+  items.forEach(x=>{ const b=el("div",{class:"bar"}); const t=el("div",{class:"t"}); t.append(el("span",{},x.s+" | "+(state.names[x.s]||"")),el("span",{},"+"+fmt(x.v,1)+" ciclos")); const tr=el("div",{class:"tr"}); const i=el("i"); i.style.width=Math.max(4,Math.abs(x.v)/mx*100)+"%"; tr.append(i); b.append(t,tr); bars.append(b); });
+  bars.append(el("div",{class:"note"},"Sensibilidad por oclusión: RUL que ganaría el motor si ese sensor estuviera sano. No son valores SHAP."));
+  d.append(bars);
+  loadCurve(unit);
+}
+
+/* ---------- curva de salud ---------- */
+async function loadCurve(unit){
+  $("curve-title").textContent=`Curva de salud, motor ${unit}`;
+  const box=$("curve"), note=$("curve-note"); box.replaceChildren(); note.textContent="";
+  const r=await getJSON(`/api/engines/${unit}/health`);
+  if(state.sel!==unit) return;
+  if(!r.ok||!r.data||!r.data.ready){ const d=el("div",{class:"empty"}); d.append(el("b",{},"Curva no disponible"),document.createTextNode("Falta la tabla gold_salud_curva: ejecuta el pipeline.")); box.append(d); return; }
+  const {history:h, projection:p, threshold:T}=r.data;
+  const W=640,H=260,m={l:44,r:16,t:14,b:30};
+  const xmax=Math.max(h[h.length-1][0], p.cross_cycle||0)+2, xmin=h[0][0];
+  const ymax=Math.max(1.25, ...h.map(q=>q[1]))*1.05, ymin=Math.min(0, ...h.map(q=>q[1]));
+  const X=v=>m.l+(v-xmin)/(xmax-xmin)*(W-m.l-m.r), Y=v=>H-m.b-(v-ymin)/(ymax-ymin)*(H-m.t-m.b);
+  const svg=sv("svg",{viewBox:`0 0 ${W} ${H}`,role:"img","aria-label":`Indicador de salud del motor ${unit}`});
+  const ax=sv("g",{class:"axis"});
+  [0,0.5,1].forEach(v=>{ ax.append(sv("line",{x1:m.l,x2:W-m.r,y1:Y(v),y2:Y(v),stroke:"#1F2732"})); const t=sv("text",{x:m.l-8,y:Y(v)+3,"text-anchor":"end"}); t.textContent=v.toFixed(1); ax.append(t); });
+  const ticks=5; for(let i=0;i<=ticks;i++){ const v=Math.round(xmin+(xmax-xmin)*i/ticks); const t=sv("text",{x:X(v),y:H-10,"text-anchor":"middle"}); t.textContent=v; ax.append(t); }
+  const lab=sv("text",{x:W-m.r,y:Y(T)-6,"text-anchor":"end",fill:"#FF6B3D"}); lab.textContent="umbral de fallo"; lab.style.fill="#FF6B3D"; ax.append(lab);
+  svg.append(ax);
+  svg.append(sv("line",{x1:m.l,x2:W-m.r,y1:Y(T),y2:Y(T),stroke:"#FF6B3D","stroke-dasharray":"4 4","stroke-width":1}));
+  svg.append(sv("polyline",{points:h.map(q=>X(q[0])+","+Y(q[1])).join(" "),fill:"none",stroke:"#E6EAF0","stroke-width":1.6,"stroke-linejoin":"round"}));
+  if(p.projection&&p.projection.length>1){
+    svg.append(sv("polyline",{points:p.projection.map(q=>X(q[0])+","+Y(q[1])).join(" "),fill:"none",stroke:COLORS[(state.engines.find(e=>e.unit===unit)||{}).estado]||"#8A96A8","stroke-width":1.6,"stroke-dasharray":"6 4"}));
+    svg.append(sv("circle",{cx:X(p.cross_cycle),cy:Y(T),r:3.5,fill:"#FF6B3D"}));
+  }
+  const last=h[h.length-1]; svg.append(sv("circle",{cx:X(last[0]),cy:Y(last[1]),r:3.5,fill:"#E6EAF0"}));
+  box.append(svg);
+  const e=state.engines.find(x=>x.unit===unit);
+  note.textContent = p.cycles_to_threshold===null
+    ? "Sin tendencia ascendente en los últimos 30 ciclos: no se proyecta cruce del umbral."
+    : `Extrapolación lineal de los últimos 30 ciclos: cruza el umbral en unos ${p.cycles_to_threshold} ciclos. RUL del modelo: ${fmt(e?Math.max(e.rul_pred,0):null,0)} ciclos. Son dos estimaciones distintas; si divergen, el motor merece revisión.`;
+}
+
+/* ---------- asistente ---------- */
+const SUG=["¿Cómo se inspecciona el compresor de alta presión?","¿Qué indica una subida de temperatura a la salida de la turbina?","¿Cada cuánto se debe hacer el mantenimiento preventivo?"];
+function addMsg(kind, text, sources, isErr){
+  const m=el("div",{class:"m "+kind+(isErr?" err":"")}); m.append(document.createTextNode(text));
+  if(sources&&sources.length){ const s=el("div",{class:"src"}); s.append(document.createTextNode("Fuentes"));
+    sources.forEach(x=>{ const d=el("div",{class:x.cited?"c":""}); d.textContent=`[${x.n}] ${x.source}, p. ${x.page}${x.cited?"":" (recuperada, no citada)"}`; d.title=x.snippet||""; s.append(d); }); m.append(s); }
+  $("msgs").append(m); $("msgs").scrollTop=$("msgs").scrollHeight; return m;
+}
+async function ask(text){
+  const q=text.trim(); if(q.length<3) return;
+  addMsg("u",q); $("q").value=""; $("send").disabled=true;
+  const pend=addMsg("a","Buscando en los manuales…");
+  const r=await getJSON("/api/ask",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({question:q})}).catch(()=>({ok:false,data:null}));
+  pend.remove();
+  if(r.ok&&r.data) addMsg("a",r.data.answer,r.data.sources);
+  else addMsg("a",(r.data&&r.data.message)||"No se pudo consultar el asistente.",(r.data&&r.data.sources)||[],true);
+  $("send").disabled=false; $("q").focus();
+}
+$("ask").addEventListener("submit",(ev)=>{ ev.preventDefault(); ask($("q").value); });
+SUG.forEach(t=>{ const b=el("button",{type:"button"},t); b.addEventListener("click",()=>ask(t)); $("sug").append(b); });
+addMsg("a","Pregunta por procedimientos, intervalos o síntomas. Respondo solo con los PDF indexados y cito archivo y página.");
+
+/* ---------- arranque ---------- */
+async function init(){
+  const [o,e]=await Promise.all([getJSON("/api/overview"),getJSON("/api/engines")]);
+  if(o.ok) renderOverview(o.data); else $("chips").replaceChildren(el("span",{class:"chip"},"No se pudo leer el estado"));
+  if(e.ok&&e.data){ state.engines=e.data.engines||[]; state.names=e.data.sensor_names||{}; }
+  renderFleet();
+  if(state.engines.length){ const w=[...state.engines].sort((a,b)=>a.rul_pred-b.rul_pred)[0]; select(w.unit); }
+  else { $("curve").replaceChildren(Object.assign(el("div",{class:"empty"}),{})); $("curve").firstChild.append(el("b",{},"Sin datos"),document.createTextNode("La curva aparece cuando hay predicciones.")); }
+}
+init();
+setInterval(async()=>{ const o=await getJSON("/api/overview"); if(o.ok) renderOverview(o.data); },60000);
+</script>
+</body>
+</html>

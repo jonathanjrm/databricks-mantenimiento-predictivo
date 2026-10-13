@@ -1,0 +1,36 @@
+{
+  "fecha": "2026-10-13",
+  "dataset": "C-MAPSS FD001",
+  "rul_clip": 125,
+  "n_train_rows": 20631,
+  "n_test_units": 100,
+  "n_features": 85,
+  "sklearn": "1.9.1",
+  "pandas": "3.0.5",
+  "hgb_params": {
+    "max_iter": 300,
+    "learning_rate": 0.05,
+    "max_leaf_nodes": 31,
+    "min_samples_leaf": 40,
+    "l2_regularization": 1.0,
+    "early_stopping": false,
+    "random_state": 42
+  },
+  "resultados": {
+    "baseline_media": {
+      "rmse_test": 43.06703554245684,
+      "phm08_test": 33629.230598368384,
+      "mae_test": 35.9
+    },
+    "baseline_ridge": {
+      "rmse_test": 21.796289837359854,
+      "phm08_test": 1073.3844088466258,
+      "mae_test": 16.813472351912033
+    },
+    "hist_gradient_boosting": {
+      "rmse_test": 19.101964171200596,
+      "phm08_test": 726.7607582312139,
+      "mae_test": 13.954062246009526
+    }
+  }
+}

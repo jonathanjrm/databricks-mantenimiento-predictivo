@@ -1,0 +1,25 @@
+# Configuracion de la Databricks App. Los recursos (warehouse SQL) se declaran en el bundle
+# (resources/app.yml) y se referencian aquí por su clave con valueFrom.
+command:
+  - uvicorn
+  - app:app
+  - --host
+  - 0.0.0.0
+  - --port
+  - $DATABRICKS_APP_PORT
+
+env:
+  - name: DATABRICKS_WAREHOUSE_ID
+    valueFrom: sql_warehouse        # clave del recurso en el bundle; resuelve al ID del warehouse
+  - name: CATALOG
+    value: workspace                # debe coincidir con la variable `catalog` del bundle
+  - name: SCHEMA
+    value: mantenimiento            # debe coincidir con la variable `schema` del bundle
+  - name: AI_SEARCH_INDEX
+    value: workspace.mantenimiento.manual_chunks_index
+  # Endpoint de chat de Foundation Model APIs. verificar disponibilidad en Free Edition
+  # (revisa la pestana Serving: los modelos alojados cambian y se retiran).
+  - name: LLM_ENDPOINT
+    value: databricks-gpt-oss-120b
+  - name: RAG_K
+    value: "4"
