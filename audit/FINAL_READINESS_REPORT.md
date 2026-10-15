@@ -1,7 +1,7 @@
 # Informe final de preparación (Fase G)
 
-Fecha: 15 de octubre de 2026 (logs del PC en UTC del 14 de octubre, 22:0x a 23:xx; filas 7, 11 a 14, G-02 y veredicto actualizados en la fase F el 15 de octubre). Proyecto `databricks-mantenimiento-predictivo`,
-Databricks Free Edition, dataset NASA C-MAPSS FD001. Rama local `validacion` sin commits ni push; despliegues solo al target `dev`.
+Fecha: 15 de octubre de 2026 (logs del PC en UTC del 14 de octubre, 22:0x a 23:xx; filas 7, 11 a 14, G-02 y veredicto actualizados en la fase F el 15 de octubre; G-01 cerrado y veredicto recalculado tras el push del 15 de octubre). Proyecto `databricks-mantenimiento-predictivo`,
+Databricks Free Edition, dataset NASA C-MAPSS FD001. Código auditado publicado en `main` (commit `c5f75fa`); despliegues solo al target `dev`.
 
 Este informe consolida `audit/01_BASELINE.md`, `02_MODEL_VALIDATION.md`, `03_RAG_VALIDATION.md`, `04_SECURITY_QA.md`
 y el estado de `portfolio/` tal como estaban en la carpeta del PC a las 22:44 UTC del 14 de octubre (sondeada durante 35 minutos sin cambios de la fase C). Si la fase C entrega después, los criterios 11 a 14 deben reevaluarse con sus ficheros. No es una certificación industrial:
@@ -24,7 +24,7 @@ el sistema es un prototipo de demostración sobre datos de simulación y no est�
 | 11 | Capturas auténticas | PASS | `portfolio/screenshots/01..15_*.jpg` (11 del 14 de octubre, 4 del 15 de octubre tras reiniciar la app), `portfolio/SCREENSHOTS.md` (inventario, fecha, vista, tipo), `evidence/C_hpc_2026-10-15.json` | Capturas reales del navegador integrado sobre la app desplegada, sin retoques; las del 14 de octubre ya muestran el texto orientativo y las etiquetas de la fase E (verificado visualmente el 15). Sin capturas de la consola de MLflow (NOT_VERIFIED como captura; evidencia por API). Vídeo: no grabado, NOT_VERIFIED |
 | 12 | Carrusel exportado | PASS | `portfolio/carousel/carousel.html` (fuente editable), `carousel.pdf`, `png/slide-01..10.png` (2160 x 2700, 2x), `render.py`, `fonts/`; `portfolio/SOURCES.md` | Diez diapositivas con los temas de la misión, ilustraciones etiquetadas y capturas reales etiquetadas. Cifras revisadas una a una contra `02_MODEL_VALIDATION.md`, `03_RAG_VALIDATION.md` y `01_BASELINE.md` el 15 de octubre (142 pruebas, protocolo de promoción solo con train, revalidación del HPC, disponibilidad); comprobación automática de desbordes y revisión visual de cada PNG |
 | 13 | Caso de estudio redactado | PASS | `portfolio/CASE_STUDY_EN.md`; cifras trazadas en `portfolio/SOURCES.md` | Secciones exigidas por la misión, limitaciones explícitas (test visto, incertidumbre sin calibrar, lotes frente a endpoint, Free Edition, límites del RAG, no certificado) y el papel del autor: Jonathan Rincon definió arquitectura, parámetros y secuencia|
-| 14 | Publicación LinkedIn preparada | PASS (texto); vídeo NOT_VERIFIED | `portfolio/LINKEDIN_POST_EN.md` (1.938 caracteres), `LINKEDIN_POST_ES.md`, `TECH_STACK.md`, `DEMO_SCRIPT_EN.md`, `SCREENSHOTS.md`, `SOURCES.md` | Texto técnico sin cifras no respaldadas; declara datos de simulación y disponibilidad no continua. Vídeo de demostración no grabado (sin grabador en el entorno): guion de 60 a 90 s mapeado a capturas reales. Publicar solo tras el push (G-01) |
+| 14 | Publicación LinkedIn preparada | PASS (texto); vídeo NOT_VERIFIED | `portfolio/LINKEDIN_POST_EN.md` (1.938 caracteres), `LINKEDIN_POST_ES.md`, `TECH_STACK.md`, `DEMO_SCRIPT_EN.md`, `SCREENSHOTS.md`, `SOURCES.md` | Texto técnico sin cifras no respaldadas; declara datos de simulación y disponibilidad no continua. Vídeo de demostración no grabado (sin grabador en el entorno): guion de 60 a 90 s mapeado a capturas reales. Push realizado el 15 de octubre (G-01 cerrado) |
 
 ## 2. Qué funciona realmente (verificado en vivo el 15 de octubre)
 
@@ -39,24 +39,26 @@ el sistema es un prototipo de demostración sobre datos de simulación y no est�
 
 | ID | Severidad | Problema | Recomendación |
 |---|---|---|---|
-| G-01 | **Alta (bloqueante para publicar)** | Ninguno de los cambios está en GitHub: `main` sigue en `cd81b7a`; 13 ficheros modificados y 3 pruebas nuevas solo en el PC. El README publicado describe la versión anterior (textos categóricos, RMSE sin matices) | El usuario revisa el diff, confirma y hace commit y push; actualizar el README con RMSE "18,4 a 19,1" y la nota de independencia del test |
+| G-01 | Cerrado el 15 de octubre | Commit `c5f75fad70ca3b961bb56b43cc3fae8e19f31a18` en `origin/main` (177 ficheros: código auditado, 142 pruebas, `audit/`, `eval/`, `portfolio/`, `deploy.yml` corregido, `.gitignore` con las carpetas locales del PC). README reescrito con RMSE "18,4 a 19,1", test declarado como conjunto visto, protocolo de promoción solo con train, límites de Free Edition, seguridad y método de trabajo. `pytest -q -rs` en el árbol publicado: 142 passed, 0 skipped (Java 21, PySpark 4.2). Excluidos del repositorio: `manuales/` (PDF), `herramientas/`, `logs/`, `cola/`, `cola2/`, `consultas/`, `.databricks/`, `*.bat`. En `audit/evidence/` el host del workspace, el id del workspace y el id del warehouse se sustituyeron por marcadores (`<workspace-host>`, `<workspace-id>`, `<warehouse-id>`); `databricks.yml` publicado con `warehouse_id` vacío | Verificar la primera ejecución del workflow de CI (D-01); el vídeo sigue pendiente |
 | G-02 | Cerrado el 15 de octubre | Materiales de la fase F entregados en `portfolio/` del PC (caso de estudio, posts EN y ES, stack, guion, inventario de capturas, fuentes, carrusel HTML/PDF/PNG, 15 capturas); cifras cotejadas con los informes 01 a 04 (`portfolio/SOURCES.md`) | El usuario revisa el texto de los posts y el caso de estudio antes de publicar; el vídeo queda pendiente de grabación manual |
 | D-12 | Media | El endpoint de serving desapareció del workspace sin registro accesible; Free Edition también para la app a las 24 h y el warehouse se negó a arrancar durante unos minutos | Antes de cualquier demo: `apps start`, `bundle deploy -t dev` si falta el endpoint, comprobar `/api/health`. Decir en la publicación que la disponibilidad no es continua |
 | D-02 | Media | El endpoint acepta `null` en todas las variables y devuelve 120,66; valores absurdos sin error. No afecta al dashboard | Envolver el modelo en `pyfunc` con validación (nueva versión) o validar siempre antes de llamar (`validate_feature_frame` ya lo hace en `03_score.py`) |
 | B2.5 | Media | El protocolo de promoción sin test está implementado y probado localmente, pero no ejercitado en el workspace; la v1 no tiene métrica de validación, así que la próxima versión quedará como `challenger` | Ejecutar el job de entrenamiento cuando se desee una v2 y decidir manualmente la primera promoción con la métrica de validación |
-| D-01 | Media (corregido, no ejecutado) | `deploy.yml` corregido pero el workflow no se ha ejecutado (sin push) | Verificar la primera ejecución de CI tras el push; fijar acciones por SHA |
+| D-01 | Media (corregido; primera ejecución NOT_VERIFIED) | `deploy.yml` corregido y publicado en el commit `c5f75fa`; el resultado del workflow en GitHub Actions no se ha comprobado desde este entorno | Verificar la primera ejecución de CI en GitHub (el job `deploy-dev` necesita los secretos y el entorno `dev`); fijar acciones por SHA |
 | C-NV | Baja | RAG: inyección dentro de un pasaje indexado no probada en vivo; revisión humana solo del caso HPC; versión final C con una sola ejecución del held-out | Documentado en `03_RAG_VALIDATION.md` §9 |
 | D-04/06/08/11 | Baja | Sin límite de tasa al LLM, sin cabeceras CSP, logs con fragmentos de mensajes del LLM, `oauthlib` transitivo | Ver `04_SECURITY_QA.md` |
 
 ## 4. Recomendación y resultado
 
-Lo técnico está verificado con evidencia: datos, modelo, endpoint, app, pruebas y seguridad están en estado publicable **una vez que el código
-auditado llegue a GitHub**. Los materiales de la fase F están en `portfolio/` del PC con cada cifra trazada a los informes de auditoría
-(`portfolio/SOURCES.md`). Lo que falta no es técnico: el repositorio público aún no contiene las correcciones ni el portafolio.
+Lo técnico está verificado con evidencia: datos, modelo, endpoint, app, pruebas y seguridad están en estado publicable y el código auditado,
+el README y los materiales de la fase F están en GitHub (`main`, commit `c5f75fa`), con cada cifra trazada a los informes de auditoría
+(`portfolio/SOURCES.md`). Los 14 criterios esenciales están en PASS; los problemas abiertos (D-12, D-02, B2.5, D-01, C-NV, D-04/06/08/11) no son críticos para una publicación de portafolio y están declarados en el README y en los posts.
 
-**Resultado final: `NOT_READY`** (actualizado el 15 de octubre tras la fase F: criterios 11 a 14 en PASS salvo el vídeo, que queda NOT_VERIFIED; G-01 sigue abierto). Pasará a `PUBLICATION_READY` cuando:
-1. el usuario haga commit y push de la rama revisada y el README actualizado (G-01, único bloqueante técnico restante);
-2. antes de publicar, se compruebe que app y endpoint están arrancados (`/api/health` ok): el 15 de octubre la app volvió a pararse sola minutos después de usarla (`logs/B_01_app_get.log`) y el texto de los posts ya declara que la disponibilidad no es continua;
-3. opcionalmente, se grabe el vídeo siguiendo `portfolio/DEMO_SCRIPT_EN.md`; su ausencia no bloquea la publicación del carrusel y el caso de estudio.
+**Resultado final: `PUBLICATION_READY`** (recalculado el 15 de octubre tras cerrar G-01), con estas salvedades:
+1. el vídeo de demostración sigue sin grabar (NOT_VERIFIED); el carrusel y el caso de estudio no dependen de él;
+2. antes de publicar o de una demo hay que comprobar que app y endpoint están arrancados (`apps start`, `/api/health` ok, `bundle deploy -t dev` si el endpoint falta): el 15 de octubre la app volvió a pararse sola minutos después de usarla y el endpoint había desaparecido una vez (D-12); los posts ya declaran que la disponibilidad no es continua;
+3. la primera ejecución del workflow de CI tras el push no se ha comprobado (D-01);
+4. el protocolo de promoción solo con train no se ha ejercitado en el workspace (B2.5) y el endpoint no valida entradas (D-02);
+5. este informe y el README se publicaron en un segundo commit posterior a `c5f75fa` (ver historial de `main`).
 
 La preparación para una publicación de portafolio no implica certificación industrial ni disponibilidad continua del servicio.
