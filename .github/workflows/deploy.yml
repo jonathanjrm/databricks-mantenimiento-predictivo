@@ -4,6 +4,10 @@ name: bundle-ci
 # Autenticación OAuth M2M con un service principal. Secretos del repositorio:
 #   DATABRICKS_HOST, DATABRICKS_CLIENT_ID, DATABRICKS_CLIENT_SECRET
 # Nunca se guardan tokens en el repositorio.
+#
+# Los secretos de Databricks se inyectan SOLO en los jobs que hablan con el workspace
+# (validate, deploy-dev). El job `test` instala dependencias y ejecuta código del PR, por lo
+# que no debe recibir credenciales (hallazgo D-01 de audit/04_SECURITY_QA.md).
 on:
   pull_request:
     branches: [main]
@@ -17,14 +21,9 @@ concurrency:
   group: bundle-${{ github.ref }}
   cancel-in-progress: false
 
-env:
-  DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
-  DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
-  DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
-  DATABRICKS_AUTH_TYPE: oauth-m2m
-
 jobs:
   test:
+    # Sin acceso a secretos: solo pruebas unitarias con datos locales.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -32,12 +31,18 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r requirements-dev.txt
-      - run: python -m pytest -q
+      # -rs hace visibles las omisiones (p. ej. la prueba de equivalencia Spark si faltara Java).
+      - run: python -m pytest -q -rs
 
   validate:
     needs: test
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    env:
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+      DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+      DATABRICKS_AUTH_TYPE: oauth-m2m
     steps:
       - uses: actions/checkout@v4
       # Fija una versión publicada de la CLI. verificar en docs la etiqueta vigente de databricks/setup-cli.
@@ -48,6 +53,13 @@ jobs:
     needs: test
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    # Entorno protegido: configura en GitHub una regla de aprobación manual para "dev".
+    environment: dev
+    env:
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+      DATABRICKS_CLIENT_SECRET: ${{ secrets.DATABRICKS_CLIENT_SECRET }}
+      DATABRICKS_AUTH_TYPE: oauth-m2m
     steps:
       - uses: actions/checkout@v4
       - uses: databricks/setup-cli@v0.280.0

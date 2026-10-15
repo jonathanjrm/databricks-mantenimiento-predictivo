@@ -1,0 +1,526 @@
+INICIO
+{
+  "runs": [
+    {
+      "job_id": 134653962208443,
+      "run_id": 1108009623666049,
+      "creator_user_name": "jjrm199867@gmail.com",
+      "number_in_job": 1108009623666049,
+      "original_attempt_run_id": 1108009623666049,
+      "state": {
+        "life_cycle_state": "TERMINATED",
+        "result_state": "SUCCESS",
+        "state_message": "",
+        "user_cancelled_or_timedout": false
+      },
+      "job_parameters": [
+        {
+          "name": "catalog",
+          "default": "workspace"
+        },
+        {
+          "name": "schema",
+          "default": "mantenimiento"
+        }
+      ],
+      "start_time": 1791939102218,
+      "setup_duration": 0,
+      "execution_duration": 0,
+      "cleanup_duration": 0,
+      "end_time": 1791939166074,
+      "run_duration": 63856,
+      "trigger": "ONE_TIME",
+      "run_name": "[dev jjrm199867] mantenimiento_end_to_end_dev",
+      "run_page_url": "https://<workspace-host>.cloud.databricks.com/?o=<workspace-id>#job/134653962208443/run/1108009623666049",
+      "run_type": "JOB_RUN",
+      "format": "MULTI_TASK",
+      "status": {
+        "state": "TERMINATED",
+        "termination_details": {
+          "code": "SUCCESS",
+          "type": "SUCCESS",
+          "message": ""
+        }
+      },
+      "job_run_id": 1108009623666049,
+      "effective_performance_target": "PERFORMANCE_OPTIMIZED"
+    },
+    {
+      "job_id": 616581869043888,
+      "run_id": 1017829850183959,
+      "creator_user_name": "jjrm199867@gmail.com",
+      "number_in_job": 1017829850183959,
+      "original_attempt_run_id": 1017829850183959,
+      "state": {
+        "life_cycle_state": "TERMINATED",
+        "result_state": "SUCCESS",
+        "state_message": "",
+        "user_cancelled_or_timedout": false
+      },
+      "job_parameters": [
+        {
+          "name": "configs",
+          "default": "v1_baseline,v2"
+        },
+        {
+          "name": "label",
+          "default": "",
+          "value": "dev_after_finalC"
+        },
+        {
+          "name": "dataset",
+          "default": "dev",
+          "value": "dev"
+        },
+        {
+          "name": "eval_judge_endpoint",
+          "default": "databricks-meta-llama-3-3-70b-instruct"
+        }
+      ],
+      "start_time": 1791938280285,
+      "setup_duration": 0,
+      "execution_duration": 0,
+      "cleanup_duration": 0,
+      "end_time": 1791938663266,
+      "run_duration": 382981,
+      "trigger": "ONE_TIME",
+      "run_name": "[dev jjrm199867] mantenimiento_eval_assistant_dev",
+      "run_page_url": "https://<workspace-host>.cloud.databricks.com/?o=<workspace-id>#job/616581869043888/run/1017829850183959",
+      "run_type": "JOB_RUN",
+      "format": "MULTI_TASK",
+      "status": {
+        "state": "TERMINATED",
+        "termination_details": {
+          "code": "SUCCESS",
+          "type": "SUCCESS",
+          "message": ""
+        }
+      },
+      "job_run_id": 1017829850183959,
+      "effective_performance_target": "PERFORMANCE_OPTIMIZED"
+    },
+    {
+      "job_id": 616581869043888,
+      "run_id": 936254541868092,
+      "creator_user_name": "jjrm199867@gmail.com",
+      "number_in_job": 936254541868092,
+      "original_attempt_run_id": 936254541868092,
+      "state": {
+        "life_cycle_state": "TERMINATED",
+        "result_state": "SUCCESS",
+        "state_message": "",
+        "user_cancelled_or_timedout": false
+      },
+      "job_parameters": [
+        {
+          "name": "configs",
+          "default": "v1_baseline,v2",
+          "value": "v2"
+        },
+        {
+          "name": "label",
+          "default": "",
+          "value": "holdout_run6_v2finalC"
+        },
+        {
+          "name": "dataset",
+          "default": "dev",
+          "value": "holdout"
+        },
+        {
+          "name": "eval_judge_endpoint",
+          "default": "databricks-meta-llama-3-3-70b-instruct"
+        }
+      ],
+      "start_time": 1791936851767,
+      "setup_duration": 0,
+      "execution_duration": 0,
+      "cleanup_duration": 0,
+      "end_time": 1791938263500,
+      "run_duration": 1411733,
+      "trigger": "ONE_TIME",
+      "run_name": "[dev jjrm199867] mantenimiento_eval_assistant_dev",
+      "run_page_url": "https://<workspace-host>.cloud.databricks.com/?o=<workspace-id>#job/616581869043888/run/936254541868092",
+      "run_type": "JOB_RUN",
+      "format": "MULTI_TASK",
+      "status": {
+        "state": "TERMINATED",
+        "termination_details": {
+          "code": "SUCCESS",
+          "type": "SUCCESS",
+          "message": ""
+        }
+      },
+      "job_run_id": 936254541868092,
+      "effective_performance_target": "PERFORMANCE_OPTIMIZED"
+    },
+    {
+      "job_id": 616581869043888,
+      "run_id": 702467009360268,
+      "creator_user_name": "jjrm199867@gmail.com",
+      "number_in_job": 702467009360268,
+      "original_attempt_run_id": 702467009360268,
+      "state": {
+        "life_cycle_state": "TERMINATED",
+        "result_state": "SUCCESS",
+        "state_message": "",
+        "user_cancelled_or_timedout": false
+      },
+      "job_parameters": [
+        {
+          "name": "configs",
+          "default": "v1_baseline,v2",
+          "value": "v2"
+        },
+        {
+          "name": "label",
+          "default": "",
+          "value": "holdout_run5_v2final"
+        },
+        {
+          "name": "dataset",
+          "default": "dev",
+          "value": "holdout"
+        },
+        {
+          "name": "eval_judge_endpoint",
+          "default": "databricks-meta-llama-3-3-70b-instruct"
+        }
+      ],
+      "start_time": 1791935434167,
+      "setup_duration": 0,
+      "execution_duration": 0,
+      "cleanup_duration": 0,
+      "end_time": 1791936835277,
+      "run_duration": 1401110,
+      "trigger": "ONE_TIME",
+      "run_name": "[dev jjrm199867] mantenimiento_eval_assistant_dev",
+      "run_page_url": "https://<workspace-host>.cloud.databricks.com/?o=<workspace-id>#job/616581869043888/run/702467009360268",
+      "run_type": "JOB_RUN",
+      "format": "MULTI_TASK",
+      "status": {
+        "state": "TERMINATED",
+        "termination_details": {
+          "code": "SUCCESS",
+          "type": "SUCCESS",
+          "message": ""
+        }
+      },
+      "job_run_id": 702467009360268,
+      "effective_performance_target": "PERFORMANCE_OPTIMIZED"
+    },
+    {
+      "job_id": 616581869043888,
+      "run_id": 787902712287343,
+      "creator_user_name": "jjrm199867@gmail.com",
+      "number_in_job": 787902712287343,
+      "original_attempt_run_id": 787902712287343,
+      "state": {
+        "life_cycle_state": "TERMINATED",
+        "result_state": "SUCCESS",
+        "state_message": "",
+        "user_cancelled_or_timedout": false
+      },
+      "job_parameters": [
+        {
+          "name": "configs",
+          "default": "v1_baseline,v2",
+          "value": "v2"
+        },
+        {
+          "name": "label",
+          "default": "",
+          "value": "holdout_run4_v2final"
+        },
+        {
+          "name": "dataset",
+          "default": "dev",
+          "value": "holdout"
+        },
+        {
+          "name": "eval_judge_endpoint",
+          "default": "databricks-meta-llama-3-3-70b-instruct"
+        }
+      ],
+      "start_time": 1791933876209,
+      "setup_duration": 0,
+      "execution_duration": 0,
+      "cleanup_duration": 0,
+      "end_time": 1791935425154,
+      "run_duration": 1548945,
+      "trigger": "ONE_TIME",
+      "run_name": "[dev jjrm199867] mantenimiento_eval_assistant_dev",
+      "run_page_url": "https://<workspace-host>.cloud.databricks.com/?o=<workspace-id>#job/616581869043888/run/787902712287343",
+      "run_type": "JOB_RUN",
+      "format": "MULTI_TASK",
+      "status": {
+        "state": "TERMINATED",
+        "termination_details": {
+          "code": "SUCCESS",
+          "type": "SUCCESS",
+          "message": ""
+        }
+      },
+      "job_run_id": 787902712287343,
+      "effective_performance_target": "PERFORMANCE_OPTIMIZED"
+    },
+    {
+      "job_id": 616581869043888,
+      "run_id": 422686900495029,
+      "creator_user_name": "jjrm199867@gmail.com",
+      "number_in_job": 422686900495029,
+      "original_attempt_run_id": 422686900495029,
+      "state": {
+        "life_cycle_state": "TERMINATED",
+        "result_state": "SUCCESS",
+        "state_message": "",
+        "user_cancelled_or_timedout": false
+      },
+      "job_parameters": [
+        {
+          "name": "configs",
+          "default": "v1_baseline,v2",
+          "value": "v2"
+        },
+        {
+          "name": "label",
+          "default": "",
+          "value": "holdout_run3_v2"
+        },
+        {
+          "name": "dataset",
+          "default": "dev",
+          "value": "holdout"
+        },
+        {
+          "name": "eval_judge_endpoint",
+          "default": "databricks-meta-llama-3-3-70b-instruct"
+        }
+      ],
+      "start_time": 1791932374113,
+      "setup_duration": 0,
+      "execution_duration": 0,
+      "cleanup_duration": 0,
+      "end_time": 1791933859818,
+      "run_duration": 1485705,
+      "trigger": "ONE_TIME",
+      "run_name": "[dev jjrm199867] mantenimiento_eval_assistant_dev",
+      "run_page_url": "https://<workspace-host>.cloud.databricks.com/?o=<workspace-id>#job/616581869043888/run/422686900495029",
+      "run_type": "JOB_RUN",
+      "format": "MULTI_TASK",
+      "status": {
+        "state": "TERMINATED",
+        "termination_details": {
+          "code": "SUCCESS",
+          "type": "SUCCESS",
+          "message": ""
+        }
+      },
+      "job_run_id": 422686900495029,
+      "effective_performance_target": "PERFORMANCE_OPTIMIZED"
+    },
+    {
+      "job_id": 616581869043888,
+      "run_id": 151408493496296,
+      "creator_user_name": "jjrm199867@gmail.com",
+      "number_in_job": 151408493496296,
+      "original_attempt_run_id": 151408493496296,
+      "state": {
+        "life_cycle_state": "TERMINATED",
+        "result_state": "SUCCESS",
+        "state_message": "",
+        "user_cancelled_or_timedout": false
+      },
+      "job_parameters": [
+        {
+          "name": "configs",
+          "default": "v1_baseline,v2",
+          "value": "v2"
+        },
+        {
+          "name": "label",
+          "default": "",
+          "value": "holdout_run2_v2"
+        },
+        {
+          "name": "dataset",
+          "default": "dev",
+          "value": "holdout"
+        },
+        {
+          "name": "eval_judge_endpoint",
+          "default": "databricks-meta-llama-3-3-70b-instruct"
+        }
+      ],
+      "start_time": 1791930420051,
+      "setup_duration": 0,
+      "execution_duration": 0,
+      "cleanup_duration": 0,
+      "end_time": 1791932343885,
+      "run_duration": 1923834,
+      "trigger": "ONE_TIME",
+      "run_name": "[dev jjrm199867] mantenimiento_eval_assistant_dev",
+      "run_page_url": "https://<workspace-host>.cloud.databricks.com/?o=<workspace-id>#job/616581869043888/run/151408493496296",
+      "run_type": "JOB_RUN",
+      "format": "MULTI_TASK",
+      "status": {
+        "state": "TERMINATED",
+        "termination_details": {
+          "code": "SUCCESS",
+          "type": "SUCCESS",
+          "message": ""
+        }
+      },
+      "job_run_id": 151408493496296,
+      "effective_performance_target": "PERFORMANCE_OPTIMIZED"
+    },
+    {
+      "job_id": 616581869043888,
+      "run_id": 402638539455446,
+      "creator_user_name": "jjrm199867@gmail.com",
+      "number_in_job": 402638539455446,
+      "original_attempt_run_id": 402638539455446,
+      "state": {
+        "life_cycle_state": "TERMINATED",
+        "result_state": "SUCCESS",
+        "state_message": "",
+        "user_cancelled_or_timedout": false
+      },
+      "job_parameters": [
+        {
+          "name": "configs",
+          "default": "v1_baseline,v2"
+        },
+        {
+          "name": "label",
+          "default": "",
+          "value": "holdout_run1"
+        },
+        {
+          "name": "dataset",
+          "default": "dev",
+          "value": "holdout"
+        },
+        {
+          "name": "eval_judge_endpoint",
+          "default": "databricks-meta-llama-3-3-70b-instruct"
+        }
+      ],
+      "start_time": 1791928140170,
+      "setup_duration": 0,
+      "execution_duration": 0,
+      "cleanup_duration": 0,
+      "end_time": 1791930192328,
+      "run_duration": 2052158,
+      "trigger": "ONE_TIME",
+      "run_name": "[dev jjrm199867] mantenimiento_eval_assistant_dev",
+      "run_page_url": "https://<workspace-host>.cloud.databricks.com/?o=<workspace-id>#job/616581869043888/run/402638539455446",
+      "run_type": "JOB_RUN",
+      "format": "MULTI_TASK",
+      "status": {
+        "state": "TERMINATED",
+        "termination_details": {
+          "code": "SUCCESS",
+          "type": "SUCCESS",
+          "message": ""
+        }
+      },
+      "job_run_id": 402638539455446,
+      "effective_performance_target": "PERFORMANCE_OPTIMIZED"
+    },
+    {
+      "job_id": 616581869043888,
+      "run_id": 273488993226400,
+      "creator_user_name": "jjrm199867@gmail.com",
+      "number_in_job": 273488993226400,
+      "original_attempt_run_id": 273488993226400,
+      "state": {
+        "life_cycle_state": "TERMINATED",
+        "result_state": "SUCCESS",
+        "state_message": "",
+        "user_cancelled_or_timedout": false
+      },
+      "job_parameters": [
+        {
+          "name": "configs",
+          "default": "v1_baseline,v2"
+        },
+        {
+          "name": "label",
+          "default": "",
+          "value": "final_run2"
+        }
+      ],
+      "start_time": 1791923689281,
+      "setup_duration": 0,
+      "execution_duration": 0,
+      "cleanup_duration": 0,
+      "end_time": 1791923961004,
+      "run_duration": 271723,
+      "trigger": "ONE_TIME",
+      "run_name": "[dev jjrm199867] mantenimiento_eval_assistant_dev",
+      "run_page_url": "https://<workspace-host>.cloud.databricks.com/?o=<workspace-id>#job/616581869043888/run/273488993226400",
+      "run_type": "JOB_RUN",
+      "format": "MULTI_TASK",
+      "status": {
+        "state": "TERMINATED",
+        "termination_details": {
+          "code": "SUCCESS",
+          "type": "SUCCESS",
+          "message": ""
+        }
+      },
+      "job_run_id": 273488993226400,
+      "effective_performance_target": "PERFORMANCE_OPTIMIZED"
+    },
+    {
+      "job_id": 616581869043888,
+      "run_id": 147447070475650,
+      "creator_user_name": "jjrm199867@gmail.com",
+      "number_in_job": 147447070475650,
+      "original_attempt_run_id": 147447070475650,
+      "state": {
+        "life_cycle_state": "TERMINATED",
+        "result_state": "SUCCESS",
+        "state_message": "",
+        "user_cancelled_or_timedout": false
+      },
+      "job_parameters": [
+        {
+          "name": "configs",
+          "default": "v1_baseline,v2"
+        },
+        {
+          "name": "label",
+          "default": "",
+          "value": "final_run1"
+        }
+      ],
+      "start_time": 1791923436052,
+      "setup_duration": 0,
+      "execution_duration": 0,
+      "cleanup_duration": 0,
+      "end_time": 1791923686341,
+      "run_duration": 250289,
+      "trigger": "ONE_TIME",
+      "run_name": "[dev jjrm199867] mantenimiento_eval_assistant_dev",
+      "run_page_url": "https://<workspace-host>.cloud.databricks.com/?o=<workspace-id>#job/616581869043888/run/147447070475650",
+      "run_type": "JOB_RUN",
+      "format": "MULTI_TASK",
+      "status": {
+        "state": "TERMINATED",
+        "termination_details": {
+          "code": "SUCCESS",
+          "type": "SUCCESS",
+          "message": ""
+        }
+      },
+      "job_run_id": 147447070475650,
+      "effective_performance_target": "PERFORMANCE_OPTIMIZED"
+    }
+  ],
+  "has_more": true,
+  "next_page_token": "CAEQlPTWt5M0IIKLiZKjwyE=",
+  "prev_page_token": "CAAQioyTv5M0IIH7msCp9_sB"
+}
+EXIT=0

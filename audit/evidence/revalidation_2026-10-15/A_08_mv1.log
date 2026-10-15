@@ -1,0 +1,19 @@
+INICIO
+{
+  "catalog_name": "workspace",
+  "created_at": 1791917205393,
+  "created_by": "jjrm199867@gmail.com",
+  "id": "51ef6201-2164-4a02-8b27-017966d93571",
+  "metastore_id": "f2de3c9d-7b08-479f-a8ad-b72ee0667881",
+  "model_name": "rul_model",
+  "run_id": "4688ee42eda5469fac3414ee8c3cf199",
+  "run_workspace_id": <workspace-id>,
+  "schema_name": "mantenimiento",
+  "source": "models:/m-bb2ee37b7527445883119ee18ebfd0f3",
+  "status": "READY",
+  "storage_location": "s3://dbstorage-prod-uvdjd6vouc/uc/092ac64c-799a-451c-a43e-e36f2c2826fa/f2de3c9d-7b08-479f-a8ad-b72ee0667881/__unitystorage/catalogs/e51d1ea2-68d0-439d-8293-6712332ea270/models/a229a59d-28df-4ab2-926d-fa98232398ab/versions/51ef6201-2164-4a02-8b27-017966d93571",
+  "updated_at": 1791917207051,
+  "updated_by": "jjrm199867@gmail.com",
+  "version": 1
+}
+EXIT=0

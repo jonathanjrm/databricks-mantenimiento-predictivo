@@ -1,0 +1,747 @@
+{
+ "statement_id": "01f1c750-1d80-11aa-85d2-a29a8b53abf3",
+ "status": {
+  "state": "SUCCEEDED"
+ },
+ "manifest": {
+  "format": "JSON_ARRAY",
+  "schema": {
+   "column_count": 89,
+   "columns": [
+    {
+     "name": "split",
+     "type_text": "STRING",
+     "type_name": "STRING",
+     "position": 0
+    },
+    {
+     "name": "n",
+     "type_text": "BIGINT",
+     "type_name": "LONG",
+     "position": 1
+    },
+    {
+     "name": "cycle",
+     "type_text": "BIGINT",
+     "type_name": "LONG",
+     "position": 2
+    },
+    {
+     "name": "rul",
+     "type_text": "BIGINT",
+     "type_name": "LONG",
+     "position": 3
+    },
+    {
+     "name": "rul_raw",
+     "type_text": "BIGINT",
+     "type_name": "LONG",
+     "position": 4
+    },
+    {
+     "name": "s2",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 5
+    },
+    {
+     "name": "s3",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 6
+    },
+    {
+     "name": "s4",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 7
+    },
+    {
+     "name": "s7",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 8
+    },
+    {
+     "name": "s8",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 9
+    },
+    {
+     "name": "s9",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 10
+    },
+    {
+     "name": "s11",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 11
+    },
+    {
+     "name": "s12",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 12
+    },
+    {
+     "name": "s13",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 13
+    },
+    {
+     "name": "s14",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 14
+    },
+    {
+     "name": "s15",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 15
+    },
+    {
+     "name": "s17",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 16
+    },
+    {
+     "name": "s20",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 17
+    },
+    {
+     "name": "s21",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 18
+    },
+    {
+     "name": "s2_mean5",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 19
+    },
+    {
+     "name": "s2_std5",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 20
+    },
+    {
+     "name": "s2_mean10",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 21
+    },
+    {
+     "name": "s2_std10",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 22
+    },
+    {
+     "name": "s2_slope10",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 23
+    },
+    {
+     "name": "s3_mean5",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 24
+    },
+    {
+     "name": "s3_std5",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 25
+    },
+    {
+     "name": "s3_mean10",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 26
+    },
+    {
+     "name": "s3_std10",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 27
+    },
+    {
+     "name": "s3_slope10",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 28
+    },
+    {
+     "name": "s4_mean5",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 29
+    },
+    {
+     "name": "s4_std5",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 30
+    },
+    {
+     "name": "s4_mean10",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 31
+    },
+    {
+     "name": "s4_std10",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 32
+    },
+    {
+     "name": "s4_slope10",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 33
+    },
+    {
+     "name": "s7_mean5",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 34
+    },
+    {
+     "name": "s7_std5",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 35
+    },
+    {
+     "name": "s7_mean10",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 36
+    },
+    {
+     "name": "s7_std10",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 37
+    },
+    {
+     "name": "s7_slope10",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 38
+    },
+    {
+     "name": "s8_mean5",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 39
+    },
+    {
+     "name": "s8_std5",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 40
+    },
+    {
+     "name": "s8_mean10",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 41
+    },
+    {
+     "name": "s8_std10",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 42
+    },
+    {
+     "name": "s8_slope10",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 43
+    },
+    {
+     "name": "s9_mean5",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 44
+    },
+    {
+     "name": "s9_std5",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 45
+    },
+    {
+     "name": "s9_mean10",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 46
+    },
+    {
+     "name": "s9_std10",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 47
+    },
+    {
+     "name": "s9_slope10",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 48
+    },
+    {
+     "name": "s11_mean5",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 49
+    },
+    {
+     "name": "s11_std5",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 50
+    },
+    {
+     "name": "s11_mean10",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 51
+    },
+    {
+     "name": "s11_std10",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 52
+    },
+    {
+     "name": "s11_slope10",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 53
+    },
+    {
+     "name": "s12_mean5",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 54
+    },
+    {
+     "name": "s12_std5",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 55
+    },
+    {
+     "name": "s12_mean10",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 56
+    },
+    {
+     "name": "s12_std10",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 57
+    },
+    {
+     "name": "s12_slope10",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 58
+    },
+    {
+     "name": "s13_mean5",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 59
+    },
+    {
+     "name": "s13_std5",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 60
+    },
+    {
+     "name": "s13_mean10",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 61
+    },
+    {
+     "name": "s13_std10",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 62
+    },
+    {
+     "name": "s13_slope10",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 63
+    },
+    {
+     "name": "s14_mean5",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 64
+    },
+    {
+     "name": "s14_std5",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 65
+    },
+    {
+     "name": "s14_mean10",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 66
+    },
+    {
+     "name": "s14_std10",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 67
+    },
+    {
+     "name": "s14_slope10",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 68
+    },
+    {
+     "name": "s15_mean5",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 69
+    },
+    {
+     "name": "s15_std5",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 70
+    },
+    {
+     "name": "s15_mean10",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 71
+    },
+    {
+     "name": "s15_std10",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 72
+    },
+    {
+     "name": "s15_slope10",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 73
+    },
+    {
+     "name": "s17_mean5",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 74
+    },
+    {
+     "name": "s17_std5",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 75
+    },
+    {
+     "name": "s17_mean10",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 76
+    },
+    {
+     "name": "s17_std10",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 77
+    },
+    {
+     "name": "s17_slope10",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 78
+    },
+    {
+     "name": "s20_mean5",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 79
+    },
+    {
+     "name": "s20_std5",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 80
+    },
+    {
+     "name": "s20_mean10",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 81
+    },
+    {
+     "name": "s20_std10",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 82
+    },
+    {
+     "name": "s20_slope10",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 83
+    },
+    {
+     "name": "s21_mean5",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 84
+    },
+    {
+     "name": "s21_std5",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 85
+    },
+    {
+     "name": "s21_mean10",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 86
+    },
+    {
+     "name": "s21_std10",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 87
+    },
+    {
+     "name": "s21_slope10",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 88
+    }
+   ]
+  },
+  "total_chunk_count": 1,
+  "chunks": [
+   {
+    "chunk_index": 0,
+    "row_offset": 0,
+    "row_count": 2
+   }
+  ],
+  "total_row_count": 2,
+  "truncated": false
+ },
+ "result": {
+  "chunk_index": 0,
+  "row_offset": 0,
+  "row_count": 2,
+  "data_array": [
+   [
+    "test",
+    "13096",
+    "1006251",
+    null,
+    null,
+    "8413853.750000017",
+    "2.079774717999994E7",
+    "1.8396414299999982E7",
+    "7252008.520000001",
+    "3.127417734999959E7",
+    "1.186289028299998E8",
+    "620962.609999997",
+    "6832808.190000007",
+    "3.12741781399996E7",
+    "1.0658766060999945E8",
+    "110344.85259999949",
+    "5141118.0",
+    "509336.1999999998",
+    "305604.88629999966",
+    "8413769.997499984",
+    "3663.887978897073",
+    "8413674.435166685",
+    "3784.28846305173",
+    "42.08000000025322",
+    "2.0796800994833432E7",
+    "49471.41014576349",
+    "2.0795716485170644E7",
+    "51223.67517868001",
+    "362.3903636360033",
+    "1.8394736198166776E7",
+    "49069.825180618034",
+    "1.8392765791563433E7",
+    "50924.72819501538",
+    "866.4864848488457",
+    "7252164.521000029",
+    "4905.510807747702",
+    "7252353.085936511",
+    "5067.701460778922",
+    "-74.36806060613247",
+    "3.127416502333342E7",
+    "376.81422888489675",
+    "3.1274150848285593E7",
+    "389.91407794901716",
+    "5.2775757578190845",
+    "1.1862723690249988E8",
+    "50867.22346097312",
+    "1.1862531345465119E8",
+    "52824.37402897864",
+    "692.6013939389386",
+    "620912.7563333318",
+    "1241.023196158689",
+    "620853.6290357165",
+    "1288.2132091699311",
+    "21.042303030321513",
+    "6832952.146999961",
+    "3721.0148381833264",
+    "6833118.707436504",
+    "3848.6435811213587",
+    "-74.19199999987535",
+    "3.1274165877166796E7",
+    "374.92044534535853",
+    "3.1274151882349156E7",
+    "387.213878974053",
+    "5.195393940638713",
+    "1.0658661434116657E8",
+    "38287.2970891553",
+    "1.0658540284587298E8",
+    "39827.07024574184",
+    "389.2327878773324",
+    "110337.65376666638",
+    "244.9638793701296",
+    "110329.74618400785",
+    "252.8995621892061",
+    "3.516430303026901",
+    "5140851.499999999",
+    "11564.403149562157",
+    "5140539.307142847",
+    "11999.456174354491",
+    "126.4484848484844",
+    "509371.70050000044",
+    "1225.3212812500221",
+    "509409.87701587274",
+    "1268.1605364502427",
+    "-15.98187878788406",
+    "305624.474389999",
+    "729.0567624236039",
+    "305646.17777492135",
+    "755.2493513389587",
+    "-9.31661333333152"
+   ],
+   [
+    "train",
+    "20631",
+    "2244815",
+    "1791375",
+    "2224184",
+    "1.3259150340000002E7",
+    "3.2814082459999878E7",
+    "2.9067712850000057E7",
+    "1.1416529249999914E7",
+    "4.926882202000042E7",
+    "1.8702502710999823E8",
+    "980821.8399999967",
+    "1.0757281299999954E7",
+    "4.9268811720000066E7",
+    "1.6801376240999883E8",
+    "174169.90550000087",
+    "8112329.0",
+    "800818.4800000009",
+    "480489.9113000007",
+    "1.3258887157666588E7",
+    "5836.241168130265",
+    "1.3258581515781768E7",
+    "6046.417224642601",
+    "117.47569696974044",
+    "3.281096419150014E7",
+    "77238.71973764016",
+    "3.280727756153163E7",
+    "80020.17434657553",
+    "1613.9892121204743",
+    "2.9062289494666677E7",
+    "77826.80458512397",
+    "2.905600637935725E7",
+    "80897.4259906959",
+    "2552.208060606089",
+    "1.1417040499166638E7",
+    "7823.972838083249",
+    "1.1417632581670674E7",
+    "8140.9117456903305",
+    "-244.0523030302495",
+    "4.9268785605666704E7",
+    "582.920970791442",
+    "4.926874492645668E7",
+    "604.9741405724109",
+    "16.707515151380182",
+    "1.870164501113336E8",
+    "81423.94845082372",
+    "1.8700645584313026E8",
+    "87098.19200581922",
+    "4074.012060604358",
+    "980658.2851666692",
+    "1962.638492956792",
+    "980468.3108412679",
+    "2044.7453029870599",
+    "77.34018181819192",
+    "1.0757713869833276E7",
+    "5812.917495868065",
+    "1.0758214443265945E7",
+    "6061.7908271029",
+    "-192.95309090949468",
+    "4.926877441616703E7",
+    "586.9727749643143",
+    "4.926873300342838E7",
+    "610.5852366448062",
+    "17.22054545574175",
+    "1.6800772608366695E8",
+    "62230.52770169605",
+    "1.6800068181987023E8",
+    "66774.9469807338",
+    "2792.330787882005",
+    "174149.004243333",
+    "387.89791198120633",
+    "174124.61632385015",
+    "402.5097621895825",
+    "9.415168484843239",
+    "8111489.216666659",
+    "18262.008741915826",
+    "8110527.644841271",
+    "18999.947417459563",
+    "420.96363636363435",
+    "800920.3583333293",
+    "1952.4345234452758",
+    "801037.8934682552",
+    "2025.511372479553",
+    "-47.19278787878285",
+    "480549.7553450037",
+    "1165.3095809375734",
+    "480619.7748785353",
+    "1206.1413172710043",
+    "-28.649919393942263"
+   ]
+  ]
+ }
+}

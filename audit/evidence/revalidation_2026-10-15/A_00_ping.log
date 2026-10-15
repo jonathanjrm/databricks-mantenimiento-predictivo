@@ -1,0 +1,32 @@
+INICIO
+{
+  "active": true,
+  "emails": [
+    {
+      "primary": true,
+      "type": "work",
+      "value": "jjrm199867@gmail.com"
+    }
+  ],
+  "groups": [
+    {
+      "$ref": "Groups/83629032069708",
+      "display": "users",
+      "type": "direct",
+      "value": "83629032069708"
+    },
+    {
+      "$ref": "Groups/79416549339652",
+      "display": "admins",
+      "type": "direct",
+      "value": "79416549339652"
+    }
+  ],
+  "id": "72447282103918",
+  "schemas": [
+    "urn:ietf:params:scim:schemas:core:2.0:User",
+    "urn:ietf:params:scim:schemas:extension:workspace:2.0:User"
+  ],
+  "userName": "jjrm199867@gmail.com"
+}
+EXIT=0

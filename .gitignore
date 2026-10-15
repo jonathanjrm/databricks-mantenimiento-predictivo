@@ -12,8 +12,13 @@ spark-warehouse/
 derby.log
 # PDF de los manuales: se suben al volume, no al repositorio
 *.pdf
+# Herramientas y colas locales de la copia del PC (ejecutor de la CLI): no se versionan
 herramientas/
 logs/
-cola/
 *.bat
-.databricks/
+cola/
+cola2/
+consultas/
+
+# Excepcion: el carrusel del portfolio si se versiona (no es un manual)
+!portfolio/carousel/carousel.pdf

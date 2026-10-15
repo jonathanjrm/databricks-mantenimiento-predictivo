@@ -4,8 +4,12 @@
   using the app identity (service principal) through the SDK Config().
 - Assistant: app/rag.py (multi-query retrieval from AI Search, structured answer, claim
   verification) with a Foundation Model APIs LLM.
-- If a table does not exist yet, the endpoints return an explicit empty state (ready=false),
-  not a 500 error.
+- If a table does not exist yet, the endpoints return an explicit empty state (ready=false,
+  `missing` lists the tables). Any other failure (SQL error, timeout, warehouse down) is a
+  503 {"error": "data_unavailable"}: predictions are never invented or filled with defaults.
+- Predictions are NOT computed live. The app shows the batch scoring in `gold_predicciones`
+  (written by src/03_score.py with models:/...rul_model@champion) and does not call the
+  model serving endpoint. The model version and scoring time travel with every row.
 """
 from __future__ import annotations
 
@@ -16,11 +20,11 @@ import os
 import re
 import threading
 import time
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Iterable, Optional
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, JSONResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 import rag
 from health_projection import project_health
@@ -47,6 +51,7 @@ RAG_CONFIG = os.getenv("RAG_CONFIG", "v2")
 KINDS_TTL = 3600.0
 CACHE_TTL = float(os.getenv("CACHE_TTL_SECONDS", "30"))
 MODEL_NAME = f"{CATALOG}.{SCHEMA}.rul_model"
+SQL_TIMEOUT = float(os.getenv("SQL_TIMEOUT_SECONDS", "90"))  # socket timeout of the SQL connector
 
 app = FastAPI(title="Predictive turbine maintenance", docs_url=None, redoc_url=None)
 
@@ -95,7 +100,8 @@ def run_query(sql_text: str, params: Optional[dict] = None) -> list[dict]:
     try:
         with sql.connect(server_hostname=host,
                          http_path=f"/sql/1.0/warehouses/{WAREHOUSE_ID}",
-                         credentials_provider=lambda: cfg.authenticate) as conn:
+                         credentials_provider=lambda: cfg.authenticate,
+                         _socket_timeout=SQL_TIMEOUT) as conn:
             with conn.cursor() as cur:
                 cur.execute(sql_text, params or {})
                 cols = [d[0] for d in cur.description]
@@ -110,11 +116,11 @@ _cache: dict[str, tuple[float, Any]] = {}
 _cache_lock = threading.Lock()
 
 
-def cached(key: str, fn: Callable[[], Any]) -> Any:
+def cached(key: str, fn: Callable[[], Any], ttl: Optional[float] = None) -> Any:
     now = time.time()
     with _cache_lock:
         hit = _cache.get(key)
-        if hit and now - hit[0] < CACHE_TTL:
+        if hit and now - hit[0] < (CACHE_TTL if ttl is None else ttl):
             return hit[1]
     value = fn()
     with _cache_lock:
@@ -122,15 +128,27 @@ def cached(key: str, fn: Callable[[], Any]) -> Any:
     return value
 
 
-def _safe(fn: Callable[[], Any], missing: list, name: str, default: Any = None) -> Any:
+class DataUnavailable(Exception):
+    """A query failed for a reason other than a missing table (SQL error, timeout, warehouse down)."""
+
+    def __init__(self, names: list[str]):
+        super().__init__(", ".join(names))
+        self.names = names
+
+
+def _safe(fn: Callable[[], Any], missing: list, name: str, default: Any = None,
+          errors: Optional[list] = None) -> Any:
+    """Missing table -> `missing`; any other failure -> `errors` (never silently turned into data)."""
     try:
         return fn()
     except TableUnavailable:
         missing.append(name)
         return default
     except Exception as e:
-        log.warning("query %s failed: %s", name, str(e)[:300])
-        missing.append(name)
+        log.warning("query %s failed: %s", name, type(e).__name__)
+        if errors is None:
+            raise DataUnavailable([name]) from e
+        errors.append(name)
         return default
 
 
@@ -156,26 +174,53 @@ def normalize_state(state: Any) -> str:
     return _LEGACY_STATES.get(st, st)
 
 
-def recommended_action(state: str, rul: float, sensors: list) -> str:
-    """Generic action text from state, RUL and top sensors (same wording as src/lib/cmapss.py).
-    Always recomputed here so the UI is in English even for rows scored before the change."""
+def recommended_action(state: str, rul: float, sensors: Iterable[str] = ()) -> str:
+    """Advisory text from state, RUL and top sensors (same wording as src/lib/cmapss.py;
+    tests/test_app_api.py checks that both stay identical).
+
+    It is a statistical estimate from an experimental demo model, not a maintenance order:
+    every text says that engineering review is required and none of them instructs a
+    shutdown or replacement. The model's uncertainty is not calibrated (no prediction
+    intervals); the typical error is only the test RMSE shown in the app.
+    """
+    state = _LEGACY_STATES.get(str(state or '').strip().lower(), str(state or '').strip().lower())
     n = int(round(max(float(rul), 0.0)))
-    sens = [x for x in sensors if x][:2]
+    sens = [s for s in sensors if s][:2]
+    head = "Demo estimate; requires engineering review. "
     if state == "critical":
-        txt = f"Schedule shutdown and replacement within {n} cycles."
+        txt = head + f"Estimated RUL is low (about {n} cycles): consider prioritising an inspection."
         if sens:
-            txt += " Inspect " + " and ".join(sens) + " now."
+            txt += " Sensors to check first: " + " and ".join(sens) + "."
         return txt
     if state == "watch":
-        return f"Increase inspection frequency and plan the intervention within the {n}-cycle window."
-    return "Normal operation. Keep the usual maintenance plan."
+        return head + f"Estimated RUL is moderate (about {n} cycles): consider closer monitoring and planning an inspection."
+    return head + "No degradation flagged by the model; keep the usual maintenance plan."
+
+
+def _num(v: Any) -> Optional[float]:
+    try:
+        return float(v) if v is not None and float(v) == float(v) else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _valid_rul(v: Any) -> bool:
+    try:
+        return v is not None and float(v) == float(v)  # not None, not NaN
+    except (TypeError, ValueError):
+        return False
 
 
 def _prepare_engine(r: dict) -> dict:
     e = dict(r)
     e["estado"] = normalize_state(e.get("estado"))
-    e["action"] = recommended_action(e["estado"], e.get("rul_pred") or 0.0,
-                                     [e.get("sensor_1"), e.get("sensor_2")])
+    if _valid_rul(e.get("rul_pred")):
+        e["action"] = recommended_action(e["estado"], float(e["rul_pred"]),
+                                         [e.get("sensor_1"), e.get("sensor_2")])
+    else:  # no prediction: say so, do not default the RUL to 0
+        e["rul_pred"] = None
+        e["estado"] = "unknown"
+        e["action"] = "No prediction available for this engine."
     e.pop("accion", None)
     return e
 
@@ -183,7 +228,28 @@ def _prepare_engine(r: dict) -> dict:
 def q_engines() -> list[dict]:
     return cached("engines", lambda: [_prepare_engine(r) for r in run_query(
         f"SELECT unit, cycle, rul_pred, rul_real, error, estado, sensor_1, contrib_1, sensor_2, contrib_2, "
-        f"sensor_3, contrib_3, model_version, scored_at FROM {FQ}.gold_predicciones ORDER BY unit")])
+        f"sensor_3, contrib_3, model_version, scored_at, umbral_critico, umbral_vigilar "
+        f"FROM {FQ}.gold_predicciones ORDER BY unit")])
+
+
+PREDICTIONS_TABLE = f"{CATALOG}.{SCHEMA}.gold_predicciones"
+
+
+def near_failure_stats(engines: list[dict], max_rul: float = 30.0) -> Optional[dict]:
+    """Bias of the batch predictions on the engines whose actual test RUL is <= max_rul.
+
+    Computed from the scored rows themselves (rul_real comes from RUL_FD001.txt), so the figure
+    follows the deployed model version. Positive bias = the model overestimates the remaining life,
+    which is the unsafe direction. None when no engine qualifies."""
+    rows = [e for e in engines if e.get("rul_pred") is not None and _valid_rul(e.get("rul_real"))
+            and float(e["rul_real"]) <= max_rul]
+    if not rows:
+        return None
+    errs = [float(e["rul_pred"]) - float(e["rul_real"]) for e in rows]
+    return {"max_actual_rul": max_rul, "n": len(rows),
+            "mean_bias_cycles": round(sum(errs) / len(errs), 1),
+            "rmse_cycles": round((sum(x * x for x in errs) / len(errs)) ** 0.5, 1),
+            "overestimated": sum(1 for x in errs if x > 0)}
 
 
 def q_metrics(version: Optional[int]) -> Optional[dict]:
@@ -193,8 +259,7 @@ def q_metrics(version: Optional[int]) -> Optional[dict]:
                 f"SELECT model_version, rmse_test, phm08_test, trained_at FROM {FQ}.gold_model_metrics "
                 f"WHERE model_type = 'hist_gradient_boosting' AND model_version = :v "
                 f"ORDER BY trained_at DESC LIMIT 1", {"v": int(version)})
-            if rows:
-                return rows[0]
+            return rows[0] if rows else None   # no fallback to another version's metrics
         rows = run_query(
             f"SELECT model_version, rmse_test, phm08_test, trained_at FROM {FQ}.gold_model_metrics "
             f"WHERE model_type = 'hist_gradient_boosting' ORDER BY trained_at DESC LIMIT 1")
@@ -210,49 +275,86 @@ def q_count(table: str) -> int:
 
 def q_last_modified(table: str) -> Optional[str]:
     def go():
-        rows = run_query(f"DESCRIBE DETAIL {FQ}.{table}")
-        return rows[0].get("lastModified") if rows else None
+        # DESCRIBE DETAIL fails on materialized views (gold_*): use the ingestion timestamp instead.
+        rows = run_query(f"SELECT MAX(_ingest_ts) AS t FROM {FQ}.{table}")
+        return rows[0].get("t") if rows else None
     return cached(f"detail:{table}", go)
 
 
 def build_overview() -> dict:
     missing: list[str] = []
-    engines = _safe(q_engines, missing, "gold_predicciones", [])
+    errors: list[str] = []
+    engines = _safe(q_engines, missing, "gold_predicciones", [], errors)
+    if errors:  # without predictions there is nothing honest to show: explicit failure
+        raise DataUnavailable(errors)
     version = engines[0]["model_version"] if engines else None
-    metrics = _safe(lambda: q_metrics(version), missing, "gold_model_metrics")
+    metrics = _safe(lambda: q_metrics(version), missing, "gold_model_metrics", None, errors)
     layers = {
-        "bronze": _safe(lambda: q_count("bronze_cmapss_lecturas"), missing, "bronze_cmapss_lecturas"),
-        "silver": _safe(lambda: q_count("silver_lecturas"), missing, "silver_lecturas"),
-        "gold": _safe(lambda: q_count("gold_features"), missing, "gold_features"),
+        "bronze": _safe(lambda: q_count("bronze_cmapss_lecturas"), missing, "bronze_cmapss_lecturas", None, errors),
+        "silver": _safe(lambda: q_count("silver_lecturas"), missing, "silver_lecturas", None, errors),
+        "gold": _safe(lambda: q_count("gold_features"), missing, "gold_features", None, errors),
         "predictions": len(engines) if engines else None,
     }
-    updated = _safe(lambda: q_last_modified("gold_features"), missing, "gold_features")
+    updated = _safe(lambda: q_last_modified("gold_features"), missing, "gold_features", None, errors)
     n = len(engines)
-    critical = sum(1 for e in engines if e["estado"] == "critical")
-    watch = sum(1 for e in engines if e["estado"] == "watch")
-    mean_rul = round(sum(float(e["rul_pred"]) for e in engines) / n, 1) if n else None
+    valid = [e for e in engines if e["rul_pred"] is not None]
+    critical = sum(1 for e in valid if e["estado"] == "critical")
+    watch = sum(1 for e in valid if e["estado"] == "watch")
+    mean_rul = round(sum(float(e["rul_pred"]) for e in valid) / len(valid), 1) if valid else None
+    rmse = round(float(metrics["rmse_test"]), 2) if metrics else None
+    first = engines[0] if engines else {}
+    thresholds = ({"critical": _num(first.get("umbral_critico")), "watch": _num(first.get("umbral_vigilar"))}
+                  if _num(first.get("umbral_critico")) is not None else None)
+    near = near_failure_stats(valid)
     return {
         "ready": n > 0,
         "missing": sorted(set(missing)),
+        "errors": sorted(set(errors)),   # partial failures of auxiliary queries (KPIs show "--")
         "pipeline": {"last_update": updated, "layers": layers},
         "model": {"name": MODEL_NAME, "alias": "champion", "version": version,
-                  "trained_at": metrics["trained_at"] if metrics else None},
+                  "trained_at": metrics["trained_at"] if metrics else None,
+                  "scored_at": first.get("scored_at") or None,
+                  "source": "batch scoring table gold_predicciones (no live inference)",
+                  "source_table": PREDICTIONS_TABLE, "thresholds": thresholds},
         "kpis": {"engines": n, "critical": critical, "watch": watch, "mean_rul": mean_rul,
-                 "rmse": round(float(metrics["rmse_test"]), 2) if metrics else None,
+                 "rmse": rmse,
                  "phm08": round(float(metrics["phm08_test"]), 0) if metrics else None},
+        "uncertainty": {
+            "calibrated": False,
+            "typical_error_cycles": rmse,
+            "note": ("Prediction intervals are not calibrated. The RMSE is the typical error measured on the "
+                     "FD001 test set (last cycle of 100 engines); the test set also informed model selection, "
+                     "so it is not an independent estimate. Demo estimate; requires engineering review."),
+            "near_failure": near,   # bias on engines with low actual RUL, from the scored rows
+        },
     }
+
+
+def _unavailable(e: DataUnavailable) -> JSONResponse:
+    return JSONResponse(status_code=503, content={
+        "error": "data_unavailable",
+        "message": "The data source could not be queried (SQL warehouse error or timeout). "
+                   "No prediction is shown; try again later.",
+        "failed": e.names})
 
 
 @app.get("/api/overview")
 def api_overview():
-    return build_overview()
+    try:
+        return build_overview()
+    except DataUnavailable as e:
+        return _unavailable(e)
 
 
 @app.get("/api/engines")
 def api_engines():
     missing: list[str] = []
-    rows = _safe(q_engines, missing, "gold_predicciones", [])
-    return {"ready": bool(rows), "missing": missing, "engines": rows, "sensor_names": SENSOR_NAMES}
+    try:
+        rows = _safe(q_engines, missing, "gold_predicciones", [])
+    except DataUnavailable as e:
+        return _unavailable(e)
+    return {"ready": bool(rows), "missing": missing, "engines": rows, "sensor_names": SENSOR_NAMES,
+            "source_table": PREDICTIONS_TABLE, "mode": "batch scoring (no live inference)"}
 
 
 @app.get("/api/engines/{unit}/health")
@@ -260,10 +362,15 @@ def api_health(unit: int):
     if not 1 <= unit <= 10_000:
         raise HTTPException(status_code=422, detail="unit out of range")
     missing: list[str] = []
-    rows = _safe(lambda: cached(f"health:{unit}", lambda: run_query(
-        f"SELECT cycle, health_index FROM {FQ}.gold_salud_curva WHERE split = 'test' AND unit = :u "
-        f"ORDER BY cycle", {"u": unit})), missing, "gold_salud_curva", [])
+    try:
+        rows = _safe(lambda: cached(f"health:{unit}", lambda: run_query(
+            f"SELECT cycle, health_index FROM {FQ}.gold_salud_curva WHERE split = 'test' AND unit = :u "
+            f"ORDER BY cycle", {"u": unit})), missing, "gold_salud_curva", [])
+    except DataUnavailable as e:
+        return _unavailable(e)
     pts = [(int(r["cycle"]), float(r["health_index"])) for r in rows if r["health_index"] is not None]
+    if not pts and not missing:
+        raise HTTPException(status_code=404, detail=f"no health curve for engine {unit}")
     return {"ready": bool(pts), "missing": missing, "unit": unit, "threshold": 1.0,
             "history": pts, "projection": project_health(pts, threshold=1.0)}
 
@@ -273,6 +380,14 @@ def api_health(unit: int):
 # ---------------------------------------------------------------------------
 class Question(BaseModel):
     question: str = Field(min_length=3, max_length=500)
+
+    @field_validator("question")
+    @classmethod
+    def _not_blank(cls, v: str) -> str:
+        v = v.strip()
+        if len(v) < 3:
+            raise ValueError("question must contain at least 3 non-blank characters")
+        return v
 
 
 class _SearchError(Exception):
@@ -334,6 +449,8 @@ def _claim(c: dict, with_reason: bool = False) -> dict:
          "verdict": c.get("verdict")}
     if with_reason:
         d["reason"] = c.get("reason", "")
+    if c.get("missing_qualifiers"):   # conditions stated by the source that the claim dropped
+        d["missing_qualifiers"] = [str(x) for x in c["missing_qualifiers"]]
     return d
 
 
@@ -375,6 +492,84 @@ def api_ask(body: Question):
              [f"{s['source']}:p{s['page']}" for s in out["sources"]])
     return out
 
+
+
+# ---------------------------------------------------------------------------
+# Service availability (light checks, cached; never raises)
+# ---------------------------------------------------------------------------
+HEALTH_TTL = float(os.getenv("HEALTH_TTL_SECONDS", "60"))
+HEALTH_BUDGET = float(os.getenv("HEALTH_TIMEOUT_SECONDS", "20"))  # per check, seconds
+
+
+def check_sql() -> dict:
+    """SQL warehouse reachable with the app identity (cheap statement, no table scan)."""
+    if not WAREHOUSE_ID:
+        return {"status": "error", "detail": "DATABRICKS_WAREHOUSE_ID is not set"}
+    rows = run_query("SELECT 1 AS ok")
+    ok = bool(rows) and int(rows[0].get("ok", 0)) == 1
+    return {"status": "ok" if ok else "error", "detail": f"warehouse {WAREHOUSE_ID}"}
+
+
+def check_index() -> dict:
+    """AI Search index exists and reports its status (metadata call, no query)."""
+    from databricks.sdk import WorkspaceClient
+    idx = WorkspaceClient().vector_search_indexes.get_index(AI_SEARCH_INDEX)
+    st = getattr(idx, "status", None)
+    ready = getattr(st, "ready", None)
+    msg = getattr(st, "message", None) or getattr(st, "detailed_state", None)
+    detail = f"{AI_SEARCH_INDEX}" + (f" | {msg}" if msg else "")
+    if ready is None:
+        return {"status": "ok", "detail": detail + " | index found (readiness not reported)"}
+    return {"status": "ok" if ready else "error", "detail": detail}
+
+
+def check_llm() -> dict:
+    """Chat endpoint exists and is READY (metadata call, no tokens consumed)."""
+    from databricks.sdk import WorkspaceClient
+    ep = WorkspaceClient().serving_endpoints.get(LLM_ENDPOINT)
+    state = getattr(getattr(ep, "state", None), "ready", None)
+    val = getattr(state, "value", state)
+    ok = val is None or str(val).upper() == "READY"
+    return {"status": "ok" if ok else "error", "detail": f"{LLM_ENDPOINT} | {val or 'state not reported'}"}
+
+
+def _run_check(name: str, fn: Callable[[], dict]) -> dict:
+    """Runs one check with a time budget; failures become {"status": "error"|"unknown"}."""
+    import concurrent.futures as cf
+    ex = cf.ThreadPoolExecutor(max_workers=1)
+    fut = ex.submit(fn)
+    try:
+        out = fut.result(timeout=HEALTH_BUDGET)
+    except cf.TimeoutError:
+        out = {"status": "error", "detail": f"no answer within {HEALTH_BUDGET:.0f} s"}
+    except TableUnavailable as e:
+        out = {"status": "error", "detail": str(e)[:120]}
+    except Exception as e:  # permission or client errors: do not pretend the service is down
+        kind = type(e).__name__
+        out = {"status": "unknown" if "Permission" in kind or "NotFound" in kind or "Forbidden" in kind else "error",
+               "detail": kind}
+    finally:
+        ex.shutdown(wait=False)
+    log.info("health %s: %s", name, out["status"])
+    return {"name": name, **out}
+
+
+CHECKS: dict[str, Callable[[], dict]] = {"sql_warehouse": check_sql, "search_index": check_index, "llm": check_llm}
+
+
+def build_health() -> dict:
+    services = {k: _run_check(k, fn) for k, fn in CHECKS.items()}
+    overall = ("ok" if all(v["status"] == "ok" for v in services.values())
+               else "degraded" if any(v["status"] == "ok" for v in services.values()) else "down")
+    return {"status": overall, "checked_at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
+            "ttl_seconds": HEALTH_TTL, "services": services}
+
+
+@app.get("/api/health")
+def api_service_health():
+    """Availability of the three services the dashboard depends on. Always HTTP 200 with the detail;
+    the overall status is "ok", "degraded" or "down"."""
+    return cached("health", build_health, HEALTH_TTL) if HEALTH_TTL > 0 else build_health()
 
 # ---------------------------------------------------------------------------
 # Frontend

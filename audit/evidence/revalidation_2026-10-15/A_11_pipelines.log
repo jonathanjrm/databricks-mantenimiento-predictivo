@@ -1,0 +1,38 @@
+INICIO
+[
+  {
+    "creator_user_name": "jjrm199867@gmail.com",
+    "latest_updates": [
+      {
+        "creation_time": "2026-10-13T18:43:23.395Z",
+        "state": "COMPLETED",
+        "update_id": "bf3150a7-243c-4e42-bdd2-82c742dc9d8e"
+      },
+      {
+        "creation_time": "2026-10-13T18:33:24.114Z",
+        "state": "FAILED",
+        "update_id": "546e6d76-59ed-4eef-aa38-ae0771e30f7a"
+      },
+      {
+        "creation_time": "2026-10-13T18:30:29.892Z",
+        "state": "FAILED",
+        "update_id": "ef561c5c-e90f-4bc9-a066-6efb09ae7176"
+      },
+      {
+        "creation_time": "2026-10-13T18:28:55.802Z",
+        "state": "FAILED",
+        "update_id": "94593901-00be-406b-8e0d-c18304d4ed59"
+      },
+      {
+        "creation_time": "2026-10-13T18:28:04.935Z",
+        "state": "FAILED",
+        "update_id": "3507b45f-6530-4580-98e6-228f9f9bdc78"
+      }
+    ],
+    "name": "[dev jjrm199867] mantenimiento_pipeline_dev",
+    "pipeline_id": "f0ca97c9-ca89-4af8-97b7-485d17938ffd",
+    "run_as_user_name": "jjrm199867@gmail.com",
+    "state": "IDLE"
+  }
+]
+EXIT=0

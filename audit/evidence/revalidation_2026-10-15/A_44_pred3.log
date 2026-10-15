@@ -1,0 +1,120 @@
+INICIO
+{
+  "statement_id": "01f1c81d-d94c-1299-881f-c7c54ab3680d",
+  "status": {
+    "state": "SUCCEEDED"
+  },
+  "manifest": {
+    "format": "JSON_ARRAY",
+    "schema": {
+      "column_count": 9,
+      "columns": [
+        {
+          "name": "unit",
+          "type_text": "BIGINT",
+          "type_name": "LONG",
+          "position": 0
+        },
+        {
+          "name": "cycle",
+          "type_text": "BIGINT",
+          "type_name": "LONG",
+          "position": 1
+        },
+        {
+          "name": "rul_pred",
+          "type_text": "DOUBLE",
+          "type_name": "DOUBLE",
+          "position": 2
+        },
+        {
+          "name": "rul_real",
+          "type_text": "BIGINT",
+          "type_name": "LONG",
+          "position": 3
+        },
+        {
+          "name": "error",
+          "type_text": "DOUBLE",
+          "type_name": "DOUBLE",
+          "position": 4
+        },
+        {
+          "name": "estado",
+          "type_text": "STRING",
+          "type_name": "STRING",
+          "position": 5
+        },
+        {
+          "name": "model_version",
+          "type_text": "BIGINT",
+          "type_name": "LONG",
+          "position": 6
+        },
+        {
+          "name": "scored_at",
+          "type_text": "TIMESTAMP",
+          "type_name": "TIMESTAMP",
+          "position": 7
+        },
+        {
+          "name": "accion",
+          "type_text": "STRING",
+          "type_name": "STRING",
+          "position": 8
+        }
+      ]
+    },
+    "total_chunk_count": 1,
+    "chunks": [
+      {
+        "chunk_index": 0,
+        "row_offset": 0,
+        "row_count": 3
+      }
+    ],
+    "total_row_count": 3,
+    "truncated": false
+  },
+  "result": {
+    "chunk_index": 0,
+    "row_offset": 0,
+    "row_count": 3,
+    "data_array": [
+      [
+        "34",
+        "203",
+        "3.12",
+        "7",
+        "-3.88",
+        "critical",
+        "1",
+        "2026-10-14T00:52:37.948Z",
+        "Demo estimate; requires engineering review. Estimated RUL is low (about 3 cycles): consider prioritising an inspection. Sensors to check first: s4 and s11."
+      ],
+      [
+        "60",
+        "147",
+        "82.27",
+        "100",
+        "-17.73",
+        "healthy",
+        "1",
+        "2026-10-14T00:52:37.948Z",
+        "Demo estimate; requires engineering review. No degradation flagged by the model; keep the usual maintenance plan."
+      ],
+      [
+        "85",
+        "34",
+        "124.91",
+        "118",
+        "6.91",
+        "healthy",
+        "1",
+        "2026-10-14T00:52:37.948Z",
+        "Demo estimate; requires engineering review. No degradation flagged by the model; keep the usual maintenance plan."
+      ]
+    ]
+  }
+}
+EXIT=0

@@ -9,13 +9,15 @@
 # MAGIC - Candidato: `HistGradientBoostingRegressor`. Baselines: media constante y regresion Ridge.
 # MAGIC - Metricas: RMSE y la score asimetrica de PHM08 (Saxena et al., 2008), que penaliza mas las
 # MAGIC   predicciones tardias que las tempranas.
-# MAGIC - Alias `champion` (no hay stages): se asigna solo si la version nueva mejora el RMSE de test
-# MAGIC   del champion actual, o si todavia no hay champion.
+# MAGIC - Alias `champion` (no hay stages): se asigna solo si la version nueva mejora la **RMSE de
+# MAGIC   validación por motor calculada solo con train** (`rmse_val_truncated`, GroupKFold de 5
+# MAGIC   pliegues) del champion actual en más de la desviación entre pliegues, o si todavía no hay champion.
 # MAGIC
-# MAGIC Nota metodologica: el test de C-MAPSS es un banco de pruebas fijo. Los hiperparametros se
-# MAGIC eligieron con validación cruzada por motor solo sobre train (`scripts/entrenar_local.py --tune`),
-# MAGIC pero decidir el champion con el mismo test es una puerta de calidad, no una estimación
-# MAGIC independiente del error futuro.
+# MAGIC Nota metodologica: el test de C-MAPSS es un banco de pruebas fijo y ya se ha usado para informar
+# MAGIC resultados, así que no es independiente. Por eso el test **no interviene** en la decisión del
+# MAGIC champion: solo se registra como métrica de referencia (`rmse_test`). Los hiperparametros se
+# MAGIC eligieron con validación cruzada por motor solo sobre train (`scripts/entrenar_local.py --tune`).
+# MAGIC Protocolo completo en `audit/02_MODEL_VALIDATION.md`, apartado B2.4.
 
 # COMMAND ----------
 
@@ -48,7 +50,8 @@ for _d in reversed(_code_dirs()):
         sys.path.insert(0, _d)
 
 from lib.cmapss import RUL_CLIP, feature_columns  # noqa: E402
-from lib.modeling import HGB_PARAMS, evaluate, make_models  # noqa: E402
+from lib.modeling import (HGB_PARAMS, evaluate, make_models, promotion_decision,  # noqa: E402
+                          validation_rmse_by_engine)
 
 dbutils.widgets.text("catalog", "workspace", "Catálogo")
 dbutils.widgets.text("schema", "mantenimiento", "Schema")
@@ -89,7 +92,8 @@ feat_df = spark.table(f"{FQ}.gold_features")
 faltan = [c for c in FEATS if c not in feat_df.columns]
 assert not faltan, f"Faltan columnas en gold_features: {faltan[:5]}"
 
-train = feat_df.filter("split = 'train'").select("unit", "cycle", "rul", *FEATS[1:]).toPandas()
+train = (feat_df.filter("split = 'train'").select("unit", "cycle", "rul", *FEATS[1:]).toPandas()
+         .sort_values(["unit", "cycle"]).reset_index(drop=True))
 test_all = feat_df.filter("split = 'test'").select("unit", "cycle", *FEATS[1:]).toPandas()
 verdad = spark.table(f"{FQ}.gold_test_verdad").select("unit", "cycle_final", "rul_real").toPandas()
 
@@ -123,8 +127,16 @@ with mlflow.start_run(run_name="rul_entrenamiento") as parent:
 
     mejor_baseline = min(resultados[k]["rmse_test"] for k in resultados if k != CANDIDATE)
     cand = resultados[CANDIDATE]
+    # Métrica de selección: validación por motor SOLO con train (el test no participa).
+    import sklearn
+    val = validation_rmse_by_engine(lambda: make_models()[CANDIDATE], train, FEATS)
+    cand.update({k: float(v) for k, v in val.items() if k.startswith("rmse_val") or k == "std_folds"})
+    print(f"validación por motor (solo train): RMSE truncado={val['rmse_val_truncated']:.2f} "
+          f"(desv. entre pliegues {val['std_folds']:.2f}), RMSE todos los ciclos={val['rmse_val_all_cycles']:.2f}")
     mlflow.log_metrics({**cand, "rmse_mejor_baseline": mejor_baseline})
-    mlflow.log_params({"n_train_rows": len(X_train), "n_features": len(FEATS), "rul_clip": RUL_CLIP})
+    mlflow.log_params({"n_train_rows": len(X_train), "n_features": len(FEATS), "rul_clip": RUL_CLIP,
+                       "sklearn_version": sklearn.__version__, "selection_metric": "rmse_val_truncated",
+                       "validation_n_splits": val["n_splits"]})
 
     # MLflow 3: `name` (no artifact_path), signature e input_example obligatorios en UC.
     candidato = modelos[CANDIDATE]
@@ -144,9 +156,12 @@ print("Version registrada:", MODEL_NAME, "v", NEW_VERSION)
 
 # MAGIC %md
 # MAGIC ## 3. Decisión del alias `champion`
-# MAGIC Se compara el RMSE de test de la version nueva con el del champion actual (leido de
-# MAGIC `gold_model_metrics`). Solo mejora estricta mueve el alias; el anterior queda disponible
-# MAGIC para rollback reasignando el alias.
+# MAGIC Se compara la RMSE de **validación por motor (solo train)** de la version nueva con la del
+# MAGIC champion actual (leída de `gold_model_metrics`, columna `rmse_val_truncated`). Solo una mejora
+# MAGIC mayor que el error típico entre pliegues (`std_folds / sqrt(k)`) mueve el alias; el anterior queda disponible para
+# MAGIC rollback reasignando el alias. Si el champion actual no tiene métrica de validación (versiones
+# MAGIC anteriores a este protocolo), la versión nueva queda como `challenger` y la decisión es manual.
+# MAGIC El RMSE de test se registra pero no decide.
 
 # COMMAND ----------
 
@@ -157,30 +172,29 @@ def champion_actual():
         return None
 
 
-def rmse_de_version(version: int):
+def rmse_val_de_version(version: int):
+    """RMSE de validación (solo train) registrada para una versión; None si no existe."""
     try:
-        fila = (spark.table(f"{FQ}.gold_model_metrics")
-                .filter(f"model_version = {int(version)} AND model_type = '{CANDIDATE}'")
-                .orderBy("trained_at", ascending=False).select("rmse_test").first())
-        return float(fila[0]) if fila else None
+        tabla = spark.table(f"{FQ}.gold_model_metrics")
+        if "rmse_val_truncated" not in tabla.columns:
+            return None
+        fila = (tabla.filter(f"model_version = {int(version)} AND model_type = '{CANDIDATE}'")
+                .orderBy("trained_at", ascending=False).select("rmse_val_truncated").first())
+        return float(fila[0]) if fila and fila[0] is not None else None
     except Exception:  # la tabla aun no existe (primer entrenamiento)
         return None
 
 
 champ = champion_actual()
-if champ is None:
-    promover, motivo = True, "no habia champion: se asigna a la primera version"
-else:
-    rmse_champ = rmse_de_version(int(champ.version))
-    if rmse_champ is None:
-        promover, motivo = True, f"sin métricas registradas del champion v{champ.version}: se reemplaza"
-    elif cand["rmse_test"] < rmse_champ:
-        promover, motivo = True, f"mejora el RMSE de test: {cand['rmse_test']:.3f} < {rmse_champ:.3f} (champion v{champ.version})"
-    else:
-        promover, motivo = False, f"no mejora: {cand['rmse_test']:.3f} >= {rmse_champ:.3f} (champion v{champ.version})"
+promover, motivo = promotion_decision(
+    None if champ is None else int(champ.version),
+    None if champ is None else rmse_val_de_version(int(champ.version)),
+    cand["rmse_val_truncated"], cand["std_folds"], n_splits=int(val["n_splits"]))
 
 version_str = str(NEW_VERSION)
 client.set_model_version_tag(MODEL_NAME, version_str, "rmse_test", f"{cand['rmse_test']:.4f}")
+client.set_model_version_tag(MODEL_NAME, version_str, "rmse_val_truncated", f"{cand['rmse_val_truncated']:.4f}")
+client.set_model_version_tag(MODEL_NAME, version_str, "selection_metric", "rmse_val_truncated (train only)")
 client.set_model_version_tag(MODEL_NAME, version_str, "dataset", "C-MAPSS FD001")
 if promover:
     client.set_registered_model_alias(MODEL_NAME, "champion", NEW_VERSION)
@@ -206,6 +220,8 @@ esquema = StructType([
     StructField("model_name", StringType()), StructField("model_version", IntegerType()),
     StructField("model_type", StringType()), StructField("rmse_test", DoubleType()),
     StructField("phm08_test", DoubleType()), StructField("mae_test", DoubleType()),
+    StructField("rmse_val_truncated", DoubleType()), StructField("rmse_val_all_cycles", DoubleType()),
+    StructField("std_folds", DoubleType()),
     StructField("rul_clip", IntegerType()), StructField("n_train_rows", LongType()),
     StructField("n_features", IntegerType()), StructField("promoted_to_champion", BooleanType()),
     StructField("decisión", StringType()),
@@ -216,6 +232,9 @@ for nombre, m in resultados.items():
     es_cand = nombre == CANDIDATE
     filas.append((ahora, RUN_ID, MODEL_NAME, NEW_VERSION if es_cand else None, nombre,
                   float(m["rmse_test"]), float(m["phm08_test"]), float(m["mae_test"]),
+                  float(m["rmse_val_truncated"]) if es_cand else None,
+                  float(m["rmse_val_all_cycles"]) if es_cand else None,
+                  float(m["std_folds"]) if es_cand else None,
                   int(RUL_CLIP), int(len(X_train)), int(len(FEATS)),
                   bool(promover) if es_cand else False, motivo if es_cand else "baseline"))
 (spark.createDataFrame(filas, esquema).write.mode("append").option("mergeSchema", "true")

@@ -1,0 +1,67 @@
+{
+ "statement_id": "01f1c750-1e89-12a8-8a61-5d743797ab75",
+ "status": {
+  "state": "SUCCEEDED"
+ },
+ "manifest": {
+  "format": "JSON_ARRAY",
+  "schema": {
+   "column_count": 2,
+   "columns": [
+    {
+     "name": "k",
+     "type_text": "STRING",
+     "type_name": "STRING",
+     "position": 0
+    },
+    {
+     "name": "v",
+     "type_text": "BIGINT",
+     "type_name": "LONG",
+     "position": 1
+    }
+   ]
+  },
+  "total_chunk_count": 1,
+  "chunks": [
+   {
+    "chunk_index": 0,
+    "row_offset": 0,
+    "row_count": 6
+   }
+  ],
+  "total_row_count": 6,
+  "truncated": false
+ },
+ "result": {
+  "chunk_index": 0,
+  "row_offset": 0,
+  "row_count": 6,
+  "data_array": [
+   [
+    "rul_raw_mismatch_train",
+    "0"
+   ],
+   [
+    "rul_clip_mismatch_train",
+    "0"
+   ],
+   [
+    "rul_not_null_test",
+    "0"
+   ],
+   [
+    "train_test_unit_overlap_in_source_files",
+    "0"
+   ],
+   [
+    "distinct_source_files",
+    "2"
+   ],
+   [
+    "null_feature_cells_test_and_train",
+    "0"
+   ]
+  ]
+ }
+}

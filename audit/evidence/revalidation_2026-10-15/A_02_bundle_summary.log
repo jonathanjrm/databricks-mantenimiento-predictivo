@@ -1,0 +1,398 @@
+INICIO
+{
+  "bundle": {
+    "deployment": {
+      "lock": {
+        "enabled": false
+      }
+    },
+    "environment": "dev",
+    "git": {
+      "bundle_root_path": "."
+    },
+    "mode": "development",
+    "name": "mantenimiento-predictivo",
+    "target": "dev"
+  },
+  "include": [
+    "resources\\pipelines.yml",
+    "resources\\jobs.yml",
+    "resources\\app.yml",
+    "resources\\serving.yml"
+  ],
+  "presets": {
+    "jobs_max_concurrent_runs": 4,
+    "name_prefix": "[dev jjrm199867] ",
+    "pipelines_development": true,
+    "tags": {
+      "dev": "jjrm199867"
+    },
+    "trigger_pause_status": "PAUSED"
+  },
+  "resources": {
+    "apps": {
+      "mantenimiento_app": {
+        "description": "Sala de control de la flota de turbinas (RUL, estado y asistente de manuales)",
+        "id": "mantenimiento-predictivo-dev",
+        "name": "mantenimiento-predictivo-dev",
+        "resources": [
+          {
+            "name": "sql_warehouse",
+            "sql_warehouse": {
+              "id": "<warehouse-id>",
+              "permission": "CAN_USE"
+            }
+          }
+        ],
+        "source_code_path": "/Workspace/Users/jjrm199867@gmail.com/.bundle/mantenimiento-predictivo/dev/files/app"
+      }
+    },
+    "jobs": {
+      "mantenimiento_end_to_end": {
+        "deployment": {
+          "kind": "BUNDLE",
+          "metadata_file_path": "/Workspace/Users/jjrm199867@gmail.com/.bundle/mantenimiento-predictivo/dev/state/metadata.json"
+        },
+        "description": "setup, pipeline bronze/silver/gold, entrenamiento y puntuación",
+        "edit_mode": "UI_LOCKED",
+        "environments": [
+          {
+            "environment_key": "serverless",
+            "spec": {
+              "environment_version": "6"
+            }
+          }
+        ],
+        "format": "MULTI_TASK",
+        "id": "134653962208443",
+        "max_concurrent_runs": 1,
+        "name": "[dev jjrm199867] mantenimiento_end_to_end_dev",
+        "parameters": [
+          {
+            "default": "workspace",
+            "name": "catalog"
+          },
+          {
+            "default": "mantenimiento",
+            "name": "schema"
+          }
+        ],
+        "queue": {
+          "enabled": true
+        },
+        "tags": {
+          "dev": "jjrm199867"
+        },
+        "tasks": [
+          {
+            "depends_on": [
+              {
+                "task_key": "setup"
+              }
+            ],
+            "pipeline_task": {
+              "full_refresh": false,
+              "pipeline_id": "${resources.pipelines.mantenimiento_pipeline.id}"
+            },
+            "task_key": "pipeline"
+          },
+          {
+            "depends_on": [
+              {
+                "task_key": "train"
+              }
+            ],
+            "environment_key": "serverless",
+            "notebook_task": {
+              "base_parameters": {
+                "catalog": "{{job.parameters.catalog}}",
+                "schema": "{{job.parameters.schema}}"
+              },
+              "notebook_path": "/Workspace/Users/jjrm199867@gmail.com/.bundle/mantenimiento-predictivo/dev/files/src/03_score"
+            },
+            "task_key": "score"
+          },
+          {
+            "environment_key": "serverless",
+            "notebook_task": {
+              "base_parameters": {
+                "catalog": "{{job.parameters.catalog}}",
+                "schema": "{{job.parameters.schema}}"
+              },
+              "notebook_path": "/Workspace/Users/jjrm199867@gmail.com/.bundle/mantenimiento-predictivo/dev/files/src/00_setup"
+            },
+            "task_key": "setup"
+          },
+          {
+            "depends_on": [
+              {
+                "task_key": "pipeline"
+              }
+            ],
+            "environment_key": "serverless",
+            "notebook_task": {
+              "base_parameters": {
+                "catalog": "{{job.parameters.catalog}}",
+                "schema": "{{job.parameters.schema}}"
+              },
+              "notebook_path": "/Workspace/Users/jjrm199867@gmail.com/.bundle/mantenimiento-predictivo/dev/files/src/02_train"
+            },
+            "task_key": "train"
+          }
+        ],
+        "url": "https://<workspace-host>.cloud.databricks.com/jobs/134653962208443?w=<workspace-id>"
+      },
+      "mantenimiento_eval_assistant": {
+        "deployment": {
+          "kind": "BUNDLE",
+          "metadata_file_path": "/Workspace/Users/jjrm199867@gmail.com/.bundle/mantenimiento-predictivo/dev/state/metadata.json"
+        },
+        "description": "evaluación de recuperación y fundamentación de citas del asistente (antes/después)",
+        "edit_mode": "UI_LOCKED",
+        "environments": [
+          {
+            "environment_key": "serverless",
+            "spec": {
+              "environment_version": "6"
+            }
+          }
+        ],
+        "format": "MULTI_TASK",
+        "id": "616581869043888",
+        "max_concurrent_runs": 1,
+        "name": "[dev jjrm199867] mantenimiento_eval_assistant_dev",
+        "parameters": [
+          {
+            "default": "v1_baseline,v2",
+            "name": "configs"
+          },
+          {
+            "default": "",
+            "name": "label"
+          },
+          {
+            "default": "dev",
+            "name": "dataset"
+          },
+          {
+            "default": "databricks-meta-llama-3-3-70b-instruct",
+            "name": "eval_judge_endpoint"
+          }
+        ],
+        "queue": {
+          "enabled": true
+        },
+        "tags": {
+          "dev": "jjrm199867"
+        },
+        "tasks": [
+          {
+            "environment_key": "serverless",
+            "notebook_task": {
+              "base_parameters": {
+                "catalog": "workspace",
+                "configs": "{{job.parameters.configs}}",
+                "dataset": "{{job.parameters.dataset}}",
+                "eval_judge_endpoint": "{{job.parameters.eval_judge_endpoint}}",
+                "label": "{{job.parameters.label}}",
+                "schema": "mantenimiento"
+              },
+              "notebook_path": "/Workspace/Users/jjrm199867@gmail.com/.bundle/mantenimiento-predictivo/dev/files/src/07_eval_assistant"
+            },
+            "task_key": "eval"
+          }
+        ],
+        "url": "https://<workspace-host>.cloud.databricks.com/jobs/616581869043888?w=<workspace-id>"
+      },
+      "mantenimiento_rag": {
+        "deployment": {
+          "kind": "BUNDLE",
+          "metadata_file_path": "/Workspace/Users/jjrm199867@gmail.com/.bundle/mantenimiento-predictivo/dev/state/metadata.json"
+        },
+        "description": "indexa los PDF del volume manuales en AI Search y evalúa el retrieval",
+        "edit_mode": "UI_LOCKED",
+        "environments": [
+          {
+            "environment_key": "serverless",
+            "spec": {
+              "environment_version": "6"
+            }
+          }
+        ],
+        "format": "MULTI_TASK",
+        "id": "394502178342467",
+        "max_concurrent_runs": 1,
+        "name": "[dev jjrm199867] mantenimiento_rag_dev",
+        "parameters": [
+          {
+            "default": "workspace",
+            "name": "catalog"
+          },
+          {
+            "default": "mantenimiento",
+            "name": "schema"
+          }
+        ],
+        "queue": {
+          "enabled": true
+        },
+        "tags": {
+          "dev": "jjrm199867"
+        },
+        "tasks": [
+          {
+            "depends_on": [
+              {
+                "task_key": "index"
+              }
+            ],
+            "environment_key": "serverless",
+            "notebook_task": {
+              "base_parameters": {
+                "catalog": "{{job.parameters.catalog}}",
+                "schema": "{{job.parameters.schema}}"
+              },
+              "notebook_path": "/Workspace/Users/jjrm199867@gmail.com/.bundle/mantenimiento-predictivo/dev/files/src/05_eval_rag"
+            },
+            "task_key": "eval"
+          },
+          {
+            "environment_key": "serverless",
+            "notebook_task": {
+              "base_parameters": {
+                "catalog": "{{job.parameters.catalog}}",
+                "schema": "{{job.parameters.schema}}"
+              },
+              "notebook_path": "/Workspace/Users/jjrm199867@gmail.com/.bundle/mantenimiento-predictivo/dev/files/src/04_rag_index"
+            },
+            "task_key": "index"
+          }
+        ],
+        "url": "https://<workspace-host>.cloud.databricks.com/jobs/394502178342467?w=<workspace-id>"
+      }
+    },
+    "model_serving_endpoints": {
+      "rul_endpoint": {
+        "config": {
+          "served_entities": [
+            {
+              "entity_name": "workspace.mantenimiento.rul_model",
+              "entity_version": "1",
+              "name": "rul-model",
+              "scale_to_zero_enabled": true,
+              "workload_size": "Small"
+            }
+          ]
+        },
+        "id": "dev_jjrm199867_rul-model-dev",
+        "name": "dev_jjrm199867_rul-model-dev",
+        "url": "https://<workspace-host>.cloud.databricks.com/ml/endpoints/dev_jjrm199867_rul-model-dev?w=<workspace-id>"
+      }
+    },
+    "pipelines": {
+      "mantenimiento_pipeline": {
+        "catalog": "workspace",
+        "channel": "CURRENT",
+        "configuration": {
+          "mantenimiento.raw_path": "/Volumes/workspace/mantenimiento/raw/cmapss",
+          "mantenimiento.src_root": "/Volumes/workspace/mantenimiento/codigo"
+        },
+        "continuous": false,
+        "deployment": {
+          "kind": "BUNDLE",
+          "metadata_file_path": "/Workspace/Users/jjrm199867@gmail.com/.bundle/mantenimiento-predictivo/dev/state/metadata.json"
+        },
+        "development": true,
+        "edition": "ADVANCED",
+        "id": "f0ca97c9-ca89-4af8-97b7-485d17938ffd",
+        "libraries": [
+          {
+            "glob": {
+              "include": "/Workspace/Users/jjrm199867@gmail.com/.bundle/mantenimiento-predictivo/dev/files/src/pipeline/**"
+            }
+          }
+        ],
+        "name": "[dev jjrm199867] mantenimiento_pipeline_dev",
+        "schema": "mantenimiento",
+        "serverless": true,
+        "tags": {
+          "dev": "jjrm199867"
+        },
+        "url": "https://<workspace-host>.cloud.databricks.com/pipelines/f0ca97c9-ca89-4af8-97b7-485d17938ffd?w=<workspace-id>"
+      }
+    }
+  },
+  "sync": {
+    "paths": [
+      "."
+    ]
+  },
+  "variables": {
+    "catalog": {
+      "default": "workspace",
+      "description": "Catálogo de Unity Catalog (en Free Edition ya existe `workspace`)",
+      "value": "workspace"
+    },
+    "model_version": {
+      "default": "1",
+      "description": "Versión de rul_model que sirve el endpoint (entity_version no admite alias)",
+      "value": "1"
+    },
+    "schema": {
+      "default": "mantenimiento",
+      "description": "Schema del proyecto",
+      "value": "mantenimiento"
+    },
+    "serverless_env_version": {
+      "default": "6",
+      "description": "Versión del entorno serverless de los jobs. verificar en docs la última disponible",
+      "value": "6"
+    },
+    "warehouse_id": {
+      "default": "<warehouse-id>",
+      "description": "ID del SQL warehouse 2X-Small (Compute \u003e SQL warehouses \u003e Connection details)",
+      "value": "<warehouse-id>"
+    }
+  },
+  "workspace": {
+    "artifact_path": "/Workspace/Users/jjrm199867@gmail.com/.bundle/mantenimiento-predictivo/dev/artifacts",
+    "current_user": {
+      "active": true,
+      "domain_friendly_name": "jjrm199867",
+      "emails": [
+        {
+          "primary": true,
+          "type": "work",
+          "value": "jjrm199867@gmail.com"
+        }
+      ],
+      "groups": [
+        {
+          "$ref": "Groups/83629032069708",
+          "display": "users",
+          "type": "direct",
+          "value": "83629032069708"
+        },
+        {
+          "$ref": "Groups/79416549339652",
+          "display": "admins",
+          "type": "direct",
+          "value": "79416549339652"
+        }
+      ],
+      "id": "72447282103918",
+      "schemas": [
+        "urn:ietf:params:scim:schemas:core:2.0:User",
+        "urn:ietf:params:scim:schemas:extension:workspace:2.0:User"
+      ],
+      "short_name": "jjrm199867",
+      "userName": "jjrm199867@gmail.com"
+    },
+    "file_path": "/Workspace/Users/jjrm199867@gmail.com/.bundle/mantenimiento-predictivo/dev/files",
+    "profile": "demo",
+    "resource_path": "/Workspace/Users/jjrm199867@gmail.com/.bundle/mantenimiento-predictivo/dev/resources",
+    "root_path": "/Workspace/Users/jjrm199867@gmail.com/.bundle/mantenimiento-predictivo/dev",
+    "state_path": "/Workspace/Users/jjrm199867@gmail.com/.bundle/mantenimiento-predictivo/dev/state"
+  }
+}
+EXIT=0

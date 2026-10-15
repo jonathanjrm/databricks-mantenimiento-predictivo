@@ -1,0 +1,105 @@
+INICIO
+{
+  "statement_id": "01f1c81d-da61-1917-93af-a5d82de1e2a9",
+  "status": {
+    "state": "SUCCEEDED"
+  },
+  "manifest": {
+    "format": "JSON_ARRAY",
+    "schema": {
+      "column_count": 10,
+      "columns": [
+        {
+          "name": "n",
+          "type_text": "BIGINT",
+          "type_name": "LONG",
+          "position": 0
+        },
+        {
+          "name": "distinct_preds",
+          "type_text": "BIGINT",
+          "type_name": "LONG",
+          "position": 1
+        },
+        {
+          "name": "mn",
+          "type_text": "DOUBLE",
+          "type_name": "DOUBLE",
+          "position": 2
+        },
+        {
+          "name": "mx",
+          "type_text": "DOUBLE",
+          "type_name": "DOUBLE",
+          "position": 3
+        },
+        {
+          "name": "rmse",
+          "type_text": "DOUBLE",
+          "type_name": "DOUBLE",
+          "position": 4
+        },
+        {
+          "name": "mae",
+          "type_text": "DOUBLE",
+          "type_name": "DOUBLE",
+          "position": 5
+        },
+        {
+          "name": "scored_at",
+          "type_text": "TIMESTAMP",
+          "type_name": "TIMESTAMP",
+          "position": 6
+        },
+        {
+          "name": "mv",
+          "type_text": "BIGINT",
+          "type_name": "LONG",
+          "position": 7
+        },
+        {
+          "name": "old_wording",
+          "type_text": "BIGINT",
+          "type_name": "LONG",
+          "position": 8
+        },
+        {
+          "name": "new_wording",
+          "type_text": "BIGINT",
+          "type_name": "LONG",
+          "position": 9
+        }
+      ]
+    },
+    "total_chunk_count": 1,
+    "chunks": [
+      {
+        "chunk_index": 0,
+        "row_offset": 0,
+        "row_count": 1
+      }
+    ],
+    "total_row_count": 1,
+    "truncated": false
+  },
+  "result": {
+    "chunk_index": 0,
+    "row_offset": 0,
+    "row_count": 1,
+    "data_array": [
+      [
+        "100",
+        "99",
+        "3.12",
+        "124.98",
+        "18.441742488170686",
+        "13.477799999999997",
+        "2026-10-14T00:52:37.948Z",
+        "1",
+        "0",
+        "100"
+      ]
+    ]
+  }
+}
+EXIT=0

@@ -1,0 +1,75 @@
+{
+ "statement_id": "01f1c74e-9e05-10e0-8b82-dfcafba2f738",
+ "status": {
+  "state": "SUCCEEDED"
+ },
+ "manifest": {
+  "format": "JSON_ARRAY",
+  "schema": {
+   "column_count": 5,
+   "columns": [
+    {
+     "name": "split",
+     "type_text": "STRING",
+     "type_name": "STRING",
+     "position": 0
+    },
+    {
+     "name": "filas",
+     "type_text": "BIGINT",
+     "type_name": "LONG",
+     "position": 1
+    },
+    {
+     "name": "claves_distintas",
+     "type_text": "BIGINT",
+     "type_name": "LONG",
+     "position": 2
+    },
+    {
+     "name": "motores",
+     "type_text": "BIGINT",
+     "type_name": "LONG",
+     "position": 3
+    },
+    {
+     "name": "ciclo_max",
+     "type_text": "INT",
+     "type_name": "INT",
+     "position": 4
+    }
+   ]
+  },
+  "total_chunk_count": 1,
+  "chunks": [
+   {
+    "chunk_index": 0,
+    "row_offset": 0,
+    "row_count": 2
+   }
+  ],
+  "total_row_count": 2,
+  "truncated": false
+ },
+ "result": {
+  "chunk_index": 0,
+  "row_offset": 0,
+  "row_count": 2,
+  "data_array": [
+   [
+    "test",
+    "13096",
+    "13096",
+    "100",
+    "303"
+   ],
+   [
+    "train",
+    "20631",
+    "20631",
+    "100",
+    "362"
+   ]
+  ]
+ }
+}

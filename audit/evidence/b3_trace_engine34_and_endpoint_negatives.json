@@ -1,0 +1,32 @@
+{
+ "engine": 34,
+ "gold_features_row": "ver sql_gold_features_test_last_cycle_85feats.json",
+ "endpoint_raw": 3.118922691130997,
+ "gold_predicciones_rul_pred": 3.12,
+ "api_engines_rul_pred": 3.12,
+ "model": "workspace.mantenimiento.rul_model v1 @champion",
+ "rul_real": 7,
+ "engine60": {
+  "endpoint": 82.26835521034641,
+  "gold": 82.27,
+  "api": 82.27,
+  "rul_real": 100
+ },
+ "engine85": {
+  "endpoint": 124.90846155881731,
+  "gold": 124.91,
+  "api": 124.91,
+  "rul_real": 118
+ },
+ "endpoint_negative_tests": {
+  "missing_column_s11": "rechazado (error de esquema)",
+  "string_in_s7": "rechazado (no convertible a float64)",
+  "empty_batch": "rechazado (0 muestras)",
+  "null_s7": "ACEPTADO, 3.118922691130997 (s7 sin efecto en esta fila)",
+  "null_11_important_features": "ACEPTADO, 67.23887495912543 (vs 3.1189 con datos)",
+  "all_85_null": "ACEPTADO, 120.6590326691026",
+  "absurd_s4_s11_minus_1e9": "ACEPTADO, 3.8229273347630612",
+  "extra_column": "ACEPTADO, columna ignorada, 3.118922691130997",
+  "cycle_0": "ACEPTADO, 5.036669442951368"
+ }
+}

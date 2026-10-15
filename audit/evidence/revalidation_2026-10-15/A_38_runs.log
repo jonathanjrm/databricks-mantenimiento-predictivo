@@ -1,0 +1,219 @@
+INICIO
+[
+  {
+    "cleanup_duration": 0,
+    "creator_user_name": "jjrm199867@gmail.com",
+    "effective_performance_target": "PERFORMANCE_OPTIMIZED",
+    "end_time": 1791939166074,
+    "execution_duration": 0,
+    "job_id": 134653962208443,
+    "job_parameters": [
+      {
+        "default": "workspace",
+        "name": "catalog"
+      },
+      {
+        "default": "mantenimiento",
+        "name": "schema"
+      }
+    ],
+    "job_run_id": 1108009623666049,
+    "number_in_job": 1108009623666049,
+    "original_attempt_run_id": 1108009623666049,
+    "run_duration": 63856,
+    "run_id": 1108009623666049,
+    "run_name": "[dev jjrm199867] mantenimiento_end_to_end_dev",
+    "run_page_url": "https://<workspace-host>.cloud.databricks.com/?o=<workspace-id>#job/134653962208443/run/1108009623666049",
+    "run_type": "JOB_RUN",
+    "setup_duration": 0,
+    "start_time": 1791939102218,
+    "state": {
+      "life_cycle_state": "TERMINATED",
+      "result_state": "SUCCESS",
+      "state_message": "",
+      "user_cancelled_or_timedout": false
+    },
+    "status": {
+      "state": "TERMINATED",
+      "termination_details": {
+        "code": "SUCCESS",
+        "message": "",
+        "type": "SUCCESS"
+      }
+    },
+    "trigger": "ONE_TIME"
+  },
+  {
+    "cleanup_duration": 0,
+    "creator_user_name": "jjrm199867@gmail.com",
+    "effective_performance_target": "PERFORMANCE_OPTIMIZED",
+    "end_time": 1791923219976,
+    "execution_duration": 0,
+    "job_id": 134653962208443,
+    "job_parameters": [
+      {
+        "default": "workspace",
+        "name": "catalog"
+      },
+      {
+        "default": "mantenimiento",
+        "name": "schema"
+      }
+    ],
+    "job_run_id": 91246520216996,
+    "number_in_job": 91246520216996,
+    "original_attempt_run_id": 91246520216996,
+    "run_duration": 65610,
+    "run_id": 91246520216996,
+    "run_name": "[dev jjrm199867] mantenimiento_end_to_end_dev",
+    "run_page_url": "https://<workspace-host>.cloud.databricks.com/?o=<workspace-id>#job/134653962208443/run/91246520216996",
+    "run_type": "JOB_RUN",
+    "setup_duration": 0,
+    "start_time": 1791923154366,
+    "state": {
+      "life_cycle_state": "TERMINATED",
+      "result_state": "SUCCESS",
+      "state_message": "",
+      "user_cancelled_or_timedout": false
+    },
+    "status": {
+      "state": "TERMINATED",
+      "termination_details": {
+        "code": "SUCCESS",
+        "message": "",
+        "type": "SUCCESS"
+      }
+    },
+    "trigger": "ONE_TIME"
+  },
+  {
+    "cleanup_duration": 0,
+    "creator_user_name": "jjrm199867@gmail.com",
+    "effective_performance_target": "PERFORMANCE_OPTIMIZED",
+    "end_time": 1791917265293,
+    "execution_duration": 0,
+    "job_id": 134653962208443,
+    "job_parameters": [
+      {
+        "default": "workspace",
+        "name": "catalog"
+      },
+      {
+        "default": "mantenimiento",
+        "name": "schema"
+      }
+    ],
+    "job_run_id": 662485588351147,
+    "number_in_job": 662485588351147,
+    "original_attempt_run_id": 662485588351147,
+    "run_duration": 297294,
+    "run_id": 662485588351147,
+    "run_name": "[dev jjrm199867] mantenimiento_end_to_end_dev",
+    "run_page_url": "https://<workspace-host>.cloud.databricks.com/?o=<workspace-id>#job/134653962208443/run/662485588351147",
+    "run_type": "JOB_RUN",
+    "setup_duration": 0,
+    "start_time": 1791916967999,
+    "state": {
+      "life_cycle_state": "TERMINATED",
+      "result_state": "SUCCESS",
+      "state_message": "",
+      "user_cancelled_or_timedout": false
+    },
+    "status": {
+      "state": "TERMINATED",
+      "termination_details": {
+        "code": "SUCCESS",
+        "message": "",
+        "type": "SUCCESS"
+      }
+    },
+    "trigger": "ONE_TIME"
+  },
+  {
+    "cleanup_duration": 0,
+    "creator_user_name": "jjrm199867@gmail.com",
+    "effective_performance_target": "PERFORMANCE_OPTIMIZED",
+    "end_time": 1791916748786,
+    "execution_duration": 0,
+    "job_id": 134653962208443,
+    "job_parameters": [
+      {
+        "default": "workspace",
+        "name": "catalog"
+      },
+      {
+        "default": "mantenimiento",
+        "name": "schema"
+      }
+    ],
+    "job_run_id": 71219297282634,
+    "number_in_job": 71219297282634,
+    "original_attempt_run_id": 71219297282634,
+    "run_duration": 775880,
+    "run_id": 71219297282634,
+    "run_name": "[dev jjrm199867] mantenimiento_end_to_end_dev",
+    "run_page_url": "https://<workspace-host>.cloud.databricks.com/?o=<workspace-id>#job/134653962208443/run/71219297282634",
+    "run_type": "JOB_RUN",
+    "setup_duration": 0,
+    "start_time": 1791915972906,
+    "state": {
+      "life_cycle_state": "INTERNAL_ERROR",
+      "result_state": "FAILED",
+      "state_message": "Task pipeline failed with message: Workload failed, see run output for details. This caused all downstream tasks to get skipped.",
+      "user_cancelled_or_timedout": false
+    },
+    "status": {
+      "state": "TERMINATED",
+      "termination_details": {
+        "code": "RUN_EXECUTION_ERROR",
+        "message": "Task pipeline failed with message: Workload failed, see run output for details. This caused all downstream tasks to get skipped.",
+        "type": "CLIENT_ERROR"
+      }
+    },
+    "trigger": "ONE_TIME"
+  },
+  {
+    "cleanup_duration": 0,
+    "creator_user_name": "jjrm199867@gmail.com",
+    "effective_performance_target": "PERFORMANCE_OPTIMIZED",
+    "end_time": 1791915927894,
+    "execution_duration": 0,
+    "job_id": 134653962208443,
+    "job_parameters": [
+      {
+        "default": "workspace",
+        "name": "catalog"
+      },
+      {
+        "default": "mantenimiento",
+        "name": "schema"
+      }
+    ],
+    "job_run_id": 227172871823186,
+    "number_in_job": 227172871823186,
+    "original_attempt_run_id": 227172871823186,
+    "run_duration": 62047,
+    "run_id": 227172871823186,
+    "run_name": "[dev jjrm199867] mantenimiento_end_to_end_dev",
+    "run_page_url": "https://<workspace-host>.cloud.databricks.com/?o=<workspace-id>#job/134653962208443/run/227172871823186",
+    "run_type": "JOB_RUN",
+    "setup_duration": 0,
+    "start_time": 1791915865847,
+    "state": {
+      "life_cycle_state": "INTERNAL_ERROR",
+      "result_state": "FAILED",
+      "state_message": "Task setup failed with message: Workload failed, see run output for details. This caused all downstream tasks to get skipped.",
+      "user_cancelled_or_timedout": false
+    },
+    "status": {
+      "state": "TERMINATED",
+      "termination_details": {
+        "code": "RUN_EXECUTION_ERROR",
+        "message": "Task setup failed with message: Workload failed, see run output for details. This caused all downstream tasks to get skipped.",
+        "type": "CLIENT_ERROR"
+      }
+    },
+    "trigger": "ONE_TIME"
+  }
+]
+EXIT=0

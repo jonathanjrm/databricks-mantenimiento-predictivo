@@ -1,0 +1,62 @@
+# Informe final de preparación (Fase G)
+
+Fecha: 15 de octubre de 2026 (logs del PC en UTC del 14 de octubre, 22:0x a 23:xx; filas 7, 11 a 14, G-02 y veredicto actualizados en la fase F el 15 de octubre). Proyecto `databricks-mantenimiento-predictivo`,
+Databricks Free Edition, dataset NASA C-MAPSS FD001. Rama local `validacion` sin commits ni push; despliegues solo al target `dev`.
+
+Este informe consolida `audit/01_BASELINE.md`, `02_MODEL_VALIDATION.md`, `03_RAG_VALIDATION.md`, `04_SECURITY_QA.md`
+y el estado de `portfolio/` tal como estaban en la carpeta del PC a las 22:44 UTC del 14 de octubre (sondeada durante 35 minutos sin cambios de la fase C). Si la fase C entrega después, los criterios 11 a 14 deben reevaluarse con sus ficheros. No es una certificación industrial:
+el sistema es un prototipo de demostración sobre datos de simulación y no está preparado para mantenimiento aeronáutico real.
+
+## 1. Criterios de aceptación
+
+| # | Criterio | Estado | Evidencia | Notas |
+|---|---|---|---|---|
+| 1 | Pipeline verificable | PASS | `01_BASELINE.md` §2 y §6.3; `evidence/workspace/sql_counts.json`; `revalidation_2026-10-15/A_41_counts.log`, `A_42_rulcheck.log`, `A_11_pipelines.log` | Bronze 33.727, silver 20.631 + 13.096 (100 + 100 motores), gold 33.727, `gold_test_verdad` 100, `gold_predicciones` 100; RUL `max_cycle - cycle` recortada a 125 con 0 discrepancias; pipeline `IDLE`, última actualización `COMPLETED`; ventanas sin futuro (40 comprobaciones); pandas frente a Spark con diferencia relativa máxima 2,4e-9 |
+| 2 | Entrenamiento reproducible o limitación documentada | PASS | `02_MODEL_VALIDATION.md` B2.1 a B2.3; `evidence/ws_retrain_sklearn172.json`, `repro_sklearn191.json` | Reproducción bit a bit del champion v1 (RMSE 18,441849882005343) con scikit-learn 1.7.2 y `gold_features`; el 19,10 local se explica por versión de scikit-learn y ruido numérico de ~1e-9 (sensibilidad medida ±0,4) |
+| 3 | Métricas respaldadas por artefactos | PASS | MLflow v1 (`uc_model_versions.json`), `gold_model_metrics` (`A_43_metrics.log`), `champion_v1_metrics_from_gold_predicciones.json`, `champion_v1_per_engine.csv` | RMSE 18,44, MAE 13,48, R2 0,80, PHM08 655; baselines media 43,07 y Ridge 21,80; errores por motor y por tramo de RUL; motores cercanos al fallo (n = 25): RMSE 14,3, sesgo +5,5 |
+| 4 | Evaluación sin afirmaciones engañosas sobre independencia del test | PASS (con contaminación reconocida) | `02_MODEL_VALIDATION.md` B2.4 y B2.5; `evidence/validation_protocol_train_only.json`; `tests/test_modeling_selection.py`; `/api/overview.uncertainty.note` en `app_api_capture_2026-10-15.json` | El test de FD001 influyó en la regla histórica de promoción y está publicado: se declara como conjunto visto, no independiente. `02_train.py` promueve ahora por validación por motor solo con train (no ejecutado en el workspace). La app lo dice en pantalla |
+| 5 | Endpoint MLflow invocado realmente | PASS | `revalidation_2026-10-15/A_54`..`A_62`, `b3_endpoint_vs_gold_all100_2026-10-15.json`; 14 de octubre: `b3_trace_engine34_and_endpoint_negatives.json` | Motor 34 = 3,118922691130997 por REST y por `serving-endpoints query`; 100 motores en un lote. **El endpoint había desaparecido** entre el 14 y el 15 de octubre y se recreó con `bundle deploy -t dev` (`A_52`) |
+| 6 | Predicción del dashboard contrastada con el endpoint | PASS (con aclaración) | `app_api_capture_2026-10-15.json`; `A_44_pred3.log` | Endpoint 3,1189 / 82,2684 / 124,9085 = `gold_predicciones` 3,12 / 82,27 / 124,91 = `/api/engines` = dashboard (motores 34, 60, 85); 0 discrepancias en 100. La app **no** llama al endpoint: lee la tabla de scoring por lotes y lo declara (`model.source`); sin fallback inventado (25 pruebas negativas) |
+| 7 | RAG evaluado con evidencia | PASS (según `03_RAG_VALIDATION.md`) | `03_RAG_VALIDATION.md` §5; `eval/rag_eval_set_holdout.json` (85 preguntas); `eval/resultados/results_holdout_run*.json`; `assistant_live_check_2026-10-15.json` | Held-out de 85 preguntas separado de las 12 de desarrollo, juez independiente de otra familia, comprobaciones deterministas. Se verificó en vivo en la app desplegada: caso HPC `not_found` sin procedimiento inventado; pregunta respondible con 1 afirmación `SUPPORTED` citando la p. 462 del manual. Las cifras agregadas del held-out no se reprodujeron aquí. Revalidación del 15 de octubre (`03_RAG_VALIDATION.md` §11, `evidence/C_hpc_2026-10-15.json`): caso HPC `not_found` (ES y EN) e `insufficient_evidence` con condición omitida anotada (pregunta de la interfaz); sin procedimiento inventado |
+| 8 | Citas comprobadas | PASS (según `03_RAG_VALIDATION.md` §7) | `03_RAG_VALIDATION.md` §6 y §7; `eval/MANUAL_REVIEW.md` | 100 % de citas a (documento, página) existentes; 0 afirmaciones mostradas NOT_SUPPORTED en v2; caso HPC revisado a mano. Limitación declarada: revisión humana rellenada solo para el caso HPC; comprobación de condiciones léxica |
+| 9 | Pruebas automatizadas ejecutadas | PASS | `01_BASELINE.md` §4 y §6.2 | `pytest -q -rs`: **142 passed, 0 skipped** sobre el árbol final del PC (138 antes de añadir las 4 pruebas del protocolo de selección) (Java 21, PySpark 4.2). Base en `main`: 67. La cifra "61 + 1 omitida" corresponde a ejecutar sin Java (módulo Spark omitido como 1) |
+| 10 | Seguridad revisada | PASS (hallazgos medios abiertos) | `04_SECURITY_QA.md` §1, §4, §5; `evidence/secrets_scan_2026-10-15.txt`, `pip_audit_*_2026-10-15.txt`, `ruff_2026-10-15.txt`, `bandit_2026-10-15.txt` | Sin secretos en árbol ni historial; app con 401 sin sesión; SP con `USE SCHEMA`+`SELECT`; endpoint `CAN_MANAGE` solo propietario/admins. Abiertos: D-02 (endpoint acepta nulos), D-12 (endpoint desapareció), D-11 (`oauthlib` transitivo, no explotable) |
+| 11 | Capturas auténticas | PASS | `portfolio/screenshots/01..15_*.jpg` (11 del 14 de octubre, 4 del 15 de octubre tras reiniciar la app), `portfolio/SCREENSHOTS.md` (inventario, fecha, vista, tipo), `evidence/C_hpc_2026-10-15.json` | Capturas reales del navegador integrado sobre la app desplegada, sin retoques; las del 14 de octubre ya muestran el texto orientativo y las etiquetas de la fase E (verificado visualmente el 15). Sin capturas de la consola de MLflow (NOT_VERIFIED como captura; evidencia por API). Vídeo: no grabado, NOT_VERIFIED |
+| 12 | Carrusel exportado | PASS | `portfolio/carousel/carousel.html` (fuente editable), `carousel.pdf`, `png/slide-01..10.png` (2160 x 2700, 2x), `render.py`, `fonts/`; `portfolio/SOURCES.md` | Diez diapositivas con los temas de la misión, ilustraciones etiquetadas y capturas reales etiquetadas. Cifras revisadas una a una contra `02_MODEL_VALIDATION.md`, `03_RAG_VALIDATION.md` y `01_BASELINE.md` el 15 de octubre (142 pruebas, protocolo de promoción solo con train, revalidación del HPC, disponibilidad); comprobación automática de desbordes y revisión visual de cada PNG |
+| 13 | Caso de estudio redactado | PASS | `portfolio/CASE_STUDY_EN.md`; cifras trazadas en `portfolio/SOURCES.md` | Secciones exigidas por la misión, limitaciones explícitas (test visto, incertidumbre sin calibrar, lotes frente a endpoint, Free Edition, límites del RAG, no certificado) y el papel del autor: Jonathan Rincon definió arquitectura, parámetros y secuencia|
+| 14 | Publicación LinkedIn preparada | PASS (texto); vídeo NOT_VERIFIED | `portfolio/LINKEDIN_POST_EN.md` (1.938 caracteres), `LINKEDIN_POST_ES.md`, `TECH_STACK.md`, `DEMO_SCRIPT_EN.md`, `SCREENSHOTS.md`, `SOURCES.md` | Texto técnico sin cifras no respaldadas; declara datos de simulación y disponibilidad no continua. Vídeo de demostración no grabado (sin grabador en el entorno): guion de 60 a 90 s mapeado a capturas reales. Publicar solo tras el push (G-01) |
+
+## 2. Qué funciona realmente (verificado en vivo el 15 de octubre)
+
+- Pipeline bronze/silver/gold con los conteos oficiales de FD001 y etiquetas correctas.
+- Modelo `rul_model` v1 (`champion`) en Unity Catalog, reproducible bit a bit; endpoint de serving recreado y que devuelve exactamente lo que hay en `gold_predicciones`.
+- App `mantenimiento-predictivo-dev` (reiniciada tras la parada automática de Free Edition): dashboard isométrico de 100 motores, KPI, filtros por criticidad,
+  versión del modelo, fecha de scoring, bloque de incertidumbre no calibrada, trazabilidad, chips de disponibilidad (warehouse, índice, LLM), estados de carga y error; 401 sin sesión.
+- Asistente RAG desplegado con el `rag.py` auditado: abstención correcta en el caso HPC y respuesta citada en una pregunta respondible.
+- Textos de recomendación orientativos ("Demo estimate; requires engineering review"), sin órdenes de parada o sustitución, en lib, scoring (100/100 filas) y app.
+
+## 3. Problemas pendientes
+
+| ID | Severidad | Problema | Recomendación |
+|---|---|---|---|
+| G-01 | **Alta (bloqueante para publicar)** | Ninguno de los cambios está en GitHub: `main` sigue en `cd81b7a`; 13 ficheros modificados y 3 pruebas nuevas solo en el PC. El README publicado describe la versión anterior (textos categóricos, RMSE sin matices) | El usuario revisa el diff, confirma y hace commit y push; actualizar el README con RMSE "18,4 a 19,1" y la nota de independencia del test |
+| G-02 | Cerrado el 15 de octubre | Materiales de la fase F entregados en `portfolio/` del PC (caso de estudio, posts EN y ES, stack, guion, inventario de capturas, fuentes, carrusel HTML/PDF/PNG, 15 capturas); cifras cotejadas con los informes 01 a 04 (`portfolio/SOURCES.md`) | El usuario revisa el texto de los posts y el caso de estudio antes de publicar; el vídeo queda pendiente de grabación manual |
+| D-12 | Media | El endpoint de serving desapareció del workspace sin registro accesible; Free Edition también para la app a las 24 h y el warehouse se negó a arrancar durante unos minutos | Antes de cualquier demo: `apps start`, `bundle deploy -t dev` si falta el endpoint, comprobar `/api/health`. Decir en la publicación que la disponibilidad no es continua |
+| D-02 | Media | El endpoint acepta `null` en todas las variables y devuelve 120,66; valores absurdos sin error. No afecta al dashboard | Envolver el modelo en `pyfunc` con validación (nueva versión) o validar siempre antes de llamar (`validate_feature_frame` ya lo hace en `03_score.py`) |
+| B2.5 | Media | El protocolo de promoción sin test está implementado y probado localmente, pero no ejercitado en el workspace; la v1 no tiene métrica de validación, así que la próxima versión quedará como `challenger` | Ejecutar el job de entrenamiento cuando se desee una v2 y decidir manualmente la primera promoción con la métrica de validación |
+| D-01 | Media (corregido, no ejecutado) | `deploy.yml` corregido pero el workflow no se ha ejecutado (sin push) | Verificar la primera ejecución de CI tras el push; fijar acciones por SHA |
+| C-NV | Baja | RAG: inyección dentro de un pasaje indexado no probada en vivo; revisión humana solo del caso HPC; versión final C con una sola ejecución del held-out | Documentado en `03_RAG_VALIDATION.md` §9 |
+| D-04/06/08/11 | Baja | Sin límite de tasa al LLM, sin cabeceras CSP, logs con fragmentos de mensajes del LLM, `oauthlib` transitivo | Ver `04_SECURITY_QA.md` |
+
+## 4. Recomendación y resultado
+
+Lo técnico está verificado con evidencia: datos, modelo, endpoint, app, pruebas y seguridad están en estado publicable **una vez que el código
+auditado llegue a GitHub**. Los materiales de la fase F están en `portfolio/` del PC con cada cifra trazada a los informes de auditoría
+(`portfolio/SOURCES.md`). Lo que falta no es técnico: el repositorio público aún no contiene las correcciones ni el portafolio.
+
+**Resultado final: `NOT_READY`** (actualizado el 15 de octubre tras la fase F: criterios 11 a 14 en PASS salvo el vídeo, que queda NOT_VERIFIED; G-01 sigue abierto). Pasará a `PUBLICATION_READY` cuando:
+1. el usuario haga commit y push de la rama revisada y el README actualizado (G-01, único bloqueante técnico restante);
+2. antes de publicar, se compruebe que app y endpoint están arrancados (`/api/health` ok): el 15 de octubre la app volvió a pararse sola minutos después de usarla (`logs/B_01_app_get.log`) y el texto de los posts ya declara que la disponibilidad no es continua;
+3. opcionalmente, se grabe el vídeo siguiendo `portfolio/DEMO_SCRIPT_EN.md`; su ausencia no bloquea la publicación del carrusel y el caso de estudio.
+
+La preparación para una publicación de portafolio no implica certificación industrial ni disponibilidad continua del servicio.

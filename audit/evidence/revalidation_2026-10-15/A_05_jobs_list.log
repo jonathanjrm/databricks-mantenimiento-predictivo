@@ -1,0 +1,97 @@
+INICIO
+[
+  {
+    "created_time": 1791922109385,
+    "creator_user_name": "jjrm199867@gmail.com",
+    "job_id": 616581869043888,
+    "settings": {
+      "deployment": {
+        "kind": "BUNDLE",
+        "metadata_file_path": "/Workspace/Users/jjrm199867@gmail.com/.bundle/mantenimiento-predictivo/dev/state/metadata.json"
+      },
+      "edit_mode": "UI_LOCKED",
+      "email_notifications": {},
+      "environments": [
+        {
+          "environment_key": "serverless",
+          "spec": {
+            "environment_version": "6"
+          }
+        }
+      ],
+      "format": "MULTI_TASK",
+      "max_concurrent_runs": 1,
+      "name": "[dev jjrm199867] mantenimiento_eval_assistant_dev",
+      "queue": {
+        "enabled": true
+      },
+      "tags": {
+        "dev": "jjrm199867"
+      },
+      "timeout_seconds": 0
+    }
+  },
+  {
+    "created_time": 1791915835027,
+    "creator_user_name": "jjrm199867@gmail.com",
+    "job_id": 134653962208443,
+    "settings": {
+      "deployment": {
+        "kind": "BUNDLE",
+        "metadata_file_path": "/Workspace/Users/jjrm199867@gmail.com/.bundle/mantenimiento-predictivo/dev/state/metadata.json"
+      },
+      "edit_mode": "UI_LOCKED",
+      "email_notifications": {},
+      "environments": [
+        {
+          "environment_key": "serverless",
+          "spec": {
+            "environment_version": "6"
+          }
+        }
+      ],
+      "format": "MULTI_TASK",
+      "max_concurrent_runs": 1,
+      "name": "[dev jjrm199867] mantenimiento_end_to_end_dev",
+      "queue": {
+        "enabled": true
+      },
+      "tags": {
+        "dev": "jjrm199867"
+      },
+      "timeout_seconds": 0
+    }
+  },
+  {
+    "created_time": 1791915833213,
+    "creator_user_name": "jjrm199867@gmail.com",
+    "job_id": 394502178342467,
+    "settings": {
+      "deployment": {
+        "kind": "BUNDLE",
+        "metadata_file_path": "/Workspace/Users/jjrm199867@gmail.com/.bundle/mantenimiento-predictivo/dev/state/metadata.json"
+      },
+      "edit_mode": "UI_LOCKED",
+      "email_notifications": {},
+      "environments": [
+        {
+          "environment_key": "serverless",
+          "spec": {
+            "environment_version": "6"
+          }
+        }
+      ],
+      "format": "MULTI_TASK",
+      "max_concurrent_runs": 1,
+      "name": "[dev jjrm199867] mantenimiento_rag_dev",
+      "queue": {
+        "enabled": true
+      },
+      "tags": {
+        "dev": "jjrm199867"
+      },
+      "timeout_seconds": 0
+    }
+  }
+]
+EXIT=0

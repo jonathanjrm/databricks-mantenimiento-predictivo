@@ -1,0 +1,36 @@
+{
+ "sklearn": "1.9.1",
+ "pandas": "3.0.5",
+ "numpy": "2.5.3",
+ "hgb_params": {
+  "max_iter": "300",
+  "learning_rate": "0.05",
+  "max_leaf_nodes": "31",
+  "min_samples_leaf": "40",
+  "l2_regularization": "1.0",
+  "early_stopping": "False",
+  "random_state": "42"
+ },
+ "n_train_rows": 20631,
+ "n_features": 85,
+ "baseline_ridge": {
+  "rmse_val_truncated": 22.110042563760327,
+  "rmse_val_all_cycles": 19.357066558698133,
+  "std_folds": 2.0390909990415675,
+  "n_splits": 5,
+  "n_engines": 100,
+  "seconds": 0.5
+ },
+ "hist_gradient_boosting": {
+  "rmse_val_truncated": 19.21418447720364,
+  "rmse_val_all_cycles": 16.120925583464473,
+  "std_folds": 3.1394870428913437,
+  "n_splits": 5,
+  "n_engines": 100,
+  "seconds": 11.3
+ },
+ "decision_example_vs_ridge_as_champion": [
+  true,
+  "mejora la RMSE de validaci\u00f3n por motor: 19.214 < 22.110 - 1.404 (champion v0)"
+ ]
+}

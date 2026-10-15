@@ -90,6 +90,10 @@ resources:
           default: v1_baseline,v2
         - name: label
           default: ""
+        - name: dataset
+          default: dev
+        - name: eval_judge_endpoint
+          default: databricks-meta-llama-3-3-70b-instruct
       tasks:
         - task_key: eval
           environment_key: serverless
@@ -100,3 +104,5 @@ resources:
               schema: ${var.schema}
               configs: "{{job.parameters.configs}}"
               label: "{{job.parameters.label}}"
+              dataset: "{{job.parameters.dataset}}"
+              eval_judge_endpoint: "{{job.parameters.eval_judge_endpoint}}"

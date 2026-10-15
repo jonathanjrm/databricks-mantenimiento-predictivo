@@ -1,0 +1,56 @@
+INICIO
+{
+  "app_status": {
+    "message": "App has status: App has not been deployed yet. Run your app by deploying source code",
+    "state": "UNAVAILABLE"
+  },
+  "compute_size": "MEDIUM",
+  "compute_status": {
+    "message": "App compute is running.",
+    "state": "ACTIVE"
+  },
+  "create_time": "2026-10-13T18:23:53Z",
+  "creator": "jjrm199867@gmail.com",
+  "default_source_code_path": "/Workspace/Users/jjrm199867@gmail.com/.bundle/mantenimiento-predictivo/dev/files/app",
+  "description": "Sala de control de la flota de turbinas (RUL, estado y asistente de manuales)",
+  "effective_user_api_scopes": [
+    "iam.access-control:read",
+    "iam.current-user:read"
+  ],
+  "id": "d19896a0-f963-4a5d-9251-00460f6815ae",
+  "name": "mantenimiento-predictivo-dev",
+  "oauth2_app_client_id": "01750de9-d8fb-4710-881d-5b4453cca456",
+  "oauth2_app_integration_id": "01750de9-d8fb-4710-881d-5b4453cca456",
+  "pending_deployment": {
+    "create_time": "2026-10-14T22:15:46Z",
+    "creator": "jjrm199867@gmail.com",
+    "deployment_artifacts": {
+      "source_code_path": "/Workspace/Users/d19896a0-f963-4a5d-9251-00460f6815ae/src/01f1c81ccda71b5685c7379c55bc0d25"
+    },
+    "deployment_id": "01f1c81ccda71b5685c7379c55bc0d25",
+    "mode": "SNAPSHOT",
+    "source_code_path": "/Workspace/Users/jjrm199867@gmail.com/.bundle/mantenimiento-predictivo/dev/files/app",
+    "status": {
+      "message": "Preparing source code for new app deployment.",
+      "state": "IN_PROGRESS"
+    },
+    "update_time": "2026-10-14T22:15:49Z"
+  },
+  "resources": [
+    {
+      "name": "sql_warehouse",
+      "sql_warehouse": {
+        "id": "<warehouse-id>",
+        "permission": "CAN_USE"
+      }
+    }
+  ],
+  "service_principal_client_id": "d19896a0-f963-4a5d-9251-00460f6815ae",
+  "service_principal_id": 74276332114248,
+  "service_principal_name": "app-27y0rh mantenimiento-predictivo-dev",
+  "thumbnail_url": "",
+  "update_time": "2026-10-14T22:15:46Z",
+  "updater": "jjrm199867@gmail.com",
+  "url": "https://mantenimiento-predictivo-dev-<workspace-id>.aws.databricksapps.com"
+}
+EXIT=0

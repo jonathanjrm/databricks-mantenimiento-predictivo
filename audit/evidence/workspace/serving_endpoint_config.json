@@ -1,0 +1,58 @@
+{
+ "config": {
+  "config_version": 1,
+  "served_entities": [
+   {
+    "creation_timestamp": 1791917527000,
+    "creator": "<owner>",
+    "entity_name": "workspace.mantenimiento.rul_model",
+    "entity_version": "1",
+    "name": "rul-model",
+    "scale_to_zero_enabled": true,
+    "state": {
+     "deployment": "DEPLOYMENT_READY",
+     "deployment_state_message": "Scaled to zero"
+    },
+    "workload_size": "Small",
+    "workload_type": "CPU"
+   }
+  ],
+  "served_models": [
+   {
+    "creation_timestamp": 1791917527000,
+    "creator": "<owner>",
+    "model_name": "workspace.mantenimiento.rul_model",
+    "model_version": "1",
+    "name": "rul-model",
+    "scale_to_zero_enabled": true,
+    "state": {
+     "deployment": "DEPLOYMENT_READY",
+     "deployment_state_message": "Scaled to zero"
+    },
+    "workload_size": "Small",
+    "workload_type": "CPU"
+   }
+  ],
+  "traffic_config": {
+   "routes": [
+    {
+     "served_entity_name": "rul-model",
+     "served_model_name": "rul-model",
+     "traffic_percentage": 100
+    }
+   ]
+  }
+ },
+ "creation_timestamp": 1791917527000,
+ "creator": "<owner>",
+ "description": "",
+ "id": "f83f37b7b2ef420abf443b74f7ea80c6",
+ "last_updated_timestamp": 1791917527000,
+ "name": "dev_jjrm199867_rul-model-dev",
+ "permission_level": "CAN_MANAGE",
+ "route_optimized": false,
+ "state": {
+  "config_update": "NOT_UPDATING",
+  "ready": "READY"
+ }
+}

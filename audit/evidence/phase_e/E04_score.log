@@ -1,0 +1,201 @@
+INICIO
+{
+  "cleanup_duration": 0,
+  "creator_user_name": "jjrm199867@gmail.com",
+  "effective_performance_target": "PERFORMANCE_OPTIMIZED",
+  "end_time": 1791939166074,
+  "execution_duration": 0,
+  "job_id": 134653962208443,
+  "job_parameters": [
+    {
+      "default": "workspace",
+      "name": "catalog"
+    },
+    {
+      "default": "mantenimiento",
+      "name": "schema"
+    }
+  ],
+  "job_run_id": 1108009623666049,
+  "number_in_job": 1108009623666049,
+  "original_attempt_run_id": 1108009623666049,
+  "run_duration": 63856,
+  "run_id": 1108009623666049,
+  "run_name": "[dev jjrm199867] mantenimiento_end_to_end_dev",
+  "run_page_url": "https://<workspace-host>.cloud.databricks.com/?o=<workspace-id>#job/134653962208443/run/1108009623666049",
+  "run_type": "JOB_RUN",
+  "setup_duration": 0,
+  "start_time": 1791939102218,
+  "state": {
+    "life_cycle_state": "TERMINATED",
+    "result_state": "SUCCESS",
+    "state_message": "",
+    "user_cancelled_or_timedout": false
+  },
+  "status": {
+    "state": "TERMINATED",
+    "termination_details": {
+      "code": "SUCCESS",
+      "message": "",
+      "type": "SUCCESS"
+    }
+  },
+  "tasks": [
+    {
+      "attempt_number": 0,
+      "cleanup_duration": 0,
+      "depends_on": [
+        {
+          "task_key": "train"
+        }
+      ],
+      "effective_performance_target": "PERFORMANCE_OPTIMIZED",
+      "end_time": 1791939165488,
+      "environment_key": "serverless",
+      "execution_duration": 60000,
+      "notebook_task": {
+        "base_parameters": {
+          "catalog": "{{job.parameters.catalog}}",
+          "schema": "{{job.parameters.schema}}"
+        },
+        "notebook_path": "/Workspace/Users/jjrm199867@gmail.com/.bundle/mantenimiento-predictivo/dev/files/src/03_score",
+        "source": "WORKSPACE"
+      },
+      "run_id": 880571281026786,
+      "run_if": "ALL_SUCCESS",
+      "run_page_url": "https://<workspace-host>.cloud.databricks.com/?o=<workspace-id>#job/134653962208443/run/880571281026786",
+      "setup_duration": 3000,
+      "start_time": 1791939102258,
+      "state": {
+        "life_cycle_state": "TERMINATED",
+        "result_state": "SUCCESS",
+        "state_message": "",
+        "user_cancelled_or_timedout": false
+      },
+      "status": {
+        "state": "TERMINATED",
+        "termination_details": {
+          "code": "SUCCESS",
+          "message": "",
+          "type": "SUCCESS"
+        }
+      },
+      "task_key": "score"
+    },
+    {
+      "attempt_number": 0,
+      "cleanup_duration": 0,
+      "depends_on": [
+        {
+          "task_key": "pipeline"
+        }
+      ],
+      "effective_performance_target": "PERFORMANCE_OPTIMIZED",
+      "end_time": 1791939102260,
+      "environment_key": "serverless",
+      "execution_duration": 0,
+      "notebook_task": {
+        "base_parameters": {
+          "catalog": "{{job.parameters.catalog}}",
+          "schema": "{{job.parameters.schema}}"
+        },
+        "notebook_path": "/Workspace/Users/jjrm199867@gmail.com/.bundle/mantenimiento-predictivo/dev/files/src/02_train",
+        "source": "WORKSPACE"
+      },
+      "run_id": 633810056076172,
+      "run_if": "ALL_SUCCESS",
+      "run_page_url": "https://<workspace-host>.cloud.databricks.com/?o=<workspace-id>#job/134653962208443/run/633810056076172",
+      "setup_duration": 0,
+      "start_time": 1791939102260,
+      "state": {
+        "life_cycle_state": "SKIPPED",
+        "result_state": "DISABLED",
+        "state_message": "This task was not selected in the partial run.",
+        "user_cancelled_or_timedout": false
+      },
+      "status": {
+        "state": "TERMINATED",
+        "termination_details": {
+          "code": "DISABLED",
+          "message": "This task was not selected in the partial run.",
+          "type": "SUCCESS"
+        }
+      },
+      "task_key": "train"
+    },
+    {
+      "attempt_number": 0,
+      "cleanup_duration": 0,
+      "depends_on": [
+        {
+          "task_key": "setup"
+        }
+      ],
+      "effective_performance_target": "PERFORMANCE_OPTIMIZED",
+      "end_time": 1791939102257,
+      "execution_duration": 0,
+      "pipeline_task": {
+        "full_refresh": false,
+        "pipeline_id": "f0ca97c9-ca89-4af8-97b7-485d17938ffd"
+      },
+      "run_id": 147336131470600,
+      "run_if": "ALL_SUCCESS",
+      "run_page_url": "https://<workspace-host>.cloud.databricks.com/?o=<workspace-id>#job/134653962208443/run/147336131470600",
+      "setup_duration": 0,
+      "start_time": 1791939102257,
+      "state": {
+        "life_cycle_state": "SKIPPED",
+        "result_state": "DISABLED",
+        "state_message": "This task was not selected in the partial run.",
+        "user_cancelled_or_timedout": false
+      },
+      "status": {
+        "state": "TERMINATED",
+        "termination_details": {
+          "code": "DISABLED",
+          "message": "This task was not selected in the partial run.",
+          "type": "SUCCESS"
+        }
+      },
+      "task_key": "pipeline"
+    },
+    {
+      "attempt_number": 0,
+      "cleanup_duration": 0,
+      "effective_performance_target": "PERFORMANCE_OPTIMIZED",
+      "end_time": 1791939102259,
+      "environment_key": "serverless",
+      "execution_duration": 0,
+      "notebook_task": {
+        "base_parameters": {
+          "catalog": "{{job.parameters.catalog}}",
+          "schema": "{{job.parameters.schema}}"
+        },
+        "notebook_path": "/Workspace/Users/jjrm199867@gmail.com/.bundle/mantenimiento-predictivo/dev/files/src/00_setup",
+        "source": "WORKSPACE"
+      },
+      "run_id": 231161619532737,
+      "run_if": "ALL_SUCCESS",
+      "run_page_url": "https://<workspace-host>.cloud.databricks.com/?o=<workspace-id>#job/134653962208443/run/231161619532737",
+      "setup_duration": 0,
+      "start_time": 1791939102259,
+      "state": {
+        "life_cycle_state": "SKIPPED",
+        "result_state": "DISABLED",
+        "state_message": "This task was not selected in the partial run.",
+        "user_cancelled_or_timedout": false
+      },
+      "status": {
+        "state": "TERMINATED",
+        "termination_details": {
+          "code": "DISABLED",
+          "message": "This task was not selected in the partial run.",
+          "type": "SUCCESS"
+        }
+      },
+      "task_key": "setup"
+    }
+  ],
+  "trigger": "ONE_TIME"
+}
+EXIT=0

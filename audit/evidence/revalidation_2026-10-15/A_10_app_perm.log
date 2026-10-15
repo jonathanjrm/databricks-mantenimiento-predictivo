@@ -1,0 +1,29 @@
+INICIO
+{
+  "access_control_list": [
+    {
+      "all_permissions": [
+        {
+          "inherited": false,
+          "permission_level": "CAN_MANAGE"
+        }
+      ],
+      "user_name": "jjrm199867@gmail.com"
+    },
+    {
+      "all_permissions": [
+        {
+          "inherited": true,
+          "inherited_from_object": [
+            "/apps"
+          ],
+          "permission_level": "CAN_MANAGE"
+        }
+      ],
+      "group_name": "admins"
+    }
+  ],
+  "object_id": "/apps/d19896a0-f963-4a5d-9251-00460f6815ae",
+  "object_type": "apps"
+}
+EXIT=0

@@ -36,8 +36,8 @@ def _fake(sql, params=None):
         return [{"model_version": 3, "rmse_test": 18.5, "phm08_test": 640.0, "trained_at": "2026-10-13"}]
     if "COUNT(*)" in s:
         return [{"n": 33727}]
-    if "DESCRIBE DETAIL" in s:
-        return [{"lastModified": "2026-10-13T10:00:00+00:00"}]
+    if "MAX(_ingest_ts)" in s:
+        return [{"t": "2026-10-13T10:00:00+00:00"}]
     if "gold_salud_curva" in s:
         return [{"cycle": c, "health_index": 0.01 * c} for c in range(1, 61)]
     return []
@@ -180,11 +180,19 @@ def test_estados_antiguos_y_acciones_en_ingles(monkeypatch):
     monkeypatch.setattr(A, "run_query", _fake)
     j = TestClient(A.app).get("/api/engines").json()
     assert [e["estado"] for e in j["engines"]] == ["critical", "watch", "healthy"]
-    assert j["engines"][0]["action"] == "Schedule shutdown and replacement within 10 cycles. Inspect s4 and s11 now."
-    assert j["engines"][2]["action"].startswith("Normal operation")
+    assert j["engines"][0]["action"].startswith("Demo estimate; requires engineering review. Estimated RUL is low (about 10 cycles)")
+    assert "Sensors to check first: s4 and s11." in j["engines"][0]["action"]
+    assert "No degradation flagged" in j["engines"][2]["action"]
     assert j["sensor_names"]["s4"] == "T50 LPT outlet temperature"
 
 
 def test_pagina_principal():
     r = TestClient(A.app).get("/")
     assert r.status_code == 200 and "Predictive turbine maintenance" in r.text
+
+
+def test_texto_de_accion_identico_en_app_y_lib():
+    from lib import cmapss as C
+    for st in ("critical", "watch", "healthy", "critico"):
+        for rul in (0.0, 12.4, 40.0, 100.0):
+            assert A.recommended_action(st, rul, ["s4", "s11", "s2"]) == C.recommended_action(st, rul, ["s4", "s11", "s2"])

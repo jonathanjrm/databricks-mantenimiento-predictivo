@@ -1,0 +1,3 @@
+INICIO
+app/rag.py -> dbfs:/Volumes/workspace/mantenimiento/codigo/rag.py
+EXIT=0

@@ -1,0 +1,91 @@
+{
+ "statement_id": "01f1c74e-9f0c-1513-aa7b-87cb56bbb818",
+ "status": {
+  "state": "SUCCEEDED"
+ },
+ "manifest": {
+  "format": "JSON_ARRAY",
+  "schema": {
+   "column_count": 7,
+   "columns": [
+    {
+     "name": "split",
+     "type_text": "STRING",
+     "type_name": "STRING",
+     "position": 0
+    },
+    {
+     "name": "n",
+     "type_text": "BIGINT",
+     "type_name": "LONG",
+     "position": 1
+    },
+    {
+     "name": "units",
+     "type_text": "BIGINT",
+     "type_name": "LONG",
+     "position": 2
+    },
+    {
+     "name": "minc",
+     "type_text": "INT",
+     "type_name": "INT",
+     "position": 3
+    },
+    {
+     "name": "maxc",
+     "type_text": "INT",
+     "type_name": "INT",
+     "position": 4
+    },
+    {
+     "name": "rul_null",
+     "type_text": "BIGINT",
+     "type_name": "LONG",
+     "position": 5
+    },
+    {
+     "name": "rul_max",
+     "type_text": "INT",
+     "type_name": "INT",
+     "position": 6
+    }
+   ]
+  },
+  "total_chunk_count": 1,
+  "chunks": [
+   {
+    "chunk_index": 0,
+    "row_offset": 0,
+    "row_count": 2
+   }
+  ],
+  "total_row_count": 2,
+  "truncated": false
+ },
+ "result": {
+  "chunk_index": 0,
+  "row_offset": 0,
+  "row_count": 2,
+  "data_array": [
+   [
+    "test",
+    "13096",
+    "100",
+    "1",
+    "303",
+    "13096",
+    null
+   ],
+   [
+    "train",
+    "20631",
+    "100",
+    "1",
+    "362",
+    "0",
+    "125"
+   ]
+  ]
+ }
+}

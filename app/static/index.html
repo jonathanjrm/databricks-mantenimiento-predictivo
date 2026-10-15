@@ -29,7 +29,32 @@ header.top{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;justify-
 .chip{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid var(--line);background:var(--panel);border-radius:4px;font:400 12px var(--mono);color:var(--muted)}
 .chip b{font-weight:500;color:var(--text)}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex:none}
-.dot.ok{background:var(--healthy)} .dot.warn{background:var(--watch)}
+.dot.ok{background:var(--healthy)} .dot.warn{background:var(--watch)} .dot.err{background:var(--critical)} .dot.load{background:var(--muted);animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:.35}50%{opacity:1}}
+.chip.svc{padding:5px 9px}
+.banner{display:none;margin:12px 0 0;padding:10px 14px;border:1px solid var(--critical);border-left-width:4px;border-radius:6px;background:rgba(255,107,61,.07);font-size:13px}
+.banner.show{display:block}
+.banner b{font-weight:600;color:var(--critical)}
+.skel{color:var(--muted);font:400 12px var(--mono);padding:28px 16px;text-align:center}
+.skel::before{content:"";display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--muted);margin-right:8px;vertical-align:-1px;animation:pulse 1.2s ease-in-out infinite}
+.unc{display:grid;grid-template-columns:auto 1fr;gap:4px 16px;padding:10px 16px;margin-bottom:16px;font-size:12px;color:var(--muted);align-items:baseline}
+.unc .k{font:500 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--text);white-space:nowrap}
+.unc .v{color:var(--muted)} .unc .v b{color:var(--text);font-weight:500;font-family:var(--mono)}
+.ph .tools{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.filters{display:flex;flex-wrap:wrap;gap:6px}
+.filters button{font:500 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;background:transparent;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:4px 9px;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.filters button i{display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--muted)}
+.filters button[aria-pressed="true"]{color:var(--text);border-color:var(--muted);background:var(--panel-2)}
+.filters button:hover{color:var(--text)}
+.eng.dim{opacity:.16;pointer-events:none}
+.eng.dim .top{filter:none}
+.kind{display:inline-block;font:500 10px var(--mono);letter-spacing:.08em;text-transform:uppercase;padding:1px 6px;border-radius:3px;border:1px solid var(--line);color:var(--muted);margin-left:6px;vertical-align:1px}
+.kind.pred{color:var(--healthy);border-color:var(--healthy)} .kind.real{color:var(--text);border-color:var(--muted)} .kind.proj{color:var(--watch);border-color:var(--watch)}
+.dl dt .kind{margin-left:4px}
+.trace{margin:12px 0 0;padding:8px 10px;border:1px dashed var(--line);border-radius:4px;font:400 11px/1.6 var(--mono);color:var(--muted);overflow-wrap:anywhere}
+.trace b{color:var(--text);font-weight:500}
+.tag.q{color:#FF9A4D;border-color:#FF9A4D}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:6px}
 .panel.alt{background:var(--panel-2)}
@@ -132,8 +157,8 @@ form.ask button:disabled{opacity:.5;cursor:default}
 button:focus-visible{outline:2px solid var(--healthy);outline-offset:2px}
 .tip{position:fixed;pointer-events:none;z-index:5;background:var(--panel-2);border:1px solid var(--line);padding:6px 9px;border-radius:4px;font:400 12px var(--mono);display:none;white-space:nowrap}
 footer{margin-top:24px;padding-top:14px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
-@media (max-width:980px){.grid{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,1fr)}}
-@media (max-width:520px){.kpi .v{font-size:26px}.detail .rul{font-size:44px}.brand h1{font-size:18px}.kpis{gap:8px}}
+@media (max-width:980px){.grid{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,1fr)}.unc{grid-template-columns:1fr;gap:2px 0}.unc .v{margin-bottom:6px}}
+@media (max-width:520px){.kpi .v{font-size:26px}.detail .rul{font-size:44px}.brand h1{font-size:18px}.kpis{gap:8px}.ph{flex-direction:column;align-items:flex-start}.msgs{max-height:420px}.dl{grid-template-columns:1fr}.dl dd{text-align:left;margin-bottom:4px}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -144,36 +169,44 @@ footer{margin-top:24px;padding-top:14px;border-top:1px solid var(--line);font-si
       <span class="k">Control room</span>
       <h1>Predictive turbine maintenance</h1>
     </div>
-    <div class="chips" id="chips" aria-live="polite">
-      <span class="chip"><span class="dot"></span>Loading status…</span>
+    <div class="chips" id="chips" role="status" aria-live="polite">
+      <span class="chip"><span class="dot load"></span>Loading status…</span>
     </div>
   </header>
+  <div class="banner" id="banner" role="alert"></div>
 
   <section class="kpis" aria-label="Fleet indicators">
     <div class="panel kpi"><div class="l">Engines</div><div class="v" id="k-engines">--</div><div class="s">in the FD001 test set</div></div>
     <div class="panel kpi crit"><div class="l">Critical</div><div class="v" id="k-critical">--</div><div class="s" id="k-critical-s">RUL below the threshold</div></div>
     <div class="panel kpi"><div class="l">Mean remaining life</div><div class="v" id="k-rul">--</div><div class="s">cycles of estimated RUL</div></div>
-    <div class="panel kpi"><div class="l">Actual RMSE</div><div class="v" id="k-rmse">--</div><div class="s" id="k-rmse-s">cycles, FD001 test</div></div>
+    <div class="panel kpi"><div class="l">Test RMSE</div><div class="v" id="k-rmse">--</div><div class="s" id="k-rmse-s">cycles, FD001 test (seen set)</div></div>
   </section>
 
-  <section class="panel lineage" aria-label="Data lineage" id="lineage"></section>
+  <section class="panel lineage" aria-label="Data lineage" id="lineage"><div class="skel">Loading pipeline status</div></section>
+  <section class="panel alt unc" id="unc" aria-label="Uncertainty and traceability">
+    <span class="k">Uncertainty</span><span class="v" id="unc-u">Loading…</span>
+    <span class="k">Near failure</span><span class="v" id="unc-n">Loading…</span>
+    <span class="k">Traceability</span><span class="v" id="unc-t">Loading…</span>
+  </section>
 
   <main class="grid">
     <div class="col">
       <section class="panel">
-        <div class="ph"><h2>Fleet</h2><span class="sub">Height = remaining useful life. Color = state. Most urgent in front.</span></div>
+        <div class="ph"><div><h2>Fleet <span class="kind pred">model prediction</span></h2><span class="sub">Height = estimated RUL (batch model). Color = demo state. Most urgent in front.</span></div>
+          <div class="tools"><div class="filters" id="filters" role="group" aria-label="Filter engines by criticality"></div></div></div>
         <div class="pb">
-          <div id="fleet"></div>
+          <div id="fleet" aria-busy="true"><div class="skel">Loading fleet predictions</div></div>
           <div class="legend" style="margin-top:10px">
             <span><i style="background:var(--critical)"></i>Critical</span>
             <span><i style="background:var(--watch)"></i>Watch</span>
             <span><i style="background:var(--healthy)"></i>Healthy</span>
             <span id="thr"></span>
+            <span id="shown"></span>
           </div>
         </div>
       </section>
       <section class="panel">
-        <div class="ph"><h2 id="curve-title">Health curve</h2><span class="sub">Indicator derived from the sensors, not a prediction</span></div>
+        <div class="ph"><h2 id="curve-title">Health curve</h2><span class="sub">Solid = indicator from real sensor readings. Dashed = illustrative linear projection, not the model.</span></div>
         <div class="pb"><div id="curve"></div><div class="note" id="curve-note"></div></div>
       </section>
     </div>
@@ -181,7 +214,7 @@ footer{margin-top:24px;padding-top:14px;border-top:1px solid var(--line);font-si
     <div class="col">
       <section class="panel detail" aria-live="polite">
         <div class="ph"><h2>Engine</h2><span class="sub" id="d-sub">Select one in the fleet</span></div>
-        <div class="pb" id="detail"><div class="empty">No engine selected.</div></div>
+        <div class="pb" id="detail"><div class="skel">Waiting for predictions</div></div>
       </section>
       <section class="panel">
         <div class="ph"><h2>Manuals assistant</h2><span class="sub">Answers only from the indexed PDFs</span></div>
@@ -189,7 +222,9 @@ footer{margin-top:24px;padding-top:14px;border-top:1px solid var(--line);font-si
           <div class="msgs" id="msgs" aria-live="polite"></div>
           <div class="sug" id="sug"></div>
           <form class="ask" id="ask" autocomplete="off">
-            <input id="q" type="text" maxlength="500" placeholder="Ask about the manuals" aria-label="Ask about the manuals">
+            <label for="q" class="sr">Ask about the manuals</label>
+            <input id="q" type="text" maxlength="500" placeholder="Ask about the manuals" aria-describedby="ask-help">
+            <span id="ask-help" class="sr">Answers come only from the indexed PDFs and cite file and page.</span>
             <button type="submit" id="send">Ask</button>
           </form>
         </div>
@@ -199,6 +234,7 @@ footer{margin-top:24px;padding-top:14px;border-top:1px solid var(--line);font-si
 
   <footer>
     Data: NASA C-MAPSS FD001 (Saxena et al., 2008, public domain). Demonstration project; do not use for real maintenance decisions.
+    <span id="foot-trace"></span>
   </footer>
 </div>
 <div class="tip" id="tip"></div>
@@ -210,7 +246,9 @@ const LABEL = {critical:"Critical", watch:"Watch", healthy:"Healthy"};
 const LEGACY = {critico:"critical", vigilar:"watch", sano:"healthy"};
 const stateOf = (s) => LEGACY[s] || s;
 const NS = "http://www.w3.org/2000/svg";
-const state = {engines:[], names:{}, sel:null, overview:null};
+const clampRul = (v) => (v===null||v===undefined) ? null : Math.max(v,0);
+const state = {engines:[], names:{}, sel:null, overview:null, filter:"all", sourceTable:null, health:null};
+const FILTERS=[["all","All"],["critical","Critical"],["watch","Watch"],["healthy","Healthy"]];
 
 const $ = (id) => document.getElementById(id);
 const el = (tag, attrs={}, text) => { const e=document.createElement(tag); for(const k in attrs) e.setAttribute(k,attrs[k]); if(text!==undefined) e.textContent=text; return e; };
@@ -229,6 +267,38 @@ function ago(iso){
   const m=Math.round((Date.now()-t)/60000);
   if(m<1) return "just now"; if(m<60) return m+" min ago"; if(m<1440) return Math.round(m/60)+" h ago"; return Math.round(m/1440)+" d ago";
 }
+function fmtTs(iso){ if(!iso) return "--"; const t=new Date(iso); if(isNaN(t)) return String(iso); return t.toISOString().replace("T"," ").slice(0,16)+" UTC"; }
+function banner(text){ const b=$("banner"); if(!text){ b.classList.remove("show"); b.replaceChildren(); return; } b.replaceChildren(el("b",{},"Data unavailable. "), document.createTextNode(text)); b.classList.add("show"); }
+function svcChip(name,label,s){
+  const c=el("span",{class:"chip svc",title:(s&&s.detail)||""}); const st=s?s.status:"load";
+  c.append(el("span",{class:"dot "+(st==="ok"?"ok":st==="error"?"err":st==="unknown"?"warn":"load")}));
+  c.append(document.createTextNode(label+" "), el("b",{}, st==="load"?"checking":st));
+  c.setAttribute("aria-label",label+": "+(st==="load"?"checking":st)+((s&&s.detail)?". "+s.detail:""));
+  return c;
+}
+function renderHealth(h){
+  state.health=h; const box=$("svc"); if(!box) return; box.replaceChildren();
+  const S=(h&&h.services)||{};
+  box.append(svcChip("sql_warehouse","SQL warehouse",S.sql_warehouse), svcChip("search_index","Index",S.search_index), svcChip("llm","LLM",S.llm));
+}
+function renderUncertainty(o){
+  const u=o.uncertainty||{}, m=o.model||{};
+  const U=$("unc-u"); U.replaceChildren();
+  if(u.typical_error_cycles!==null&&u.typical_error_cycles!==undefined){
+    U.append(document.createTextNode("Typical error "), el("b",{},"RMSE "+fmt(u.typical_error_cycles,2)+" cycles"),
+      document.createTextNode(" on the FD001 test set (last cycle of 100 engines). Not a calibrated prediction interval: the test set also informed model selection. Demo estimate; requires engineering review."));
+  } else U.append(document.createTextNode("No metrics recorded for the deployed model version: the typical error is unknown."));
+  const N=$("unc-n"); N.replaceChildren(); const nf=u.near_failure;
+  if(nf){ N.append(document.createTextNode("Engines with actual RUL \u2264 "+fmt(nf.max_actual_rul)+" (n = "+nf.n+"): mean bias "), el("b",{},(nf.mean_bias_cycles>0?"+":"")+fmt(nf.mean_bias_cycles,1)+" cycles"),
+    document.createTextNode(" (RMSE "+fmt(nf.rmse_cycles,1)+"; "+nf.overestimated+" of "+nf.n+" overestimated). A positive bias means the model tends to overstate the remaining life close to failure, the unsafe direction.")); }
+  else N.append(document.createTextNode("Not computable: no scored engine with a low actual RUL."));
+  const T=$("unc-t"); T.replaceChildren();
+  T.append(document.createTextNode("Predictions are batch scores read from "), el("b",{},m.source_table||"gold_predicciones"),
+    document.createTextNode(", model "), el("b",{},m.version?("v"+m.version+" @"+(m.alias||"champion")):"--"),
+    document.createTextNode(", scored "), el("b",{},fmtTs(m.scored_at)), document.createTextNode(", trained "), el("b",{},fmtTs(m.trained_at)),
+    document.createTextNode(". No live inference: the app does not call the serving endpoint."));
+  const ft=$("foot-trace"); if(ft) ft.textContent=" Source: "+(m.source_table||"gold_predicciones")+" | model v"+(m.version||"--")+" | scored "+fmtTs(m.scored_at)+".";
+}
 function renderOverview(o){
   state.overview=o;
   const chips=$("chips"); chips.replaceChildren();
@@ -239,13 +309,18 @@ function renderOverview(o){
   const mn=(o.model.name||"rul_model").split(".").pop();
   c2.append(document.createTextNode("Model "), el("b",{}, o.model.version? (mn+"@"+o.model.alias+" v"+o.model.version) : (mn+" no champion")));
   chips.append(c2);
+  const c3=el("span",{class:"chip"}); c3.append(el("span",{class:"dot "+(o.model.scored_at?"ok":"warn")}));
+  c3.append(document.createTextNode("Scored "), el("b",{}, o.model.scored_at?(ago(o.model.scored_at)||fmtTs(o.model.scored_at)):"--")); c3.setAttribute("title",o.model.scored_at?fmtTs(o.model.scored_at):""); chips.append(c3);
+  const svc=el("span",{id:"svc",style:"display:contents"}); chips.append(svc); renderHealth(state.health);
+  if((o.errors||[]).length){ const c4=el("span",{class:"chip"}); c4.append(el("span",{class:"dot err"}), document.createTextNode("Partial failure "), el("b",{},o.errors.join(", "))); chips.append(c4); }
+  renderUncertainty(o);
   const k=o.kpis;
   $("k-engines").textContent=o.ready?fmt(k.engines):"--";
   $("k-critical").textContent=o.ready?fmt(k.critical):"--";
   $("k-critical-s").textContent=o.ready?("and "+fmt(k.watch)+" on watch"):"RUL below the threshold";
   $("k-rul").textContent=o.ready?fmt(k.mean_rul,1):"--";
   $("k-rmse").textContent=k.rmse!==null&&k.rmse!==undefined?fmt(k.rmse,2):"--";
-  $("k-rmse-s").textContent=k.phm08?("cycles, FD001 test | PHM08 "+fmt(k.phm08)):"cycles, FD001 test";
+  $("k-rmse-s").textContent=k.phm08?("cycles, FD001 test (seen set) | PHM08 "+fmt(k.phm08)):"cycles, FD001 test (seen set)";
   const L=$("lineage"); L.replaceChildren();
   const L0=o.pipeline.layers;
   const steps=[["Bronze",L0.bronze,"readings ingested"],["Silver",L0.silver,"validated, no constants"],["Gold",L0.gold,"rows with features"],
@@ -256,8 +331,24 @@ function renderOverview(o){
 
 /* ---------- isometric fleet ---------- */
 const TW=54, TH=27, COLS=10;
+function counts(){ const c={all:state.engines.length,critical:0,watch:0,healthy:0,unknown:0}; state.engines.forEach(e=>{ const s=stateOf(e.estado); c[s]=(c[s]||0)+1; }); return c; }
+function renderFilters(){
+  const box=$("filters"); box.replaceChildren(); if(!state.engines.length) return;
+  const c=counts(); const list=[...FILTERS]; if(c.unknown) list.push(["unknown","No prediction"]);
+  list.forEach(([k,l])=>{ const b=el("button",{type:"button","aria-pressed":String(state.filter===k),"data-f":k});
+    if(k!=="all"){ const i=el("i"); i.style.background=COLORS[k]||"#8A96A8"; b.append(i); }
+    b.append(document.createTextNode(l+" "+(c[k]||0)));
+    b.addEventListener("click",()=>{ state.filter=k; renderFilters(); renderFleet(); });
+    box.append(b); });
+}
+const visible=(e)=>state.filter==="all"||stateOf(e.estado)===state.filter;
 function renderFleet(){
-  const box=$("fleet"); box.replaceChildren();
+  const box=$("fleet"); box.replaceChildren(); box.removeAttribute("aria-busy");
+  if(!state.engines.length && state.dataError){
+    const d=el("div",{class:"empty"}); d.append(el("b",{},"Data unavailable"));
+    d.append(document.createTextNode(state.dataError+" No predictions are shown and none are estimated."));
+    box.append(d); return;
+  }
   if(!state.engines.length){
     const miss=(state.overview&&state.overview.missing||[]).join(", ");
     const d=el("div",{class:"empty"}); d.append(el("b",{},"No predictions yet"));
@@ -269,13 +360,14 @@ function renderFleet(){
   const W=COLS*TW+TW, H=(rows+COLS)*TH/2+maxH+30, ox=(rows*TW)/2+TW/2, oy=maxH+14;
   const svg=sv("svg",{viewBox:`0 0 ${W} ${H}`,role:"group","aria-label":"Fleet of engines in isometric view"});
   // Order by urgency: engines with the lowest RUL go in front (lower rows) so a taller one never hides them.
-  const asc=[...state.engines].sort((a,b)=>a.rul_pred-b.rul_pred||a.unit-b.unit);
+  const asc=[...state.engines].sort((a,b)=>(a.rul_pred??1e9)-(b.rul_pred??1e9)||a.unit-b.unit);
   const order=asc.map((e,i)=>({e,r:rows-1-Math.floor(i/COLS),c:i%COLS})).sort((a,b)=>(a.r+a.c)-(b.r+b.c)||a.r-b.r);
   for(const {e,r,c} of order){
-    const x=ox+(c-r)*TW/2, y=oy+(c+r)*TH/2, h=6+Math.min(Math.max(e.rul_pred,0),125)/125*(maxH-6);
+    const x=ox+(c-r)*TW/2, y=oy+(c+r)*TH/2, h=6+Math.min(clampRul(e.rul_pred)||0,125)/125*(maxH-6);
     const st=stateOf(e.estado), a=TW/2*0.68, b=TH/2*0.68, col=COLORS[st]||"#8A96A8";
-    const g=sv("g",{class:"eng"+(state.sel===e.unit?" sel":""),tabindex:"0",role:"button","data-unit":e.unit,
-      "aria-label":`Engine ${e.unit}, remaining life ${fmt(e.rul_pred,0)} cycles, ${LABEL[st]||st}`});
+    const vis=visible(e);
+    const g=sv("g",{class:"eng"+(state.sel===e.unit?" sel":"")+(vis?"":" dim"),tabindex:vis?"0":"-1",role:"button","data-unit":e.unit,"aria-hidden":vis?"false":"true",
+      "aria-label":`Engine ${e.unit}, estimated RUL ${fmt(e.rul_pred,0)} cycles, ${LABEL[st]||st}`});
     g.append(sv("polygon",{points:`${x-a},${y-h} ${x},${y-h+b} ${x},${y+b} ${x-a},${y}`,fill:mix(col,.5)}));
     g.append(sv("polygon",{points:`${x},${y-h+b} ${x+a},${y-h} ${x+a},${y} ${x},${y+b}`,fill:mix(col,.72)}));
     g.append(sv("polygon",{points:`${x},${y-h-b} ${x+a},${y-h} ${x},${y-h+b} ${x-a},${y-h}`,fill:col,class:"top"}));
@@ -286,17 +378,18 @@ function renderFleet(){
     svg.append(g);
   }
   box.append(svg);
-  const u=state.engines[0]; $("thr").textContent=u&&u.umbral_critico?`Thresholds: critical ≤ ${u.umbral_critico}, watch ≤ ${u.umbral_vigilar}`:"";
+  const u=state.engines[0]; $("thr").textContent=u&&u.umbral_critico!==null&&u.umbral_critico!==undefined?`Demo thresholds: critical ≤ ${fmt(u.umbral_critico)}, watch ≤ ${fmt(u.umbral_vigilar)} cycles`:"";
+  const n=state.engines.filter(visible).length; $("shown").textContent=state.filter==="all"?"":`Showing ${n} of ${state.engines.length} (filter: ${state.filter})`;
 }
 function tip(ev,text){ const t=$("tip"); if(!ev){ t.style.display="none"; return; } t.textContent=text; t.style.display="block"; t.style.left=(ev.clientX+14)+"px"; t.style.top=(ev.clientY+14)+"px"; }
 
 /* ---------- detail ---------- */
 function actionText(e, st){ // the API returns e.action (English); local fallback keeps the UI usable without it
   if(e.action) return e.action;
-  const n=fmt(Math.max(e.rul_pred,0),0);
-  if(st==="critical") return `Schedule shutdown and replacement within ${n} cycles.`+(e.sensor_1?` Inspect ${e.sensor_1}${e.sensor_2?" and "+e.sensor_2:""} now.`:"");
-  if(st==="watch") return `Increase inspection frequency and plan the intervention within the ${n}-cycle window.`;
-  return "Normal operation. Keep the usual maintenance plan.";
+  const n=fmt(clampRul(e.rul_pred),0), head="Demo estimate; requires engineering review. ";
+  if(st==="critical") return head+`Estimated RUL is low (about ${n} cycles): consider prioritising an inspection.`+(e.sensor_1?` Sensors to check first: ${e.sensor_1}${e.sensor_2?" and "+e.sensor_2:""}.`:"");
+  if(st==="watch") return head+`Estimated RUL is moderate (about ${n} cycles): consider closer monitoring and planning an inspection.`;
+  return head+"No degradation flagged by the model; keep the usual maintenance plan.";
 }
 function select(unit){
   state.sel=unit; renderFleet();
@@ -304,12 +397,16 @@ function select(unit){
   const st=stateOf(e.estado);
   $("d-sub").textContent=`Engine ${e.unit} | observed cycle ${e.cycle}`;
   const d=$("detail"); d.replaceChildren();
-  const big=el("div",{class:"big"}); big.append(el("span",{class:"rul"},fmt(Math.max(e.rul_pred,0),0)), el("span",{class:"u"},"cycles of estimated RUL"), el("span",{class:"badge "+st},LABEL[st]||st));
+  const big=el("div",{class:"big"}); big.append(el("span",{class:"rul"},e.rul_pred===null?"--":fmt(clampRul(e.rul_pred),0)), el("span",{class:"u"},"cycles of estimated RUL"), el("span",{class:"kind pred"},"model prediction"), el("span",{class:"badge "+st},LABEL[st]||st));
   d.append(big);
   const dl=el("dl",{class:"dl"});
-  [["Actual RUL (test)",fmt(e.rul_real,0)],["Error (pred. − actual)",(e.error>0?"+":"")+fmt(e.error,1)],["Model version","v"+e.model_version]].forEach(([k,v])=>{dl.append(el("dt",{},k),el("dd",{},v));});
+  const dt1=el("dt",{}); dt1.append(document.createTextNode("Actual RUL"), el("span",{class:"kind real"},"test ground truth"));
+  const dt2=el("dt",{}); dt2.append(document.createTextNode("Error (pred. − actual)"));
+  dl.append(dt1, el("dd",{},fmt(e.rul_real,0)), dt2, el("dd",{},e.error===null||e.error===undefined?"--":((e.error>0?"+":"")+fmt(e.error,1))));
   d.append(dl);
   d.append(el("div",{class:"action "+st},actionText(e,st)));
+  const tr=el("div",{class:"trace"}); tr.append(el("b",{},"Traceability "), document.createTextNode("model v"+(e.model_version??"--")+" @champion | scored "+fmtTs(e.scored_at)+" | source "+(state.sourceTable||"gold_predicciones")+" | batch score at observed cycle "+e.cycle+", no live inference"));
+  d.append(tr);
   const bars=el("div",{class:"bars"}); bars.append(el("h3",{},"Sensors that best explain the prediction"));
   const items=[1,2,3].map(i=>({s:e["sensor_"+i],v:e["contrib_"+i]})).filter(x=>x.s);
   const mx=Math.max(...items.map(x=>Math.abs(x.v)),1e-9);
@@ -325,7 +422,7 @@ async function loadCurve(unit){
   const box=$("curve"), note=$("curve-note"); box.replaceChildren(); note.textContent="";
   const r=await getJSON(`/api/engines/${unit}/health`);
   if(state.sel!==unit) return;
-  if(!r.ok||!r.data||!r.data.ready){ const d=el("div",{class:"empty"}); d.append(el("b",{},"Curve not available"),document.createTextNode("The gold_salud_curva table is missing: run the pipeline.")); box.append(d); return; }
+  if(!r.ok||!r.data||!r.data.ready){ const d=el("div",{class:"empty"}); d.append(el("b",{},"Curve not available"),document.createTextNode(r.status===503?"The data source could not be queried (SQL warehouse error or timeout). Nothing is estimated in its place.":"The gold_salud_curva table is missing: run the pipeline.")); box.append(d); return; }
   const {history:h, projection:p, threshold:T}=r.data;
   const W=640,H=260,m={l:44,r:16,t:14,b:30};
   const xmax=Math.max(h[h.length-1][0], p.cross_cycle||0)+2, xmin=h[0][0];
@@ -335,7 +432,9 @@ async function loadCurve(unit){
   const ax=sv("g",{class:"axis"});
   [0,0.5,1].forEach(v=>{ ax.append(sv("line",{x1:m.l,x2:W-m.r,y1:Y(v),y2:Y(v),stroke:"#1F2732"})); const t=sv("text",{x:m.l-8,y:Y(v)+3,"text-anchor":"end"}); t.textContent=v.toFixed(1); ax.append(t); });
   const ticks=5; for(let i=0;i<=ticks;i++){ const v=Math.round(xmin+(xmax-xmin)*i/ticks); const t=sv("text",{x:X(v),y:H-10,"text-anchor":"middle"}); t.textContent=v; ax.append(t); }
-  const lab=sv("text",{x:W-m.r,y:Y(T)-6,"text-anchor":"end",fill:"#FF6B3D"}); lab.textContent="failure threshold"; lab.style.fill="#FF6B3D"; ax.append(lab);
+  const lab=sv("text",{x:W-m.r,y:Y(T)-6,"text-anchor":"end",fill:"#FF6B3D"}); lab.textContent="failure threshold (indicator)"; lab.style.fill="#FF6B3D"; ax.append(lab);
+  const l1=sv("text",{x:m.l+4,y:m.t+8}); l1.textContent="solid: sensor-derived indicator (real readings)"; ax.append(l1);
+  const l2=sv("text",{x:m.l+4,y:m.t+20}); l2.textContent="dashed: illustrative linear projection, not the model"; l2.style.fill="#F2B33D"; ax.append(l2);
   svg.append(ax);
   svg.append(sv("line",{x1:m.l,x2:W-m.r,y1:Y(T),y2:Y(T),stroke:"#FF6B3D","stroke-dasharray":"4 4","stroke-width":1}));
   svg.append(sv("polyline",{points:h.map(q=>X(q[0])+","+Y(q[1])).join(" "),fill:"none",stroke:"#E6EAF0","stroke-width":1.6,"stroke-linejoin":"round"}));
@@ -347,8 +446,8 @@ async function loadCurve(unit){
   box.append(svg);
   const e=state.engines.find(x=>x.unit===unit);
   note.textContent = p.cycles_to_threshold===null
-    ? "No upward trend in the last 30 cycles: no threshold crossing is projected."
-    : `Linear extrapolation of the last 30 cycles: crosses the threshold in about ${p.cycles_to_threshold} cycles. Model RUL: ${fmt(e?Math.max(e.rul_pred,0):null,0)} cycles. These are two different estimates; if they diverge, the engine deserves a review.`;
+    ? "Illustrative projection: no upward trend in the last 30 cycles, so no threshold crossing is extrapolated. This is not the model's prediction."
+    : `Illustrative projection (linear extrapolation of the last 30 cycles, not the model): crosses the indicator threshold in about ${p.cycles_to_threshold} cycles. Model prediction: ${fmt(e?clampRul(e.rul_pred):null,0)} cycles. Two different estimates; if they diverge, the engine deserves a review.`;
 }
 
 /* ---------- assistant ---------- */
@@ -381,6 +480,7 @@ function renderAnswer(a){
         li.append(b);
       });
       if(c.verdict==="PARTIAL") li.append(el("span",{class:"tag"},"partially supported"));
+      (c.missing_qualifiers||[]).forEach(q=>li.append(el("span",{class:"tag q",title:"The cited passage limits this statement to: "+q},"condition omitted: "+q)));
       ul.append(li);
     });
     m.append(ul);
@@ -432,11 +532,12 @@ function renderAnswer(a){
 async function ask(text){
   const q=text.trim(); if(q.length<3) return;
   addMsg("u",q); $("q").value=""; $("send").disabled=true;
-  const pend=addMsg("a","Searching the manuals…");
+  const pend=addMsg("a","Searching the manuals… (retrieval, answer and citation check usually take 10 to 30 s)"); pend.setAttribute("role","status");
   const r=await getJSON("/api/ask",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({question:q})}).catch(()=>({ok:false,data:null}));
   pend.remove();
   if(r.ok&&r.data&&r.data.status) renderAnswer(r.data);
-  else addMsg("a",(r.data&&typeof r.data.message==="string"&&r.data.message)||"Could not query the assistant.",true);
+  else addMsg("a",(r.data&&typeof r.data.message==="string"&&r.data.message)||"Could not query the assistant (no response from the server).",true);
+  loadHealth(true);
   $("send").disabled=false; $("q").focus();
 }
 $("ask").addEventListener("submit",(ev)=>{ ev.preventDefault(); ask($("q").value); });
@@ -444,16 +545,29 @@ SUG.forEach(t=>{ const b=el("button",{type:"button"},t); b.addEventListener("cli
 addMsg("a","Ask about procedures, intervals or symptoms. I answer only from the indexed PDFs, cite file and page, and remove statements the cited passages do not support.");
 
 /* ---------- startup ---------- */
+async function loadHealth(force){
+  const r=await getJSON("/api/health"+(force?"?t="+Date.now():"")).catch(()=>({ok:false}));
+  renderHealth(r.ok&&r.data?r.data:{services:{sql_warehouse:{status:"unknown",detail:"health endpoint unreachable"},search_index:{status:"unknown"},llm:{status:"unknown"}}});
+}
+function overviewFailed(o){
+  const chips=$("chips"); chips.replaceChildren();
+  const c=el("span",{class:"chip"}); c.append(el("span",{class:"dot err"}), document.createTextNode(o.status===503?"Data unavailable":"Could not read the status")); chips.append(c);
+  const svc=el("span",{id:"svc",style:"display:contents"}); chips.append(svc); renderHealth(state.health);
+  ["unc-u","unc-n","unc-t"].forEach(id=>$(id).textContent="Unavailable until the data source answers.");
+  $("lineage").replaceChildren(el("div",{class:"skel"},"Pipeline status unavailable"));
+}
 async function init(){
-  const [o,e]=await Promise.all([getJSON("/api/overview"),getJSON("/api/engines")]);
-  if(o.ok) renderOverview(o.data); else $("chips").replaceChildren(el("span",{class:"chip"},"Could not read the status"));
-  if(e.ok&&e.data){ state.engines=e.data.engines||[]; state.names=e.data.sensor_names||{}; }
-  renderFleet();
-  if(state.engines.length){ const w=[...state.engines].sort((a,b)=>a.rul_pred-b.rul_pred)[0]; select(w.unit); }
-  else { $("curve").replaceChildren(Object.assign(el("div",{class:"empty"}),{})); $("curve").firstChild.append(el("b",{},"No data"),document.createTextNode("The curve appears once there are predictions.")); }
+  const [o,e]=await Promise.all([getJSON("/api/overview").catch(()=>({ok:false,status:0,data:null})),getJSON("/api/engines").catch(()=>({ok:false,status:0,data:null}))]);
+  if(o.ok) renderOverview(o.data); else overviewFailed(o);
+  if(e.ok&&e.data){ state.engines=e.data.engines||[]; state.names=e.data.sensor_names||{}; state.sourceTable=e.data.source_table||null; state.dataError=null; banner(null); }
+  else { state.dataError=(e.data&&e.data.message)||"The prediction service did not respond."; banner(state.dataError+" No predictions are shown and none are estimated."); }
+  renderFilters(); renderFleet();
+  if(state.engines.length){ const w=[...state.engines].filter(x=>x.rul_pred!==null).sort((a,b)=>a.rul_pred-b.rul_pred)[0]; if(w) select(w.unit); else $("detail").replaceChildren(el("div",{class:"empty"},"No engine has a prediction.")); }
+  else { $("detail").replaceChildren(el("div",{class:"empty"},state.dataError?"No prediction available: the data source did not answer.":"No engine selected.")); $("curve").replaceChildren(el("div",{class:"empty"})); $("curve").firstChild.append(el("b",{},"No data"),document.createTextNode(state.dataError||"The curve appears once there are predictions.")); }
+  loadHealth(false);
 }
 init();
-setInterval(async()=>{ const o=await getJSON("/api/overview"); if(o.ok) renderOverview(o.data); },60000);
+setInterval(async()=>{ const o=await getJSON("/api/overview").catch(()=>({ok:false})); if(o.ok) renderOverview(o.data); loadHealth(false); },60000);
 </script>
 </body>
 </html>

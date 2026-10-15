@@ -1,0 +1,10 @@
+fastapi==0.143.0
+httpx==0.28.1
+numpy==2.5.3
+pandas==3.0.5
+pyarrow==25.0.1
+pyspark==4.2.0
+pytest==9.1.1
+PyYAML==6.0.3
+scikit-learn==1.9.1
+uvicorn==0.53.0

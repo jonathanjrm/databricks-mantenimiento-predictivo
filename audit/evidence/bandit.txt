@@ -1,0 +1,16 @@
+>> Issue: [B608:hardcoded_sql_expressions] Possible SQL injection vector through string-based query construction.	   Severity: Medium   Confidence: Low	   Location: app/app.py:223:10
+>> Issue: [B608:hardcoded_sql_expressions] Possible SQL injection vector through string-based query construction.	   Severity: Medium   Confidence: Low	   Location: app/app.py:231:18
+>> Issue: [B608:hardcoded_sql_expressions] Possible SQL injection vector through string-based query construction.	   Severity: Medium   Confidence: Low	   Location: app/app.py:236:14
+>> Issue: [B608:hardcoded_sql_expressions] Possible SQL injection vector through string-based query construction.	   Severity: Medium   Confidence: Low	   Location: app/app.py:245:60
+>> Issue: [B608:hardcoded_sql_expressions] Possible SQL injection vector through string-based query construction.	   Severity: Medium   Confidence: Low	   Location: app/app.py:251:27
+>> Issue: [B608:hardcoded_sql_expressions] Possible SQL injection vector through string-based query construction.	   Severity: Medium   Confidence: Low	   Location: app/app.py:332:14
+>> Issue: [B608:hardcoded_sql_expressions] Possible SQL injection vector through string-based query construction.	   Severity: Medium   Confidence: Low	   Location: app/app.py:393:27
+>> Issue: [B110:try_except_pass] Try, Except, Pass detected.	   Severity: Low   Confidence: High	   Location: app/rag.py:419:8
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.	   Severity: Low   Confidence: High	   Location: src/00_setup.py:99:4
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.	   Severity: Low   Confidence: High	   Location: src/02_train.py:90:0
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.	   Severity: Low   Confidence: High	   Location: src/02_train.py:98:0
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.	   Severity: Low   Confidence: High	   Location: src/03_score.py:69:0
+>> Issue: [B101:assert_used] Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.	   Severity: Low   Confidence: High	   Location: src/03_score.py:93:0
+>> Issue: [B608:hardcoded_sql_expressions] Possible SQL injection vector through string-based query construction.	   Severity: Medium   Confidence: Low	   Location: src/04_rag_index.py:114:10
+>> Issue: [B608:hardcoded_sql_expressions] Possible SQL injection vector through string-based query construction.	   Severity: Medium   Confidence: Low	   Location: src/07_eval_assistant.py:115:20
+>> Issue: [B324:hashlib] Use of weak SHA1 hash for security. Consider usedforsecurity=False	   Severity: High   Confidence: High	   Location: src/lib/chunking.py:67:11

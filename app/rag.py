@@ -10,6 +10,9 @@ Two configurations are kept side by side so before/after can be measured with on
 - ``v2``: multi-query retrieval fused with RRF, front-matter/TOC/index chunks filtered out,
   structured answer with an explicit status, and per-claim citation verification. Claims
   the verifier does not find supported are removed and reported, never rewritten.
+  Added after the dev-set review (2026-10-13): deterministic preservation of the source's conditions of
+  applicability (QUALIFIERS; a claim that drops "on centrifugal flow engines" becomes PARTIAL) and
+  removal of instruction-like text from passages and questions (treated as data).
 """
 from __future__ import annotations
 
@@ -197,7 +200,11 @@ Every claim must cite at least one passage that states it. Prefer few precise cl
 
 
 def build_context(chunks: list[dict]) -> str:
-    return "\n\n".join(f"[{i}] ({c['source']}, p. {c['page']})\n{c['text']}" for i, c in enumerate(chunks, 1))
+    parts = []
+    for i, c in enumerate(chunks, 1):
+        text, _removed = strip_instruction_like(c["text"])
+        parts.append(f"[{i}] ({c['source']}, p. {c['page']})\n{text}")
+    return "\n\n".join(parts)
 
 
 def _extract_json(raw: str, opener: str = "{") -> str:
@@ -271,14 +278,110 @@ _STOP = set("the a an of to in on for and or is are be by with as at from that t
             "can may must not no if when which their there these those than then".split())
 
 
+_DASHES = str.maketrans({"\u2010": "-", "\u2011": "-", "\u2012": "-", "\u2013": "-", "\u2014": "-", "\u00a0": " ", "\u202f": " "})
+
+
+def _norm(text: str) -> str:
+    return (text or "").translate(_DASHES).lower()
+
+
 def lexical_support(claim: str, passage: str) -> float:
     """Share of the claim's content words (English, >3 letters) present in the passage.
     Cheap deterministic signal used next to the LLM judge."""
-    words = [w for w in re.findall(r"[a-zA-Z][a-zA-Z\-]{3,}", claim.lower()) if w not in _STOP]
+    words = [w for w in re.findall(r"[a-zA-Z][a-zA-Z\-]{3,}", _norm(claim)) if w not in _STOP]
     if not words:
         return 0.0
-    p = passage.lower()
+    p = _norm(passage)
     return round(sum(1 for w in words if w in p) / len(words), 3)
+
+
+# Conditions of applicability stated by the source. Two kinds:
+# - scope: an engine type that opens a sentence ("On centrifugal flow engines, ..."; "In turboprop
+#   engines ..."), which applies to that sentence and to the following ones (up to 3);
+# - hedge: the sentence itself says the figures are typical or illustrative.
+# If the sentences that support a claim carry one of these and the claim does not, the claim is PARTIAL.
+# (label, kind, pattern in the source, pattern that must appear in the claim)
+QUALIFIERS = [
+    ("centrifugal flow engines", "scope", r"\bcentrifugal[- ]flow\b|\bcentrifugal (compressor|engine)s?\b", r"\bcentrifugal\b"),
+    ("axial flow engines", "scope", r"\baxial[- ]flow\b", r"\baxial\b"),
+    ("reciprocating engines", "scope", r"\breciprocating\b", r"\breciprocating\b|\bpiston\b"),
+    ("turboprop engines", "scope", r"\bturboprops?\b", r"\bturboprop"),
+    ("turboshaft engines", "scope", r"\bturboshafts?\b", r"\bturboshaft"),
+    ("APU", "scope", r"\bAPUs?\b|\bauxiliary power units?\b", r"\bAPU|\bauxiliary power"),
+    ("helicopters", "scope", r"\bhelicopters?\b", r"\bhelicopter"),
+    ("typical or illustrative values", "hedge", r"\btypical\b|\billustrative\b|\bfor illustrative purposes\b",
+     r"\btypical|\billustrat|\bexample|\bmanufacturer|\bindicative"),
+]
+_SCOPE_START = re.compile(r"^\s*(on|for|in|with|when (working )?on)\s", re.I)
+_SCOPE_LOOKBACK = 3
+_SCOPE_HEAD = 45          # characters of a scope-setting sentence in which the condition must appear
+_SENT_SPLIT = re.compile(r"(?<=[.!?])\s+")
+_SCOPE_LOOKBACK = 3
+_SCOPE_HEAD = 45          # characters of a scope-setting sentence in which the condition must appear
+
+
+def split_sentences(text: str) -> list[str]:
+    return [x.strip() for x in _SENT_SPLIT.split(" ".join((text or "").split())) if x.strip()]
+
+
+_WINDOW_MIN = {1: 0.34, 2: 0.45, 3: 0.5}
+
+
+def supporting_sentences(claim: str, passage: str, min_overlap: float = 0.34) -> list[int]:
+    """Indexes of the passage sentences that best support the claim: the window of 1 to 3
+    consecutive sentences with the highest lexical overlap (a claim often condenses several
+    sentences). Empty when no window reaches the minimum overlap for its size."""
+    sents = split_sentences(passage)
+    best, best_idx = 0.0, []
+    for size in (1, 2, 3):
+        for i in range(0, max(0, len(sents) - size + 1)):
+            sc = lexical_support(claim, " ".join(sents[i:i + size]))
+            if sc >= max(min_overlap, _WINDOW_MIN[size]) and sc > best + 1e-9:
+                best, best_idx = sc, list(range(i, i + size))
+    return best_idx
+
+
+def missing_qualifiers(claim: str, passage: str) -> list[str]:
+    """Conditions stated by the source for the sentences that support `claim` and absent from it."""
+    sents = split_sentences(passage)
+    idx = supporting_sentences(claim, passage)
+    if not idx:
+        return []
+    first = idx[0]
+    # scope-setting sentences: the supporting ones and up to 3 before the first of them
+    scope_heads = [x[:_SCOPE_HEAD] for x in sents[max(0, first - _SCOPE_LOOKBACK):idx[-1] + 1] if _SCOPE_START.match(x)]
+    support = " ".join(sents[i] for i in idx)
+    missing = []
+    for label, kind, src_pat, claim_pat in QUALIFIERS:
+        if kind == "scope":
+            present = any(re.search(src_pat, h, re.I) for h in scope_heads)
+        else:
+            present = bool(re.search(src_pat, support, re.I))
+        if present and not re.search(claim_pat, claim, re.I) and label not in missing:
+            missing.append(label)
+    return missing
+
+
+# Retrieved passages are data. Instruction-like text inside them (or inside the question) is
+# removed before it reaches the model, and the removal is recorded.
+_INSTRUCTION_LIKE = re.compile(
+    r"(ignore|disregard|forget|override)\s+(all\s+|the\s+|any\s+|your\s+)?(previous|prior|above|earlier|system)?\s*"
+    r"(instructions?|prompts?|rules|guidelines)|\bsystem prompt\b|\bprompt (del|de) sistema\b|\bprompt syst[èe]me\b|"
+    r"\byou are now\b|\bnew instructions?\s*:|\bimprime tu prompt\b|\bignora (todas )?las instrucciones\b|"
+    r"\bignore[sz]? (toutes )?les instructions\b|\brespond(?:e|s)? (only|solo|uniquement) with\b", re.I)
+
+
+_CLAUSE_SPLIT = re.compile(r"(?<=[.!?;])\s+|\s*,?\s+(?:and then|then|y (?:después|luego|a continuación)|"
+                           r"después|luego|et (?:ensuite|puis)|ensuite|puis)\s+", re.I)
+
+
+def strip_instruction_like(text: str) -> tuple[str, int]:
+    """Removes sentences or clauses that look like instructions to the model (passages and questions
+    are data). Returns (clean text, removed count). The original text is kept in the trace."""
+    parts = [x.strip() for x in _CLAUSE_SPLIT.split(" ".join((text or "").split())) if x and x.strip()]
+    keep = [x for x in parts if not _INSTRUCTION_LIKE.search(x)]
+    removed = len(parts) - len(keep)
+    return (" ".join(keep) if removed else (text or ""), removed)
 
 
 def verify_claims(claims: list[dict], chunks: list[dict], llm: Optional[LLM]) -> list[dict]:
@@ -291,7 +394,7 @@ def verify_claims(claims: list[dict], chunks: list[dict], llm: Optional[LLM]) ->
             r.update(verdict="NOT_SUPPORTED", reason="no valid citation", lexical=0.0)
             out.append(r)
             continue
-        passages = "\n\n".join(f"[{n}] {chunks[n - 1]['text']}" for n in valid)
+        passages = "\n\n".join(f"[{n}] {strip_instruction_like(chunks[n - 1]['text'])[0]}" for n in valid)
         r["lexical"] = lexical_support(c["text"], " ".join(chunks[n - 1]["text"] for n in valid))
         if llm is None:
             r.update(verdict="UNVERIFIED", reason="no judge")
@@ -308,6 +411,13 @@ def verify_claims(claims: list[dict], chunks: list[dict], llm: Optional[LLM]) ->
                         break
                 except Exception as e:
                     r["reason"] = f"judge error: {type(e).__name__}"
+        # Deterministic: a condition stated by the cited text must survive in the claim.
+        mq = missing_qualifiers(c["text"], " ".join(chunks[n - 1]["text"] for n in valid))
+        if mq:
+            r["missing_qualifiers"] = mq
+            if r["verdict"] == "SUPPORTED":
+                r.update(verdict="PARTIAL", reason=(r.get("reason", "") + " | deterministic check: the source "
+                                                    f"limits this to {', '.join(mq)}").strip(" |"))
         out.append(r)
     return out
 
@@ -340,11 +450,31 @@ def assess_coverage(question: str, chunks: list[dict], llm: LLM) -> dict:
 # Questions that ask for engine-specific numbers or schedules: the handbook only shows typical
 # examples, so these always go to the manufacturer's documentation.
 _NUMERIC_REQUEST = re.compile(
-    r"(l[ií]mite|limit|toleranc|holgura|clearance|par de apriete|torque|intervalo|interval|"
-    r"cada cu[aá]nt|how often|how many (hours|cycles)|valor exacto|exact (value|limit)|dimensi)", re.I)
+    r"(l[ií]mite|limit|toleranc|tol[ée]rance|holgura|clearance|\bjeu\b|par de apriete|torque|couple de serrage|"
+    r"intervalo|interval|cada cu[aá]nt|tous les combien|how often|how many (flight )?(hours|cycles)|"
+    r"combien d['e] ?(heures|cycles)|valor exacto|exact (value|limit)|valeur exacte|dimensi|"
+    r"profondeur (maximale|admissible)|maximum allowable|allowable (depth|nick)|red ?line|"
+    # a question that asks for a quantity ("what depth ...", "quelle pression ...", "cuál es la presión ...")
+    r"\b(what|which|cu[aá]l(es)?|cu[aá]nt[oa]s?|quel(le)?s?|combien)\b[^?]{0,40}\b(depth|profundidad|profondeur|"
+    r"pressure|presi[oó]n|pression|clearance|rpm|speed|velocidad|vitesse|voltage|voltaje|thickness|espesor|"
+    r"[ée]paisseur|diameter|di[aá]metro|diam[èe]tre|radius|radio|rayon|gap|weight|peso|poids|setting|ajuste|"
+    r"r[ée]glage)\b)", re.I)
 _NUMBER_WITH_UNIT = re.compile(
-    r"\d+(\s*/\s*\d+)?\s*(in\b|inch|inches|\"|mm|cm|lb|ft-lb|in-lb|nm|psi|°|deg|rpm|hours|cycles|%)"
-    r"|\b\d+/\d+\b|\b0?\.\d{2,}\b", re.I)
+    r"\d+(\s*/\s*\d+)?[\s-]*(in\b|inch|inches|\"|mm|cm|lbs?\b|ft-?lbs?|in-?lbs?|nm\b|n·m|psi|°|º|deg|rpm|hours|cycles|%)"
+    r"|\b\d+/\d+\b|(?<![\d.])0?\.\d{2,}\b", re.I)
+
+
+# Named engine models (families from the main manufacturers). A question about one of them asks for
+# that engine's data: the handbook only has generic or typical values, so numbers are withheld.
+_ENGINE_MODEL = re.compile(
+    r"\b(CFM ?56|CFM ?LEAP|LEAP(-| )?1[ABC]?|PW ?\d{3,4}[A-Z]?(-\d+)?|PW ?1\d{3}G(-JM)?|JT ?\d[A-Z]?D?(-\d+)?|"
+    r"V ?2500|Trent ?\d{3,4}|RB ?211|GE ?90|GEnx|GE ?9X|CF ?6|CF ?34|GP ?7\d{3}|TFE ?731|PT ?6[A-Z]?|TPE ?331|"
+    r"AE ?[123]\d{3}|BR ?7\d{2}|Passport ?20|Pearl ?\d{3}|HTF ?7\d{3}|T ?700|CT ?7|Arriel|Makila|M88|F ?110|"
+    r"F ?135|LM ?\d{4}|Olympus|Tay ?6\d{2}|Spey|Dart|Allison ?\d{3}|Lycoming ?[IO]{1,2}-?\d{3}|Continental ?[IO]{1,2}-?\d{3})\b", re.I)
+
+
+def mentions_engine_model(question: str) -> bool:
+    return bool(_ENGINE_MODEL.search(question or ""))
 
 
 def asks_for_specific_values(question: str) -> bool:
@@ -352,7 +482,7 @@ def asks_for_specific_values(question: str) -> bool:
 
 
 def states_specific_values(text: str) -> bool:
-    return bool(_NUMBER_WITH_UNIT.search(text or ""))
+    return bool(_NUMBER_WITH_UNIT.search(_norm(text)))
 
 
 # ---------------------------------------------------------------------------
@@ -382,13 +512,21 @@ class Answer:
 def answer(question: str, llm: LLM, search: Search, config: str = "v2",
            judge: Optional[LLM] = None, kinds: Optional[dict] = None) -> Answer:
     cfg = CONFIGS[config]
-    queries = rewrite_queries(question, llm, cfg["multi_query"])
+    adjustments: list = []
+    q_model = question
+    if cfg["structured"]:
+        cleaned, n_removed = strip_instruction_like(question)
+        if n_removed and len(cleaned) >= 10:
+            q_model = cleaned
+            adjustments.append(f"question: {n_removed} instruction-like sentence(s) removed before the model "
+                               "(passages and questions are data, not instructions)")
+    queries = rewrite_queries(q_model, llm, cfg["multi_query"])
     chunks, trace = retrieve(queries, search, cfg, kinds)
     if not chunks:
         return Answer(config, question, queries, trace, [], "not_found",
-                      "No relevant passage was retrieved.", [])
-    g = generate(question, chunks, llm, cfg)
-    claims, removed, adjustments = g["claims"], [], []
+                      "No relevant passage was retrieved.", [], adjustments=adjustments)
+    g = generate(q_model, chunks, llm, cfg)
+    claims, removed = g["claims"], []
     status, summary, gaps = g["status"], g["summary"], g["gaps"]
     coverage: dict = {}
     if cfg["verify"]:
@@ -398,22 +536,32 @@ def answer(question: str, llm: LLM, search: Search, config: str = "v2",
         claims = [c for c in checked if c["verdict"] in ("SUPPORTED", "PARTIAL")]
         removed = [c for c in checked if c["verdict"] not in ("SUPPORTED", "PARTIAL")]
         # 2. Engine-specific numbers are not given as instructions (handbook values are typical examples).
-        if asks_for_specific_values(question):
+        numeric_q, model_q = asks_for_specific_values(q_model), mentions_engine_model(q_model)
+        if numeric_q or model_q:
             keep = []
             for c in claims:
                 if states_specific_values(c["text"]):
                     removed.append({**c, "verdict": "WITHHELD",
-                                    "reason": "states specific numeric values; use the manufacturer's data"})
+                                    "reason": "states specific numeric values; use the manufacturer's data"
+                                              + (" (question names an engine model)" if model_q and not numeric_q else "")})
                 else:
                     keep.append(c)
+            withheld = len(claims) - len(keep)
             claims = keep
-            if status not in ("not_found", "requires_manufacturer_documentation"):
-                adjustments.append(f"status {status} -> requires_manufacturer_documentation: the question "
-                                   "asks for specific limits, values or intervals")
+            if summary and states_specific_values(summary):
+                removed.append({"text": summary, "citations": [], "verdict": "WITHHELD",
+                                "reason": "summary states specific numeric values; use the manufacturer's data"})
+                adjustments.append("summary hidden: states specific numeric values")
+                summary = ""
+                withheld += 1
+            if status not in ("not_found", "requires_manufacturer_documentation") and (numeric_q or withheld):
+                why = ("asks for specific limits, values or intervals" if numeric_q
+                       else "names an engine model and the answer stated numeric values")
+                adjustments.append(f"status {status} -> requires_manufacturer_documentation: the question {why}")
                 status = "requires_manufacturer_documentation"
         # 3. Does the retrieved text cover the specific subject or only a general one?
         if status != "not_found":
-            coverage = assess_coverage(question, chunks, j)
+            coverage = assess_coverage(q_model, chunks, j)
             if status == "answered" and coverage["coverage"] in ("general_only", "none"):
                 adjustments.append(f"status answered -> insufficient_evidence: coverage check = "
                                    f"{coverage['coverage']} ({coverage['explanation']})")

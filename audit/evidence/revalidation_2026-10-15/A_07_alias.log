@@ -1,0 +1,28 @@
+INICIO
+Error: unknown command "get-by-alias" for "databricks registered-models"
+
+Usage:
+  databricks registered-models [flags]
+  databricks registered-models [command]
+
+Available Commands:
+  create       Create a Registered Model.
+  delete       Delete a Registered Model.
+  delete-alias Delete a Registered Model Alias.
+  get          Get a Registered Model.
+  list         List Registered Models.
+  set-alias    Set a Registered Model Alias.
+  update       Update a Registered Model.
+
+Flags:
+  -h, --help   help for registered-models
+
+Global Flags:
+      --debug            enable debug logging
+  -o, --output type      output type: text or json (default text)
+  -p, --profile string   ~/.databrickscfg profile
+  -t, --target string    bundle target to use (if applicable)
+
+Use "databricks registered-models [command] --help" for more information about a command.
+
+EXIT=1

@@ -1,0 +1,18 @@
+WARNING  maintenance:app.py:132 query gold_predicciones failed: SQL syntax error
+WARNING  maintenance:app.py:132 query gold_predicciones failed: socket timeout
+WARNING  maintenance:app.py:132 query gold_predicciones failed: warehouse unreachable
+WARNING  maintenance:app.py:132 query gold_predicciones failed: cannot convert float NaN to integer
+WARNING  maintenance:app.py:132 query bronze_cmapss_lecturas failed: slow
+WARNING  maintenance:app.py:132 query silver_lecturas failed: slow
+WARNING  maintenance:app.py:132 query gold_features failed: slow
+FAILED tests/test_negative_api.py::test_fallo_de_sql_es_503_explicito_sin_datos_inventados[exc0]
+FAILED tests/test_negative_api.py::test_fallo_de_sql_es_503_explicito_sin_datos_inventados[exc1]
+FAILED tests/test_negative_api.py::test_fallo_de_sql_es_503_explicito_sin_datos_inventados[exc2]
+FAILED tests/test_negative_api.py::test_el_conector_sql_lleva_timeout - asser...
+FAILED tests/test_negative_api.py::test_fila_sin_prediccion_no_se_rellena_con_cero
+FAILED tests/test_negative_api.py::test_metricas_de_otra_version_no_se_muestran
+FAILED tests/test_negative_api.py::test_fallo_parcial_auxiliar_se_declara_en_errors
+FAILED tests/test_negative_api.py::test_motor_no_numerico_422_y_motor_inexistente_404
+FAILED tests/test_negative_api.py::test_pregunta_mal_formada_422_sin_llamar_al_asistente[body3]
+FAILED tests/test_negative_api.py::test_app_no_llama_al_endpoint_de_serving_ni_tiene_fallback_numerico
+10 failed, 15 passed, 1 warning in 0.45s

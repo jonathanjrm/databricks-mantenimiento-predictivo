@@ -1,0 +1,6 @@
+ruff ruff 0.16.8 2026-10-14T22:18:12Z
+8	B905	[ ] zip-without-explicit-strict
+7	F401	[*] unused-import
+Found 15 errors.
+[*] 7 fixable with the `--fix` option (8 hidden fixes can be enabled with the `--unsafe-fixes` option).
+exit=1

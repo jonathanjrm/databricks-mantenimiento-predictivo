@@ -1,0 +1,82 @@
+{
+ "model_versions": [
+  {
+   "model_name": "rul_model",
+   "catalog_name": "workspace",
+   "schema_name": "mantenimiento",
+   "source": "models:/m-bb2ee37b7527445883119ee18ebfd0f3",
+   "run_id": "4688ee42eda5469fac3414ee8c3cf199",
+   "run_workspace_id": <workspace-id>,
+   "tags": [
+    {
+     "key": "dataset",
+     "value": "C-MAPSS FD001"
+    },
+    {
+     "key": "rmse_test",
+     "value": "18.4418"
+    }
+   ],
+   "status": "READY",
+   "version": 1,
+   "storage_location": "<storage-location-redacted>",
+   "metastore_id": "<redacted>",
+   "created_at": 1791917205393,
+   "created_by": "<owner>",
+   "updated_at": 1791917207051,
+   "updated_by": "<owner>",
+   "id": "51ef6201-2164-4a02-8b27-017966d93571",
+   "etag": "CAESCAAAAaE2lq4L",
+   "model_id": "m-bb2ee37b7527445883119ee18ebfd0f3",
+   "model_params": [
+    {
+     "name": "n_features",
+     "value": "85"
+    },
+    {
+     "name": "n_train_rows",
+     "value": "20631"
+    },
+    {
+     "name": "rul_clip",
+     "value": "125"
+    }
+   ],
+   "model_metrics": [
+    {
+     "key": "mae_test",
+     "value": 13.478027648560577,
+     "timestamp": 1791917196697,
+     "step": 0,
+     "model_id": "m-bb2ee37b7527445883119ee18ebfd0f3",
+     "run_id": "4688ee42eda5469fac3414ee8c3cf199"
+    },
+    {
+     "key": "phm08_test",
+     "value": 655.0239471190539,
+     "timestamp": 1791917196697,
+     "step": 0,
+     "model_id": "m-bb2ee37b7527445883119ee18ebfd0f3",
+     "run_id": "4688ee42eda5469fac3414ee8c3cf199"
+    },
+    {
+     "key": "rmse_mejor_baseline",
+     "value": 21.796289834949274,
+     "timestamp": 1791917196697,
+     "step": 0,
+     "model_id": "m-bb2ee37b7527445883119ee18ebfd0f3",
+     "run_id": "4688ee42eda5469fac3414ee8c3cf199"
+    },
+    {
+     "key": "rmse_test",
+     "value": 18.441849882005343,
+     "timestamp": 1791917196697,
+     "step": 0,
+     "model_id": "m-bb2ee37b7527445883119ee18ebfd0f3",
+     "run_id": "4688ee42eda5469fac3414ee8c3cf199"
+    }
+   ]
+  }
+ ],
+ "next_page_token": "eyJpZCI6IjUxZWY2MjAxLTIxNjQtNGEwMi04YjI3LTAxNzk2NmQ5MzU3MSIsInZuIjoiMSJ9"
+}

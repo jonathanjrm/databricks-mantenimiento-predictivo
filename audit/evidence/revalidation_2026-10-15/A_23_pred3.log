@@ -1,0 +1,3 @@
+INICIO
+Error: Cannot start warehouse 'Serverless Starter Warehouse' with Serverless Compute since it is disabled in global warehouse config. To use the warehouse, please contact your administrator.
+EXIT=1

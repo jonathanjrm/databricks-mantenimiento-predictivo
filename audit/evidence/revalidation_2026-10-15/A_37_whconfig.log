@@ -1,0 +1,24 @@
+INICIO
+{
+  "security_policy": "DATA_ACCESS_CONTROL",
+  "enable_serverless_compute": true,
+  "sql_configuration_parameters": {
+    "configuration_pairs": [
+      {
+        "key": "ansi_mode",
+        "value": "true"
+      }
+    ]
+  },
+  "enabled_warehouse_types": [
+    {
+      "warehouse_type": "CLASSIC",
+      "enabled": true
+    },
+    {
+      "warehouse_type": "PRO",
+      "enabled": true
+    }
+  ]
+}
+EXIT=0

@@ -1,0 +1,63 @@
+INICIO
+{
+  "statement_id": "01f1c81d-d642-11ba-adf2-57343aaf99a1",
+  "status": {
+    "state": "SUCCEEDED"
+  },
+  "manifest": {
+    "format": "JSON_ARRAY",
+    "schema": {
+      "column_count": 4,
+      "columns": [
+        {
+          "name": "n_rows",
+          "type_text": "BIGINT",
+          "type_name": "LONG",
+          "position": 0
+        },
+        {
+          "name": "bad_raw",
+          "type_text": "BIGINT",
+          "type_name": "LONG",
+          "position": 1
+        },
+        {
+          "name": "bad_clip",
+          "type_text": "BIGINT",
+          "type_name": "LONG",
+          "position": 2
+        },
+        {
+          "name": "n_clipped",
+          "type_text": "BIGINT",
+          "type_name": "LONG",
+          "position": 3
+        }
+      ]
+    },
+    "total_chunk_count": 1,
+    "chunks": [
+      {
+        "chunk_index": 0,
+        "row_offset": 0,
+        "row_count": 1
+      }
+    ],
+    "total_row_count": 1,
+    "truncated": false
+  },
+  "result": {
+    "chunk_index": 0,
+    "row_offset": 0,
+    "row_count": 1,
+    "data_array": [
+      [
+        "20631",
+        "0",
+        "0",
+        "8131"
+      ]
+    ]
+  }
+}
+EXIT=0

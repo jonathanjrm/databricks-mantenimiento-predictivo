@@ -1,0 +1,63 @@
+{
+ "captured_at": "2026-10-14T22:3xZ",
+ "how": "POST /api/ask from the authenticated built-in browser session on the deployed dev app (app code = PC copy, deployed A_52)",
+ "q1": {
+  "question": "¿Cuál es el procedimiento de inspección del compresor de alta presión (HPC)?",
+  "status_http": 200,
+  "latency_ms": 11660,
+  "state": "not_found",
+  "summary": "The provided passages do not describe an inspection procedure for the high-pressure compressor (HPC).",
+  "claims_shown": 0,
+  "removed_claims": 0,
+  "gaps": "No information on HPC inspection steps or methods is present in the passages.",
+  "trace_queries": [
+   "What is the inspection procedure for the high-pressure compressor (HPC)?",
+   "HPC inspection procedure",
+   "compressor section inspection",
+   "<original>"
+  ],
+  "sources_top": [
+   [
+    "2008_IEEEPHM_CMAPPSDamagePropagation.pdf",
+    3
+   ],
+   [
+    "2008_IEEEPHM_CMAPPSDamagePropagation.pdf",
+    7
+   ],
+   [
+    "amt_powerplant_handbook.pdf",
+    375
+   ],
+   [
+    "amt_powerplant_handbook.pdf",
+    394
+   ],
+   [
+    "amt_powerplant_handbook.pdf",
+    475
+   ]
+  ],
+  "assessment": "abstains; no HPC-specific procedure invented (C2 mandatory case holds on the deployed app)"
+ },
+ "q2": {
+  "question": "What is a borescope used for in turbine engine inspection?",
+  "status_http": 200,
+  "latency_ms": 10520,
+  "state": "answered",
+  "summary": "A borescope is an inspection tool used to view the interior of a turbine engine without disassembly.",
+  "claims_shown": [
+   {
+    "text": "A borescope is an inspection tool for viewing the inside of a turbine engine without disassembling it; it consists of a light, mirror, and magnifying lens mount...",
+    "verdict": "SUPPORTED",
+    "citation": "[2]"
+   }
+  ],
+  "source_2": [
+   "amt_powerplant_handbook.pdf",
+   462,
+   "glossary page"
+  ],
+  "assessment": "one supported claim citing source 2 (handbook p.462, glossary 'Borescope'); matches the page located by hand in 03_RAG_VALIDATION"
+ }
+}

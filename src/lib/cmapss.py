@@ -246,6 +246,28 @@ def phm08_score(y_true, y_pred) -> float:
     return float(np.sum(np.where(d < 0, np.exp(-d / 13.0) - 1.0, np.exp(d / 10.0) - 1.0)))
 
 
+def validate_feature_frame(X: pd.DataFrame, columns: Iterable[str]) -> None:
+    """Rejects input that the model must not score: missing columns, NaN/inf, cycle < 1, empty frame.
+
+    The served model (HistGradientBoosting) accepts NaN natively and would return a number even
+    for an all-null row (verified on the endpoint, see audit/02_MODEL_VALIDATION.md). Scoring code
+    must therefore validate before calling it, so that a missing sensor is an explicit error
+    and not a silent prediction.
+    """
+    cols = list(columns)
+    if len(X) == 0:
+        raise ValueError("no rows to score")
+    missing = [c for c in cols if c not in X.columns]
+    if missing:
+        raise ValueError(f"missing feature columns: {missing[:5]}")
+    vals = X[cols].to_numpy(dtype=float, na_value=np.nan)
+    if not np.isfinite(vals).all():
+        bad = [c for c, ok in zip(cols, np.isfinite(vals).all(axis=0)) if not ok]
+        raise ValueError(f"null or non-finite values in: {bad[:5]}")
+    if (X["cycle"].to_numpy(dtype=float) < 1).any():
+        raise ValueError("cycle must be >= 1")
+
+
 STATES = ("critical", "watch", "healthy")
 _LEGACY_STATES = {"critico": "critical", "vigilar": "watch", "sano": "healthy"}
 
@@ -266,18 +288,25 @@ def normalize_state(state: str) -> str:
 
 
 def recommended_action(state: str, rul: float, sensors: Iterable[str] = ()) -> str:
-    """Generic recommended action text for an engine, from its state, RUL and top sensors."""
+    """Advisory text for an engine, from its state, estimated RUL and top sensors.
+
+    It is a statistical estimate from an experimental demo model, not a maintenance order:
+    every text says that engineering review is required and none of them instructs a
+    shutdown or replacement. The model's uncertainty is not calibrated (no prediction
+    intervals); the typical error is only the test RMSE shown in the app.
+    """
     n = int(round(max(float(rul), 0.0)))
     sens = [s for s in sensors if s][:2]
     state = normalize_state(state)
+    head = "Demo estimate; requires engineering review. "
     if state == "critical":
-        txt = f"Schedule shutdown and replacement within {n} cycles."
+        txt = head + f"Estimated RUL is low (about {n} cycles): consider prioritising an inspection."
         if sens:
-            txt += " Inspect " + " and ".join(sens) + " now."
+            txt += " Sensors to check first: " + " and ".join(sens) + "."
         return txt
     if state == "watch":
-        return f"Increase inspection frequency and plan the intervention within the {n}-cycle window."
-    return "Normal operation. Keep the usual maintenance plan."
+        return head + f"Estimated RUL is moderate (about {n} cycles): consider closer monitoring and planning an inspection."
+    return head + "No degradation flagged by the model; keep the usual maintenance plan."
 
 
 def occlusion_contributions(predict_fn, X: pd.DataFrame, baseline: pd.Series,

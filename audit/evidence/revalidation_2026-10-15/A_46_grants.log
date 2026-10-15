@@ -1,0 +1,69 @@
+INICIO
+{
+  "statement_id": "01f1c81d-db6e-15b9-b64a-8dc6e92a06b1",
+  "status": {
+    "state": "SUCCEEDED"
+  },
+  "manifest": {
+    "format": "JSON_ARRAY",
+    "schema": {
+      "column_count": 4,
+      "columns": [
+        {
+          "name": "Principal",
+          "type_text": "STRING",
+          "type_name": "STRING",
+          "position": 0
+        },
+        {
+          "name": "ActionType",
+          "type_text": "STRING",
+          "type_name": "STRING",
+          "position": 1
+        },
+        {
+          "name": "ObjectType",
+          "type_text": "STRING",
+          "type_name": "STRING",
+          "position": 2
+        },
+        {
+          "name": "ObjectKey",
+          "type_text": "STRING",
+          "type_name": "STRING",
+          "position": 3
+        }
+      ]
+    },
+    "total_chunk_count": 1,
+    "chunks": [
+      {
+        "chunk_index": 0,
+        "row_offset": 0,
+        "row_count": 2
+      }
+    ],
+    "total_row_count": 2,
+    "truncated": false
+  },
+  "result": {
+    "chunk_index": 0,
+    "row_offset": 0,
+    "row_count": 2,
+    "data_array": [
+      [
+        "d19896a0-f963-4a5d-9251-00460f6815ae",
+        "SELECT",
+        "SCHEMA",
+        "workspace.mantenimiento"
+      ],
+      [
+        "d19896a0-f963-4a5d-9251-00460f6815ae",
+        "USE SCHEMA",
+        "SCHEMA",
+        "workspace.mantenimiento"
+      ]
+    ]
+  }
+}
+EXIT=0

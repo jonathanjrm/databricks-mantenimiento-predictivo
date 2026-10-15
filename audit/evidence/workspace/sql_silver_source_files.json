@@ -1,0 +1,67 @@
+{
+ "statement_id": "01f1c750-1fe7-1c2c-91c7-284026afc5e3",
+ "status": {
+  "state": "SUCCEEDED"
+ },
+ "manifest": {
+  "format": "JSON_ARRAY",
+  "schema": {
+   "column_count": 4,
+   "columns": [
+    {
+     "name": "split",
+     "type_text": "STRING",
+     "type_name": "STRING",
+     "position": 0
+    },
+    {
+     "name": "_source_file",
+     "type_text": "STRING",
+     "type_name": "STRING",
+     "position": 1
+    },
+    {
+     "name": "n",
+     "type_text": "BIGINT",
+     "type_name": "LONG",
+     "position": 2
+    },
+    {
+     "name": "u",
+     "type_text": "BIGINT",
+     "type_name": "LONG",
+     "position": 3
+    }
+   ]
+  },
+  "total_chunk_count": 1,
+  "chunks": [
+   {
+    "chunk_index": 0,
+    "row_offset": 0,
+    "row_count": 2
+   }
+  ],
+  "total_row_count": 2,
+  "truncated": false
+ },
+ "result": {
+  "chunk_index": 0,
+  "row_offset": 0,
+  "row_count": 2,
+  "data_array": [
+   [
+    "test",
+    "/Volumes/workspace/mantenimiento/raw/cmapss/test_FD001.txt",
+    "13096",
+    "100"
+   ],
+   [
+    "train",
+    "/Volumes/workspace/mantenimiento/raw/cmapss/train_FD001.txt",
+    "20631",
+    "100"
+   ]
+  ]
+ }
+}

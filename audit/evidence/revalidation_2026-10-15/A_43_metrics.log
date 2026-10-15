@@ -1,0 +1,102 @@
+INICIO
+{
+  "statement_id": "01f1c81d-d840-1e49-98d1-a4359151c18e",
+  "status": {
+    "state": "SUCCEEDED"
+  },
+  "manifest": {
+    "format": "JSON_ARRAY",
+    "schema": {
+      "column_count": 7,
+      "columns": [
+        {
+          "name": "trained_at",
+          "type_text": "TIMESTAMP",
+          "type_name": "TIMESTAMP",
+          "position": 0
+        },
+        {
+          "name": "model_version",
+          "type_text": "INT",
+          "type_name": "INT",
+          "position": 1
+        },
+        {
+          "name": "model_type",
+          "type_text": "STRING",
+          "type_name": "STRING",
+          "position": 2
+        },
+        {
+          "name": "rmse_test",
+          "type_text": "DOUBLE",
+          "type_name": "DOUBLE",
+          "position": 3
+        },
+        {
+          "name": "mae_test",
+          "type_text": "DOUBLE",
+          "type_name": "DOUBLE",
+          "position": 4
+        },
+        {
+          "name": "phm08_test",
+          "type_text": "DOUBLE",
+          "type_name": "DOUBLE",
+          "position": 5
+        },
+        {
+          "name": "promoted_to_champion",
+          "type_text": "BOOLEAN",
+          "type_name": "BOOLEAN",
+          "position": 6
+        }
+      ]
+    },
+    "total_chunk_count": 1,
+    "chunks": [
+      {
+        "chunk_index": 0,
+        "row_offset": 0,
+        "row_count": 3
+      }
+    ],
+    "total_row_count": 3,
+    "truncated": false
+  },
+  "result": {
+    "chunk_index": 0,
+    "row_offset": 0,
+    "row_count": 3,
+    "data_array": [
+      [
+        "2026-10-13T18:46:48.808Z",
+        null,
+        "baseline_media",
+        "43.06703554245684",
+        "35.9",
+        "33629.230598368384",
+        "false"
+      ],
+      [
+        "2026-10-13T18:46:48.808Z",
+        null,
+        "baseline_ridge",
+        "21.796289834949274",
+        "16.81347235209967",
+        "1073.3844090930604",
+        "false"
+      ],
+      [
+        "2026-10-13T18:46:48.808Z",
+        "1",
+        "hist_gradient_boosting",
+        "18.441849882005343",
+        "13.478027648560577",
+        "655.0239471190539",
+        "true"
+      ]
+    ]
+  }
+}
+EXIT=0

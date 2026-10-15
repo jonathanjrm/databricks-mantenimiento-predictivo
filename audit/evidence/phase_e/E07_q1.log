@@ -1,0 +1,119 @@
+INICIO
+{
+  "statement_id": "01f1c76a-2f8d-1f8c-9317-3d4b0a0d4f01",
+  "status": {
+    "state": "SUCCEEDED"
+  },
+  "manifest": {
+    "format": "JSON_ARRAY",
+    "schema": {
+      "column_count": 12,
+      "columns": [
+        {
+          "name": "n",
+          "type_text": "BIGINT",
+          "type_name": "LONG",
+          "position": 0
+        },
+        {
+          "name": "s0",
+          "type_text": "TIMESTAMP",
+          "type_name": "TIMESTAMP",
+          "position": 1
+        },
+        {
+          "name": "s1",
+          "type_text": "TIMESTAMP",
+          "type_name": "TIMESTAMP",
+          "position": 2
+        },
+        {
+          "name": "v",
+          "type_text": "BIGINT",
+          "type_name": "LONG",
+          "position": 3
+        },
+        {
+          "name": "a0",
+          "type_text": "STRING",
+          "type_name": "STRING",
+          "position": 4
+        },
+        {
+          "name": "uc",
+          "type_text": "DOUBLE",
+          "type_name": "DOUBLE",
+          "position": 5
+        },
+        {
+          "name": "uv",
+          "type_text": "DOUBLE",
+          "type_name": "DOUBLE",
+          "position": 6
+        },
+        {
+          "name": "rmse",
+          "type_text": "DOUBLE",
+          "type_name": "DOUBLE",
+          "position": 7
+        },
+        {
+          "name": "n30",
+          "type_text": "BIGINT",
+          "type_name": "LONG",
+          "position": 8
+        },
+        {
+          "name": "bias30",
+          "type_text": "DOUBLE",
+          "type_name": "DOUBLE",
+          "position": 9
+        },
+        {
+          "name": "rmse30",
+          "type_text": "DOUBLE",
+          "type_name": "DOUBLE",
+          "position": 10
+        },
+        {
+          "name": "over30",
+          "type_text": "BIGINT",
+          "type_name": "LONG",
+          "position": 11
+        }
+      ]
+    },
+    "total_chunk_count": 1,
+    "chunks": [
+      {
+        "chunk_index": 0,
+        "row_offset": 0,
+        "row_count": 1
+      }
+    ],
+    "total_row_count": 1,
+    "truncated": false
+  },
+  "result": {
+    "chunk_index": 0,
+    "row_offset": 0,
+    "row_count": 1,
+    "data_array": [
+      [
+        "100",
+        "2026-10-14T00:52:37.948Z",
+        "2026-10-14T00:52:37.948Z",
+        "1",
+        "Demo estimate; requires engineering review. Estimated RUL is low (about 11 cycles): consider prioritising an inspection. Sensors to check first: s4 and s11.",
+        "20.0",
+        "35.0",
+        "18.4417",
+        "25",
+        "5.5",
+        "14.31",
+        "14"
+      ]
+    ]
+  }
+}
+EXIT=0

@@ -1,0 +1,15 @@
+app/app.py:108:54: B905 `zip()` without an explicit `strict=` parameter
+scripts/demo_local.py:49:80: B905 `zip()` without an explicit `strict=` parameter
+src/02_train.py:26:17: F401 [*] `numpy` imported but unused
+src/02_train.py:27:18: F401 [*] `pandas` imported but unused
+src/05_eval_rag.py:36:18: F401 [*] `pandas` imported but unused
+src/07_eval_assistant.py:210:17: B905 `zip()` without an explicit `strict=` parameter
+src/lib/cmapss.py:83:22: B905 `zip()` without an explicit `strict=` parameter
+src/lib/cmapss.py:265:31: B905 `zip()` without an explicit `strict=` parameter
+src/lib/retrieval.py:35:75: B905 `zip()` without an explicit `strict=` parameter
+src/lib/retrieval.py:37:64: B905 `zip()` without an explicit `strict=` parameter
+src/pipeline/silver.py:14:38: F401 [*] `pyspark.sql.functions` imported but unused
+tests/test_spark_equivalence.py:7:8: F401 [*] `tempfile` imported but unused
+tests/test_spark_equivalence.py:10:18: F401 [*] `pandas` imported but unused
+Found 13 errors.
+[*] 6 fixable with the `--fix` option (7 hidden fixes can be enabled with the `--unsafe-fixes` option).

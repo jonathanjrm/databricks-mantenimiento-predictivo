@@ -1,0 +1,85 @@
+INICIO
+{
+  "statement_id": "01f1c81d-bd06-18c7-a30b-94c4b19cc291",
+  "status": {
+    "state": "SUCCEEDED"
+  },
+  "manifest": {
+    "format": "JSON_ARRAY",
+    "schema": {
+      "column_count": 2,
+      "columns": [
+        {
+          "name": "t",
+          "type_text": "STRING",
+          "type_name": "STRING",
+          "position": 0
+        },
+        {
+          "name": "n",
+          "type_text": "BIGINT",
+          "type_name": "LONG",
+          "position": 1
+        }
+      ]
+    },
+    "total_chunk_count": 1,
+    "chunks": [
+      {
+        "chunk_index": 0,
+        "row_offset": 0,
+        "row_count": 10
+      }
+    ],
+    "total_row_count": 10,
+    "truncated": false
+  },
+  "result": {
+    "chunk_index": 0,
+    "row_offset": 0,
+    "row_count": 10,
+    "data_array": [
+      [
+        "silver_lecturas_train",
+        "20631"
+      ],
+      [
+        "silver_lecturas_test",
+        "13096"
+      ],
+      [
+        "silver_units_train",
+        "100"
+      ],
+      [
+        "silver_units_test",
+        "100"
+      ],
+      [
+        "bronze_cmapss_lecturas",
+        "33727"
+      ],
+      [
+        "gold_features",
+        "33727"
+      ],
+      [
+        "gold_test_verdad",
+        "100"
+      ],
+      [
+        "gold_predicciones",
+        "100"
+      ],
+      [
+        "gold_model_metrics",
+        "3"
+      ],
+      [
+        "silver_rul_test",
+        "100"
+      ]
+    ]
+  }
+}
+EXIT=0

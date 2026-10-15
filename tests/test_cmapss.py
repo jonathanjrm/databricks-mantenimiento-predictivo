@@ -177,7 +177,32 @@ def test_occlusion_contributions_modelo_lineal():
 def test_normalize_state_y_accion():
     assert [C.normalize_state(s) for s in ("critico", "vigilar", "sano", "watch")] == ["critical", "watch", "healthy", "watch"]
     a = C.recommended_action("critico", 12.4, ["s4", "s11", "s2"])
-    assert a == "Schedule shutdown and replacement within 12 cycles. Inspect s4 and s11 now."
-    assert "within the 30-cycle window" in C.recommended_action("watch", 30.0)
-    assert C.recommended_action("healthy", 90).startswith("Normal operation")
-    assert C.recommended_action("critical", -3, []) == "Schedule shutdown and replacement within 0 cycles."
+    assert a == ("Demo estimate; requires engineering review. Estimated RUL is low (about 12 cycles): "
+                 "consider prioritising an inspection. Sensors to check first: s4 and s11.")
+    assert "about 30 cycles" in C.recommended_action("watch", 30.0)
+    assert "No degradation flagged" in C.recommended_action("healthy", 90)
+    assert "about 0 cycles" in C.recommended_action("critical", -3, [])
+
+
+def test_acciones_son_orientativas_y_sin_ordenes_categoricas():
+    prohibidas = ("shutdown", "replace", "replacement", "now.", "must", "immediately", "guarantee", "confidence")
+    for st in ("critical", "watch", "healthy"):
+        t = C.recommended_action(st, 15, ["s4", "s11"])
+        assert t.startswith("Demo estimate; requires engineering review.")
+        assert not any(w in t.lower() for w in prohibidas), t
+
+
+def test_validate_feature_frame_rechaza_entradas_no_validas():
+    cols = ["cycle", "s2", "s3"]
+    ok = pd.DataFrame({"cycle": [5.0], "s2": [1.0], "s3": [2.0]})
+    C.validate_feature_frame(ok, cols)
+    with pytest.raises(ValueError, match="no rows"):
+        C.validate_feature_frame(ok.iloc[0:0], cols)
+    with pytest.raises(ValueError, match="missing feature columns"):
+        C.validate_feature_frame(ok.drop(columns=["s3"]), cols)
+    with pytest.raises(ValueError, match="null or non-finite"):
+        C.validate_feature_frame(ok.assign(s2=[np.nan]), cols)
+    with pytest.raises(ValueError, match="null or non-finite"):
+        C.validate_feature_frame(ok.assign(s3=[np.inf]), cols)
+    with pytest.raises(ValueError, match="cycle"):
+        C.validate_feature_frame(ok.assign(cycle=[0.0]), cols)

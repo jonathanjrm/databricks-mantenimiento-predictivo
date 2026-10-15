@@ -1,0 +1,572 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>AI-Powered Predictive Maintenance, carousel</title>
+<!--
+  Editable source of the LinkedIn carousel (10 slides, 1080 x 1350 px each).
+  One <section class="slide"> per slide. Render with render.py (Playwright Chromium) to png/ and carousel.pdf.
+  Fonts: IBM Plex Sans / Mono. Google Fonts is requested first; the fonts/ folder holds the same families
+  (OFL) so the render is identical offline.
+  Every number comes from audit/ (01 to 04) and audit/evidence/; see portfolio/SOURCES.md. Last edited 2026-10-15. Illustrations are inline SVG, labelled
+  "Illustration". Screenshots are unmodified files from portfolio/screenshots/, labelled "Real screenshot".
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+@font-face{font-family:"IBM Plex Sans";font-weight:400;font-style:normal;src:url(fonts/ibm-plex-sans-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"IBM Plex Sans";font-weight:400;font-style:italic;src:url(fonts/ibm-plex-sans-latin-400-italic.woff2) format("woff2")}
+@font-face{font-family:"IBM Plex Sans";font-weight:500;font-style:normal;src:url(fonts/ibm-plex-sans-latin-500-normal.woff2) format("woff2")}
+@font-face{font-family:"IBM Plex Sans";font-weight:600;font-style:normal;src:url(fonts/ibm-plex-sans-latin-600-normal.woff2) format("woff2")}
+@font-face{font-family:"IBM Plex Sans";font-weight:700;font-style:normal;src:url(fonts/ibm-plex-sans-latin-700-normal.woff2) format("woff2")}
+@font-face{font-family:"IBM Plex Mono";font-weight:400;font-style:normal;src:url(fonts/ibm-plex-mono-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"IBM Plex Mono";font-weight:500;font-style:normal;src:url(fonts/ibm-plex-mono-latin-500-normal.woff2) format("woff2")}
+
+:root{
+  --bg:#0B0E13; --panel:#10151D; --panel-2:#121821; --line:#1F2732; --line-2:#2A3442;
+  --text:#E6EAF0; --muted:#8A96A8; --dim:#5B6675;
+  --teal:#3FC1B0; --crit:#FF6B3D; --watch:#F2B33D; --mfr:#FF9A4D;
+  --sans:"IBM Plex Sans",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:#06080B;color:var(--text);font:400 22px/1.45 var(--sans);-webkit-font-smoothing:antialiased}
+.deck{display:flex;flex-direction:column;gap:40px;align-items:center;padding:40px 0}
+.slide{position:relative;width:1080px;height:1350px;background:var(--bg);overflow:hidden;flex:none;padding:72px 72px 64px}
+.slide h1,.slide h2,.slide h3{margin:0;font-family:var(--sans);letter-spacing:-.02em}
+.slide h2{font-size:58px;line-height:1.08;font-weight:600;max-width:900px}
+.slide p{margin:0}
+.lead{font-size:26px;line-height:1.4;color:var(--text);max-width:860px}
+.muted{color:var(--muted)}
+.mono{font-family:var(--mono)}
+.foot{position:absolute;left:72px;right:72px;bottom:44px;display:flex;justify-content:space-between;align-items:center;font:400 16px var(--mono);color:var(--dim)}
+.foot .n{color:var(--muted)}
+.tag{display:inline-block;white-space:nowrap;font:500 14px/1 var(--mono);letter-spacing:.06em;padding:7px 11px;border-radius:4px;border:1px solid var(--line-2);color:var(--muted);background:rgba(16,21,29,.85)}
+.tag.ill{color:var(--watch);border-color:rgba(242,179,61,.6)}
+.tag.real{color:var(--teal);border-color:rgba(63,193,176,.7)}
+.tag.api{color:#B9C3FF;border-color:rgba(185,195,255,.6)}
+.rule{height:2px;background:var(--teal);width:88px;border-radius:1px}
+.num{font:600 20px var(--mono);color:var(--teal);letter-spacing:.04em}
+svg{display:block}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:10px 24px;font-size:20px}
+.kv b{font-family:var(--mono);font-weight:500;color:var(--text)}
+.kv span{color:var(--muted)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:40px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:26px 28px}
+.shot{position:relative;border:1px solid var(--line-2);border-radius:10px;overflow:hidden;background:#000}
+.shot img{display:block;width:100%;height:auto}
+.shot .tag{position:absolute;top:14px;left:14px}
+.callout{position:absolute;font:400 17px/1.3 var(--sans);color:var(--text);background:rgba(11,14,19,.92);border:1px solid var(--teal);border-radius:6px;padding:8px 12px;max-width:300px}
+.callout b{color:var(--teal);font-weight:600}
+.mark{position:absolute;width:30px;height:30px;border-radius:50%;background:var(--teal);color:#0B0E13;font:600 16px/30px var(--mono);text-align:center;box-shadow:0 0 0 3px rgba(11,14,19,.9)}
+.mark.s{position:static;display:inline-block;width:26px;height:26px;line-height:26px;font-size:14px;margin-right:10px;vertical-align:1px;box-shadow:none}
+ul.clean{list-style:none;margin:0;padding:0}
+ul.clean li{position:relative;padding-left:34px;margin:0 0 16px;font-size:21px;line-height:1.38}
+ul.clean li::before{content:"";position:absolute;left:0;top:11px;width:16px;height:4px;border-radius:2px;background:var(--teal)}
+ul.clean.warn li::before{background:var(--watch);width:6px;height:16px;top:6px;border-radius:1px}
+</style>
+</head>
+<body>
+<div class="deck">
+
+<!-- ================= 1. COVER ================= -->
+<section class="slide" id="s1">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <span class="num">01 / 10</span>
+    <span class="tag">Databricks Free Edition | NASA C-MAPSS FD001</span>
+  </div>
+  <h1 style="margin-top:88px;font-size:92px;line-height:.98;font-weight:700;letter-spacing:-.035em;max-width:900px">AI-Powered<br>Predictive<br>Maintenance</h1>
+  <div class="rule" style="margin:36px 0 26px"></div>
+  <p class="lead" style="max-width:720px">An end-to-end, audited demo: a medallion pipeline, a remaining-useful-life model with MLflow serving, a 100-engine control-room dashboard and a manuals assistant that cites its sources.</p>
+  <div style="position:absolute;left:0;right:0;bottom:120px;height:560px" id="cover-art"></div>
+  <span class="tag ill" style="position:absolute;right:72px;bottom:118px">Illustration</span>
+  <div class="foot"><span>Jonathan Rincon, industrial engineer</span><span class="n">audited portfolio prototype, Databricks Free Edition</span></div>
+</section>
+
+<!-- ================= 2. PROBLEM ================= -->
+<section class="slide" id="s2">
+  <span class="num">02 / 10</span>
+  <h2 style="margin-top:28px">Turbofans do not fail on a schedule.<br>They degrade.</h2>
+  <p class="lead muted" style="margin-top:20px;max-width:880px;font-size:24px">Fixed-interval maintenance replaces healthy parts and still misses the engine that is about to fail. The question a maintainer actually asks is simpler: <span style="color:var(--text)">how many cycles are left on this unit, and how sure are we?</span></p>
+  <div style="margin-top:40px;position:relative;height:470px" id="degrade-art"></div>
+  <span class="tag ill" style="position:absolute;left:72px;top:600px">Illustration</span>
+  <div class="grid2" style="margin-top:30px;gap:28px">
+    <div class="card">
+      <p class="mono" style="font-size:15px;color:var(--muted);letter-spacing:.06em">THE DATA</p>
+      <p style="margin-top:10px;font-size:21px;line-height:1.4">NASA C-MAPSS FD001: 100 engines run to failure for training, 100 truncated engines for testing, 21 sensors per cycle. A public simulation dataset, not fleet telemetry.</p>
+    </div>
+    <div class="card">
+      <p class="mono" style="font-size:15px;color:var(--muted);letter-spacing:.06em">THE TARGET</p>
+      <p style="margin-top:10px;font-size:21px;line-height:1.4">Remaining useful life (RUL) in cycles at the last observed cycle of each test engine, plus a grounded answer when the maintainer asks the manual what to inspect.</p>
+    </div>
+  </div>
+  <div class="foot"><span>Why predictive, not periodic</span><span class="n">02</span></div>
+</section>
+
+<!-- ================= 3. ARCHITECTURE ================= -->
+<section class="slide" id="s3">
+  <span class="num">03 / 10</span>
+  <h2 style="margin-top:28px">One platform, five stages</h2>
+  <p class="lead muted" style="margin-top:14px;font-size:23px">Everything runs as a Databricks Asset Bundle on serverless compute. The app reads batch scores; the serving endpoint is an independent inference interface that the audit invoked directly.</p>
+  <div style="margin-top:26px" id="arch"></div>
+  <div class="foot"><span>Architecture</span><span class="n">diagram from databricks.yml and resources/*.yml</span></div>
+</section>
+
+<!-- ================= 4. MEDALLION ================= -->
+<section class="slide" id="s4">
+  <span class="num">04 / 10</span>
+  <h2 style="margin-top:28px">Bronze, Silver, Gold: 33,727 readings become 85 features</h2>
+  <div style="position:relative;height:560px;margin-top:10px" id="medallion"></div>
+  <span class="tag ill" style="position:absolute;right:72px;top:290px">Illustration</span>
+  <div class="grid2" style="margin-top:30px;gap:28px 40px">
+    <div>
+      <p class="mono" style="font-size:15px;color:var(--teal);letter-spacing:.06em">WHAT THE AUDIT CHECKED</p>
+      <ul class="clean" style="margin-top:14px">
+        <li>20,631 train and 13,096 test rows match the official FD001 files; 0 nulls, contiguous cycles.</li>
+        <li>RUL label = last cycle minus cycle, clipped at 125: 0 discrepancies across 20,631 rows.</li>
+        <li>Rolling windows look backward only: 40 truncation tests, 0 leaks.</li>
+      </ul>
+    </div>
+    <div>
+      <p class="mono" style="font-size:15px;color:var(--teal);letter-spacing:.06em">PANDAS VS SPARK</p>
+      <ul class="clean" style="margin-top:14px">
+        <li>7 constant sensors dropped, 14 kept; value, mean and std over 5 and 10 cycles, slope over 10, plus the cycle.</li>
+        <li>170 column sums compared between the Spark pipeline and the pandas reference: max relative difference 2.4e-9.</li>
+        <li>Last-cycle rows of all 100 test engines: max absolute difference 3.7e-10.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot"><span>Medallion pipeline, Lakeflow Declarative Pipelines</span><span class="n">audit/02_MODEL_VALIDATION.md, B1</span></div>
+</section>
+
+<!-- ================= 5. MODEL ================= -->
+<section class="slide" id="s5">
+  <span class="num">05 / 10</span>
+  <h2 style="margin-top:28px">RUL model: boosting beats the baselines by a measured margin</h2>
+  <div style="display:grid;grid-template-columns:520px 1fr;gap:40px;margin-top:36px;align-items:start">
+    <div>
+      <p class="mono" style="font-size:14px;color:var(--muted);letter-spacing:.06em">RMSE IN CYCLES, FD001 TEST, LAST CYCLE OF 100 ENGINES</p>
+      <div id="bars" style="margin-top:16px"></div>
+      <p class="mono" style="font-size:14px;color:var(--muted);letter-spacing:.06em;margin-top:34px">ERROR BY ACTUAL RUL BAND (BIAS = PREDICTED MINUS ACTUAL)</p>
+      <div id="bins" style="margin-top:12px"></div>
+    </div>
+    <div>
+      <div class="card" style="padding:22px 24px">
+        <p class="mono" style="font-size:14px;color:var(--muted);letter-spacing:.06em">CHAMPION v1</p>
+        <ul class="clean" style="margin-top:14px;font-size:18px">
+          <li style="font-size:18px;margin-bottom:12px"><b class="mono" style="font-weight:500">HistGradientBoosting</b><br><span class="muted">scikit-learn 1.7.2, serverless job</span></li>
+          <li style="font-size:18px;margin-bottom:12px"><b class="mono" style="font-weight:500">85 features</b><br><span class="muted">cycle + 14 sensors x 6 statistics</span></li>
+          <li style="font-size:18px;margin-bottom:12px"><b class="mono" style="font-weight:500">RUL clipped at 125</b><br><span class="muted">standard practice for C-MAPSS</span></li>
+          <li style="font-size:18px;margin-bottom:12px"><b class="mono" style="font-weight:500">RMSE 18.44, MAE 13.48, R2 0.80</b><br><span class="muted">PHM08 655 (asymmetric late penalty)</span></li>
+          <li style="font-size:18px;margin-bottom:0"><b class="mono" style="font-weight:500">Reproduced bit for bit</b><br><span class="muted">same library version, same features</span></li>
+        </ul>
+      </div>
+      <div class="card" style="margin-top:20px;padding:22px 24px;border-color:rgba(242,179,61,.5)">
+        <p class="mono" style="font-size:14px;color:var(--watch);letter-spacing:.06em">HONEST READING</p>
+        <p style="margin-top:10px;font-size:17.5px;line-height:1.4">The test set also informed the champion rule, so 18.44 describes a frozen model on a seen set, not an independent error estimate. A by-engine protocol on train only gives 18.0 with a 1.2 spread over 200 random cuts, and the new promotion gate uses that validation (HGB 19.2 vs Ridge 22.1), never the test set.</p>
+      </div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:40px;padding:24px 28px;border-left:4px solid var(--crit)"><p class="mono" style="font-size:14px;color:var(--crit);letter-spacing:.06em">NEAR FAILURE</p><p style="font-size:20px;margin-top:10px;line-height:1.42">With an actual RUL of 30 or less (25 engines) the model overestimates the remaining life by 5.5 cycles on average, and 6 of 26 low-RUL engines are shown as healthy. That is the unsafe direction, and the reason the dashboard labels every number a demo estimate that requires engineering review.</p></div>
+  <div class="foot"><span>Model and evaluation</span><span class="n">audit/02_MODEL_VALIDATION.md, B2</span></div>
+</section>
+
+<!-- ================= 6. MLFLOW AND SERVING ================= -->
+<section class="slide" id="s6">
+  <span class="num">06 / 10</span>
+  <h2 style="margin-top:28px">MLflow registry and serving, traced end to end</h2>
+  <p class="lead muted" style="margin-top:12px;font-size:23px">Unity Catalog model, alias champion, served on a scale-to-zero CPU endpoint. The same input row was followed through every link.</p>
+  <div style="margin-top:24px;display:grid;grid-template-columns:1fr 1fr;gap:28px">
+    <div class="card" style="padding:18px 24px;font-family:var(--mono);font-size:15px;line-height:1.5">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span class="tag api">Rendered from API output</span><span style="color:var(--dim);font-size:12px">model versions</span></div>
+<pre style="margin:0;white-space:pre-wrap;color:var(--text)"><span style="color:var(--muted)">model</span>    workspace.mantenimiento.rul_model
+<span style="color:var(--muted)">version</span>  1   <span style="color:var(--muted)">status</span> READY
+<span style="color:var(--muted)">alias</span>    champion -> v1
+<span style="color:var(--muted)">params</span>   n_features 85
+         n_train_rows 20631
+         rul_clip 125
+<span style="color:var(--muted)">metrics</span>  rmse_test 18.4418
+         mae_test 13.4780
+         phm08_test 655.02
+         rmse_best_baseline 21.7963
+<span style="color:var(--muted)">signature</span> 85 double inputs -> float64 (-1)
+<span style="color:var(--muted)">env</span>      python 3.12.3, sklearn 1.7.2
+         mlflow 3.12.0</pre>
+    </div>
+    <div class="card" style="padding:18px 24px;font-family:var(--mono);font-size:15px;line-height:1.5">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span class="tag api">Rendered from API output</span><span style="color:var(--dim);font-size:12px">endpoints get</span></div>
+<pre style="margin:0;white-space:pre-wrap;color:var(--text)"><span style="color:var(--muted)">endpoint</span> dev_&lt;user&gt;_rul-model-dev
+<span style="color:var(--muted)">entity</span>   rul_model v1
+<span style="color:var(--muted)">compute</span>  CPU Small, scale to zero
+<span style="color:var(--muted)">state</span>    READY
+
+<span style="color:var(--muted)">batch check, 100 engines</span>
+round(endpoint, 2) == table
+  max |diff|      0.00
+  mismatches      0 / 100
+  RMSE vs actual  18.4418 (= MLflow)
+
+<span style="color:var(--muted)">negative inputs</span>
+  missing column  rejected
+  string in s7    rejected
+  nulls           <span style="color:var(--crit)">accepted (D-02)</span></pre>
+    </div>
+  </div>
+  <div style="margin-top:24px" id="trace"></div>
+  <div class="grid2" style="margin-top:18px;gap:24px">
+    <div class="card" style="padding:16px 22px;border-color:rgba(242,179,61,.5)"><p class="mono" style="font-size:13px;color:var(--watch);letter-spacing:.06em">AVAILABILITY, FREE EDITION</p><p style="font-size:16.5px;line-height:1.38;margin-top:6px">The endpoint vanished from the workspace between the two audit days and was recreated with one <span class="mono">bundle deploy</span>; the app auto-stops when idle and restarts on demand. Reproducible, not continuously available.</p></div>
+    <div class="card" style="padding:16px 22px"><p class="mono" style="font-size:13px;color:var(--muted);letter-spacing:.06em">WHAT THE APP READS</p><p style="font-size:16.5px;line-height:1.38;margin-top:6px">The dashboard never calls the endpoint: it reads the batch table written by <span class="mono">03_score</span> with the same model and shows model version and scoring time. The endpoint is the independent path the audit used to cross-check every value.</p></div>
+  </div>
+  <div class="foot"><span>MLflow and model serving</span><span class="n">audit/evidence/b3_*.json, uc_model_versions.json</span></div>
+</section>
+
+<!-- ================= 7. DASHBOARD ================= -->
+<section class="slide" id="s7">
+  <span class="num">07 / 10</span>
+  <h2 style="margin-top:28px">A control room for 100 engines</h2>
+  <p class="lead muted" style="margin-top:10px;font-size:21px;max-width:920px">Height is the estimated remaining life, colour is the demo state, the most urgent units sit in front. Every value is a batch score read from the gold table, with its model version and scoring time.</p>
+  <div class="shot" style="margin-top:18px;width:936px;height:770px">
+    <img src="../screenshots/01_dashboard_desktop_1057w.jpg" alt="Dashboard of the deployed app: lineage, uncertainty strip, isometric fleet with criticality filters and engine 34 detail" width="800" height="975" style="width:936px;height:auto;margin-top:-236px">
+    <span class="mark" style="left:906px;top:18px">1</span>
+    <span class="mark" style="left:906px;top:118px">2</span>
+    <span class="mark" style="left:556px;top:238px">3</span>
+    <span class="mark" style="left:906px;top:330px">4</span>
+  </div>
+  <div style="display:flex;gap:14px;align-items:center;margin-top:12px"><span class="tag real">Real screenshot</span><span class="muted" style="font-size:15px">dev deployment, 2026-10-14, 1057 px viewport, cropped only (same UI re-verified 2026-10-15)</span></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 28px;margin-top:10px;font-size:16.5px;line-height:1.33">
+    <div><span class="mark s">1</span>Lineage strip: bronze, silver and gold row counts, model version and engines scored.</div>
+    <div><span class="mark s">2</span>Uncertainty strip: RMSE as typical error, near-failure bias, model version and scoring time.</div>
+    <div><span class="mark s">3</span>Filter the fleet by criticality; the isometric layout stays stable.</div>
+    <div><span class="mark s">4</span>Engine 34: predicted 3 cycles, actual 7, with the sensors that drive the estimate.</div>
+  </div>
+  <div class="foot"><span>Databricks App, FastAPI + vanilla SVG</span><span class="n">portfolio/SCREENSHOTS.md</span></div>
+</section>
+
+<!-- ================= 8. RAG ================= -->
+<section class="slide" id="s8">
+  <span class="num">08 / 10</span>
+  <h2 style="margin-top:28px">A manuals assistant that shows its evidence</h2>
+  <div style="margin-top:16px" id="ragflow"></div>
+  <p class="muted" style="font-size:16.5px;margin-top:2px">Passages and questions are treated as data: instruction-like text is stripped, numeric manufacturer values are withheld, dropped conditions are flagged.</p>
+  <div style="display:grid;grid-template-columns:600px 1fr;gap:28px;margin-top:18px;align-items:start">
+    <div>
+      <div class="shot" style="height:400px">
+        <img src="../screenshots/05_assistant_hpc_answer_800w.jpg" alt="Assistant answer about high-pressure compressor inspection with status, claims, citations and gaps" width="800" height="1200" style="width:600px;height:auto;margin-top:-322px">
+      </div>
+      <div style="display:flex;gap:12px;align-items:center;margin-top:12px"><span class="tag real">Real screenshot</span><span class="muted" style="font-size:14px">dev deployment, 2026-10-14, crop of the assistant panel</span></div>
+    </div>
+    <div>
+      <p style="font-size:17px;line-height:1.4">Asked how the high-pressure compressor is inspected, the assistant answers <span class="mono" style="color:var(--watch)">insufficient evidence</span>: the handbook only describes general compressor inspection. Each statement carries its page, one is flagged because the source limits it to centrifugal-flow engines, and manufacturer limits are explicitly deferred.</p>
+      <div class="card" style="margin-top:14px;padding:14px 18px">
+        <p class="mono" style="font-size:13px;color:var(--muted);letter-spacing:.06em">HELD-OUT SET: 85 NEW QUESTIONS, 3 LANGUAGES</p>
+        <div class="kv" style="margin-top:8px;font-size:15.5px;gap:5px 14px">
+          <b>97.6%</b><span>correct status (v1 baseline 78.8%)</span>
+          <b>0</b><span>unsupported shown claims, two judges (v1: 62.6%)</span>
+          <b>98.9%</b><span>citation precision</span>
+          <b>0.84</b><span>MRR; hit@6 0.97; page recall 0.89</span>
+          <b>100%</b><span>appropriate abstention</span>
+          <b>14.6 s</b><span>mean latency, 5.5 LLM calls per question</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:14px;padding:18px 26px;border-left:4px solid #B9C3FF"><p class="mono" style="font-size:14px;color:#B9C3FF;letter-spacing:.06em">MANDATORY TEST: HIGH-PRESSURE COMPRESSOR INSPECTION</p><p style="font-size:17.5px;line-height:1.4;margin-top:8px">The handbook has no HPC-specific procedure, only generic compressor-section inspection (pp. 413 to 415). In 9 of 9 reviewed answers the assistant did not turn that generic text into an HPC procedure; it abstained or declared the gap. Re-asked on the live app on 2026-10-15: <span class="mono" style="color:var(--watch)">not_found</span> (Spanish and English wording) and <span class="mono" style="color:var(--watch)">insufficient_evidence</span> with the omitted condition flagged (UI preset). Answers vary between runs: a known, documented limitation.</p></div>
+  <div class="foot"><span>RAG over FAA-H-8083-32B and Saxena et al. 2008, 720 chunks</span><span class="n">audit/03_RAG_VALIDATION.md, run 6</span></div>
+</section>
+
+<!-- ================= 9. RESULTS AND LIMITATIONS ================= -->
+<section class="slide" id="s9">
+  <span class="num">09 / 10</span>
+  <h2 style="margin-top:28px">What is verified, and what is not</h2>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;margin-top:40px;border:1px solid var(--line);border-radius:12px;overflow:hidden">
+    <div style="padding:34px 32px;background:var(--panel)">
+      <p class="mono" style="font-size:15px;color:var(--teal);letter-spacing:.06em">VERIFIED</p>
+      <ul class="clean" style="margin-top:20px">
+        <li>Data counts, labels and windows match FD001; Spark and pandas features agree to 1e-9.</li>
+        <li>Champion v1 reproduced bit for bit (RMSE 18.441849882005343) with the workspace library versions.</li>
+        <li>Endpoint invoked for all 100 engines: identical to the dashboard table, 0 mismatches.</li>
+        <li>No silent fallback: SQL failure is an explicit 503, a null prediction stays null.</li>
+        <li>RAG: 85-question held-out set, deterministic checks plus an independent judge model.</li>
+        <li>142 automated tests, pip-audit and bandit clean, no secrets in tree or history.</li>
+      </ul>
+    </div>
+    <div style="padding:34px 32px;background:var(--bg)">
+      <p class="mono" style="font-size:15px;color:var(--watch);letter-spacing:.06em">LIMITATIONS</p>
+      <ul class="clean warn" style="margin-top:20px">
+        <li>The FD001 test set is a seen set: it informed model selection, so no independent error estimate exists yet.</li>
+        <li>Uncertainty is not calibrated: RMSE is a typical error, not a prediction interval.</li>
+        <li>Near failure the model overestimates life by 5.5 cycles on average; 6 of 26 low-RUL engines show as healthy.</li>
+        <li>Predictions are batch scores at the last observed cycle, not live inference on telemetry.</li>
+        <li>The serving endpoint accepts null features without error (open finding, medium).</li>
+        <li>Assistant answers take 10 to 30 s and vary between runs at temperature 0.1.</li>
+      </ul>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:34px">
+    <div><div class="mono" style="font-size:46px;font-weight:500;color:var(--teal);letter-spacing:-.02em">18.44</div><div class="muted" style="font-size:16px;margin-top:4px">RMSE in cycles on the seen FD001 test set</div></div>
+    <div><div class="mono" style="font-size:46px;font-weight:500;color:var(--teal);letter-spacing:-.02em">0 / 100</div><div class="muted" style="font-size:16px;margin-top:4px">endpoint vs dashboard mismatches</div></div>
+    <div><div class="mono" style="font-size:46px;font-weight:500;color:var(--teal);letter-spacing:-.02em">97.6%</div><div class="muted" style="font-size:16px;margin-top:4px">correct assistant status, 85 held-out questions</div></div>
+    <div><div class="mono" style="font-size:46px;font-weight:500;color:var(--teal);letter-spacing:-.02em">142</div><div class="muted" style="font-size:16px;margin-top:4px">automated tests passing, security scans clean</div></div>
+  </div>
+  <p class="lead muted" style="margin-top:40px;font-size:22px">A simulation dataset and a demo model. This is a portfolio-grade, audited prototype, not a certified aeronautical maintenance system.</p>
+  <div class="foot"><span>Results and limitations</span><span class="n">audit/FINAL_READINESS_REPORT.md</span></div>
+</section>
+
+<!-- ================= 10. CLOSING ================= -->
+<section class="slide" id="s10">
+  <span class="num">10 / 10</span>
+  <h2 style="margin-top:28px">Built in the open, with the receipts</h2>
+  <p class="lead muted" style="margin-top:16px;max-width:880px">Jonathan Rincon (industrial engineer) defined the architecture, the technical parameters and the implementation sequence, and reviewed every phase of the work.</p>
+  <div style="margin-top:40px;display:grid;grid-template-columns:1fr 1fr;gap:28px">
+    <div class="card">
+      <p class="mono" style="font-size:15px;color:var(--muted);letter-spacing:.06em">STACK</p>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:14px" id="stack"></div>
+    </div>
+    <div class="card">
+      <p class="mono" style="font-size:15px;color:var(--muted);letter-spacing:.06em">REPOSITORY</p>
+      <p class="mono" style="margin-top:14px;font-size:21px;color:var(--teal)">github.com/jonathanjrm/<br>databricks-mantenimiento-predictivo</p>
+      <p class="muted" style="margin-top:14px;font-size:18px;line-height:1.4">Audit reports, evidence files, evaluation sets, tests and this carousel's source are part of the project tree and are published with the reviewed branch.</p>
+    </div>
+  </div>
+  <div style="position:absolute;left:0;right:0;bottom:96px;height:380px" id="close-art"></div>
+  <span class="tag ill" style="position:absolute;right:72px;bottom:118px">Illustration</span>
+  <div class="foot"><span>Thanks for reading</span><span class="n">NASA C-MAPSS data, public domain</span></div>
+</section>
+
+</div>
+
+<script>
+"use strict";
+const NS="http://www.w3.org/2000/svg";
+const C={teal:"#3FC1B0",crit:"#FF6B3D",watch:"#F2B33D",muted:"#8A96A8",text:"#E6EAF0",line:"#1F2732",bronze:"#B87A4B",silver:"#A9B4C4",gold:"#E0B457",panel:"#10151D",dim:"#5B6675",mfr:"#FF9A4D",violet:"#B9C3FF"};
+const sv=(t,a={},txt)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(txt!==undefined)e.textContent=txt;return e;};
+const mix=(hex,k)=>{const n=parseInt(hex.slice(1),16);const c=[n>>16&255,n>>8&255,n&255].map(v=>Math.round(v*k));return "rgb("+c.join(",")+")";};
+/* isometric box with top centre at (x,y) and height h; a,b are half-width/half-depth in screen px */
+function box(g,x,y,h,a,b,col,opts={}){
+  const top=sv("polygon",{points:`${x},${y-b} ${x+a},${y} ${x},${y+b} ${x-a},${y}`,fill:col});
+  const L=sv("polygon",{points:`${x-a},${y} ${x},${y+b} ${x},${y+b+h} ${x-a},${y+h}`,fill:mix(col,.5)});
+  const R=sv("polygon",{points:`${x},${y+b} ${x+a},${y} ${x+a},${y+h} ${x},${y+b+h}`,fill:mix(col,.72)});
+  if(opts.stroke){for(const p of [L,R,top]){p.setAttribute("stroke",opts.stroke);p.setAttribute("stroke-width",opts.sw||1);p.setAttribute("stroke-linejoin","round");}}
+  g.append(L,R,top); return {top,L,R};
+}
+/* slab: a flat box with the top at (x,y), width w (along +x axis in iso) and depth d (along the other axis) */
+function slab(g,x,y,w,d,h,col,opts={}){
+  const ax=w/2,ay=w/4,bx=d/2,by=d/4; // iso axes: u=(ax,ay), v=(-bx,by)
+  const P=(u,v,z)=>[x+u*ax-v*bx, y+u*ay+v*by-z];
+  const pts=a=>a.map(p=>p.join(",")).join(" ");
+  const top=sv("polygon",{points:pts([P(-1,-1,h),P(1,-1,h),P(1,1,h),P(-1,1,h)]),fill:col});
+  const left=sv("polygon",{points:pts([P(-1,1,h),P(1,1,h),P(1,1,0),P(-1,1,0)]),fill:mix(col,.55)});
+  const right=sv("polygon",{points:pts([P(1,-1,h),P(1,1,h),P(1,1,0),P(1,-1,0)]),fill:mix(col,.75)});
+  if(opts.stroke){for(const p of [left,right,top]){p.setAttribute("stroke",opts.stroke);p.setAttribute("stroke-width",opts.sw||1);p.setAttribute("stroke-linejoin","round");}}
+  g.append(left,right,top); return {P,top};
+}
+const text=(g,x,y,s,o={})=>{const t=sv("text",{x,y,fill:o.fill||C.text,"font-family":o.mono?"IBM Plex Mono":"IBM Plex Sans","font-size":o.size||16,"font-weight":o.weight||400,"text-anchor":o.anchor||"start"},s);if(o.ls)t.setAttribute("letter-spacing",o.ls);g.append(t);return t;};
+
+/* ---------- 1. cover: the fleet, real RUL distribution shape (100 bars, heights from the state counts) ---------- */
+(function(){
+  const W=1080,H=560,svg=sv("svg",{viewBox:`0 0 ${W} ${H}`,width:W,height:H});
+  const g=sv("g"); svg.append(g);
+  // stylised fleet: 10 x 10 grid; 14 critical, 7 watch, 79 healthy (the deployed counts); heights illustrative
+  const COLS=10,ROWS=10,TW=62,TH=31,maxH=120, ox=W/2, oy=120;
+  const states=[]; for(let i=0;i<100;i++) states.push(i<14?"crit":i<21?"watch":"teal");
+  const cells=[]; for(let i=0;i<100;i++){const r=ROWS-1-Math.floor(i/COLS), c=i%COLS; cells.push({r,c,st:states[i],i});}
+  cells.sort((p,q)=>(p.r+p.c)-(q.r+q.c)||p.r-q.r);
+  for(const {r,c,st,i} of cells){
+    const x=ox+(c-r)*TW/2, y=oy+(c+r)*TH/2;
+    const base=st==="crit"?10+ (i%7)*4 : st==="watch"? 30+(i%5)*6 : 55+((i*37)%60);
+    const h=8+base/125*(maxH-8);
+    box(g,x,y-h,h,TW/2*0.7,TH/2*0.7,C[st]);
+  }
+  // soft floor glow
+  const glow=sv("ellipse",{cx:W/2,cy:oy+ROWS*TH/2+150,rx:470,ry:70,fill:"url(#gl)"});
+  const defs=sv("defs"); const rg=sv("radialGradient",{id:"gl"}); rg.append(sv("stop",{offset:"0",  "stop-color":"#3FC1B0","stop-opacity":".16"}),sv("stop",{offset:"1","stop-color":"#3FC1B0","stop-opacity":"0"})); defs.append(rg); svg.prepend(defs); svg.insertBefore(glow,g);
+  document.getElementById("cover-art").append(svg);
+})();
+
+/* ---------- 2. degradation: a stylised turbofan in isometric view + the shape of a degrading health indicator ---------- */
+(function(){
+  const W=936,H=470,svg=sv("svg",{viewBox:`0 0 ${W} ${H}`,width:W,height:H});
+  const defs=sv("defs");
+  const lg=sv("linearGradient",{id:"nac",x1:"0",y1:"0",x2:"0",y2:"1"}); lg.append(sv("stop",{offset:"0","stop-color":"#4A5A6E"}),sv("stop",{offset:"1","stop-color":"#1C2430"})); defs.append(lg);
+  const lg2=sv("linearGradient",{id:"core",x1:"0",y1:"0",x2:"0",y2:"1"}); lg2.append(sv("stop",{offset:"0","stop-color":"#FF8A5C"}),sv("stop",{offset:"1","stop-color":"#8F2F12"})); defs.append(lg2);
+  svg.append(defs);
+  const g=sv("g"); svg.append(g);
+  // platform
+  slab(g,215,400,380,230,18,"#141B25",{stroke:"#2A3442"});
+  // cylinder along the iso axis u (dx=1, dy=0.5): front centre F, back centre B
+  const cyl=(fx,fy,len,rx,ry,fill,front,stroke="#0B0E13")=>{
+    const bx=fx+len, by=fy-len*0.5;
+    // silhouette: points of each ellipse whose tangent is parallel to the axis (1, -0.5)
+    const t=Math.atan2(2*ry, rx); const ox=rx*Math.cos(t), oy=ry*Math.sin(t);
+    const p=[[fx+ox,fy+oy],[bx+ox,by+oy],[bx-ox,by-oy],[fx-ox,fy-oy]];
+    g.append(sv("ellipse",{cx:bx,cy:by,rx,ry,fill:mix("#4A5A6E",.6),stroke,"stroke-width":2}));
+    g.append(sv("polygon",{points:p.map(q=>q.join(",")).join(" "),fill,stroke,"stroke-width":2,"stroke-linejoin":"round"}));
+    g.append(sv("ellipse",{cx:fx,cy:fy,rx,ry,fill:front,stroke,"stroke-width":2}));
+    return {bx,by};
+  };
+  // exhaust cone (behind), core, nacelle (front)
+  cyl(356,227,96,22,40,"url(#core)","#5A2A14");
+  const n=cyl(150,330,210,46,86,"url(#nac)","#0F141C");
+  // fan: hub + blades inside the front ellipse
+  for(let k=0;k<12;k++){ const t=k*Math.PI/6; g.append(sv("line",{x1:150,y1:330,x2:150+40*Math.cos(t),y2:330+76*Math.sin(t),stroke:C.teal,"stroke-width":5,"stroke-linecap":"round"})); }
+  g.append(sv("ellipse",{cx:150,cy:330,rx:10,ry:18,fill:"#E6EAF0"}));
+  // pylon
+  g.append(sv("polygon",{points:"250,236 330,196 400,196 330,236",fill:"#2A3442",stroke:"#0B0E13","stroke-width":2}));
+  text(g,120,448,"turbofan unit (stylised)",{fill:C.muted,size:14,mono:true});
+  // health indicator panel, right: the shape of a degrading indicator (synthetic curve, not data)
+  const px=470,py=10,pw=466,ph=400;
+  g.append(sv("rect",{x:px,y:py,width:pw,height:ph,rx:10,fill:"#10151D",stroke:"#1F2732"}));
+  text(g,px+22,py+32,"a degrading health indicator (sketch)",{fill:C.muted,size:14,mono:true});
+  const X=v=>px+56+(v/214)*(pw-90), Y=v=>py+ph-52-(v+0.15)/1.3*(ph-120);
+  g.append(sv("line",{x1:X(0),x2:X(214),y1:Y(1),y2:Y(1),stroke:C.crit,"stroke-dasharray":"6 5"}));
+  text(g,X(214),Y(1)-8,"failure threshold",{fill:C.crit,size:13,mono:true,anchor:"end"});
+  let d="M"; let seed=7; const rnd=()=>{seed=(seed*9301+49297)%233280;return seed/233280-0.5;};
+  for(let c=1;c<=203;c++){ const base=-0.05+0.95*Math.pow(c/203,3.2); const v=base+rnd()*0.08*(1-c/230); d+=(c===1?"":"L")+X(c).toFixed(1)+","+Y(v).toFixed(1); }
+  g.append(sv("path",{d,fill:"none",stroke:C.text,"stroke-width":2}));
+  g.append(sv("circle",{cx:X(203),cy:Y(0.95),r:5,fill:C.text}));
+  g.append(sv("line",{x1:X(203),x2:X(203),y1:Y(0.9),y2:Y(-0.12),stroke:C.watch,"stroke-dasharray":"3 4"}));
+  text(g,X(150),Y(0.78),"last observed cycle",{fill:C.muted,size:13,mono:true,anchor:"end"});
+  text(g,X(150),Y(0.68),"how many cycles remain?",{fill:C.watch,size:14,mono:true,anchor:"end"});
+  [0,0.5,1].forEach(v=>text(g,px+46,Y(v)+5,v.toFixed(1),{fill:C.muted,size:13,mono:true,anchor:"end"}));
+  [1,100,203].forEach(v=>text(g,X(v),py+ph-24,String(v),{fill:C.muted,size:13,mono:true,anchor:"middle"}));
+  text(g,X(100),py+ph-6,"cycles",{fill:C.dim,size:12,mono:true,anchor:"middle"});
+  document.getElementById("degrade-art").append(svg);
+})();
+
+/* ---------- 3. architecture diagram ---------- */
+(function(){
+  const W=936,H=880,svg=sv("svg",{viewBox:`0 0 ${W} ${H}`,width:W,height:H});
+  const g=sv("g"); svg.append(g);
+  const nodeBox=(x,y,w,h,title,sub,col=C.teal,o={})=>{
+    g.append(sv("rect",{x,y,width:w,height:h,rx:10,fill:o.fill||C.panel,stroke:o.stroke||C.line,"stroke-width":1.5}));
+    g.append(sv("rect",{x,y,width:6,height:h,rx:3,fill:col}));
+    text(g,x+22,y+32,title,{size:20,weight:600});
+    if(sub) sub.split("\n").forEach((t,i)=>text(g,x+22,y+58+i*21,t,{fill:C.muted,size:15,mono:true}));
+  };
+  const arrow=(x1,y1,x2,y2,col=C.muted,dash)=>{const a={x1,y1,x2,y2,stroke:col,"stroke-width":2,"marker-end":"url(#ah)"}; if(dash)a["stroke-dasharray"]="7 6"; g.append(sv("line",a));};
+  const defs=sv("defs"); const m=sv("marker",{id:"ah",viewBox:"0 0 10 10",refX:"9",refY:"5",markerWidth:"8",markerHeight:"8",orient:"auto-start-reverse"}); m.append(sv("path",{d:"M0,0 L10,5 L0,10 z",fill:C.muted})); defs.append(m); svg.prepend(defs);
+  const lane=(y,label)=>{g.append(sv("line",{x1:0,x2:W,y1:y,y2:y,stroke:C.line})); g.append(sv("rect",{x:-4,y:y-24,width:label.length*8.6+10,height:20,fill:"#0B0E13"})); text(g,0,y-9,label,{fill:C.dim,size:13,mono:true,ls:"0.08em"});};
+  lane(24,"SOURCES: UNITY CATALOG VOLUMES");
+  nodeBox(0,36,290,92,"raw volume","C-MAPSS FD001 text files\ntrain, test, RUL");
+  nodeBox(323,36,290,92,"manuals volume","FAA-H-8083-32B, 500 pages\nSaxena et al. 2008, 9 pages",C.violet);
+  nodeBox(646,36,290,92,"code volume","src/lib, rag.py, eval sets\nimported by the jobs",C.muted);
+  lane(176,"LAKEFLOW DECLARATIVE PIPELINE, SERVERLESS");
+  nodeBox(0,188,936,110,"bronze (raw readings)  ->  silver (validated)  ->  gold (features, test truth, health curve)","Auto Loader ingestion, 33,727 rows; expectations, 7 constant sensors dropped;\nbackward rolling windows, 85 features; health indicator fitted on train only");
+  arrow(145,128,145,188); arrow(791,128,791,188,C.muted,true);
+  lane(346,"JOBS: END-TO-END (SETUP, PIPELINE, TRAIN, SCORE), RAG INDEX, ASSISTANT EVALUATION");
+  nodeBox(0,358,290,112,"02_train","HistGradientBoosting\nMLflow run, UC registry\nalias champion");
+  nodeBox(323,358,290,112,"03_score","models:/rul_model@champion\n100 engines + occlusion\ncontributions -> gold table",C.watch);
+  nodeBox(646,358,290,112,"04_rag_index","PDF -> 720 chunks\nAI Search hybrid index\n(gte-large embeddings)",C.violet);
+  arrow(145,298,145,358); arrow(290,414,323,414); arrow(468,298,468,358); arrow(791,298,791,358,C.violet,true);
+  lane(518,"SERVING");
+  nodeBox(0,530,290,112,"Model serving endpoint","rul-model-dev, CPU small\nscale to zero, version 1\ninvoked by the audit",C.crit);
+  nodeBox(323,530,290,112,"Foundation Model APIs","gpt-oss-120b: rewrite,\nanswer, verify claims\nllama-3.3-70b: eval judge",C.violet);
+  nodeBox(646,530,290,112,"SQL warehouse","serverless 2X-Small\nread by the app with\nits service principal",C.teal);
+  arrow(145,470,145,530); arrow(468,470,468,530,C.violet); arrow(791,470,791,530);
+  lane(690,"DATABRICKS APP");
+  nodeBox(0,702,936,118,"Control-room app: FastAPI + SVG dashboard + manuals assistant","/api/overview, /api/engines, /api/engines/{unit}/health, /api/ask, /api/health\nreads the batch scores (model version, scored_at); RAG in app/rag.py; no live inference",C.teal,{stroke:"#2A3442"});
+  arrow(468,642,468,702,C.violet); arrow(791,642,791,702);
+  g.append(sv("line",{x1:145,y1:642,x2:145,y2:702,stroke:C.crit,"stroke-dasharray":"4 6","stroke-width":2}));
+  text(g,158,662,"not wired to the app (by design)",{fill:C.crit,size:13,mono:true});
+  text(g,0,858,"Databricks Asset Bundle, target dev, Free Edition (serverless only). GitHub Actions validates and deploys with an OAuth service principal.",{fill:C.muted,size:15});
+  document.getElementById("arch").append(svg);
+})();
+
+/* ---------- 4. medallion: three isometric slabs as stairs ---------- */
+(function(){
+  const W=936,H=600,svg=sv("svg",{viewBox:`0 0 ${W} ${H}`,width:W,height:H});
+  const g=sv("g"); svg.append(g);
+  const w=230,d=150;
+  const steps=[["Bronze","33,727 rows","raw readings as landed",C.bronze,190,330,0],["Silver","33,727 rows","validated, 7 constant sensors dropped",C.silver,470,270,1],["Gold","85 features","windows 5 and 10, slope 10, RUL label",C.gold,750,210,2]];
+  for(const [name,n,dsc,col,x,y,i] of steps){
+    const h=34+i*26;
+    const sl=slab(g,x,y,w,d,h,col,{stroke:"#0B0E13",sw:1.2});
+    for(let r=0;r<4;r++) for(let c=0;c<6;c++){ const [px,py]=sl.P(-0.8+c*0.32,-0.75+r*0.5,h); g.append(sv("rect",{x:px-5,y:py-2,width:10,height:3,fill:mix(col,.55),rx:1})); }
+    const base=y+w/4+d/4; // lowest front corner
+    text(g,x,base+36,name,{size:24,weight:600,anchor:"middle"});
+    text(g,x,base+62,n,{fill:col,size:17,mono:true,anchor:"middle"});
+    text(g,x,base+86,dsc,{fill:C.muted,size:15,anchor:"middle"});
+  }
+  // connectors between the slabs (expectations, window functions)
+  const defs=sv("defs"); const m=sv("marker",{id:"ah2",viewBox:"0 0 10 10",refX:"9",refY:"5",markerWidth:"8",markerHeight:"8",orient:"auto-start-reverse"}); m.append(sv("path",{d:"M0,0 L10,5 L0,10 z",fill:C.teal})); defs.append(m); svg.prepend(defs);
+  g.append(sv("path",{d:"M250,205 C300,150 360,140 410,150",fill:"none",stroke:C.teal,"stroke-width":2.5,"marker-end":"url(#ah2)"}));
+  g.append(sv("path",{d:"M530,120 C580,70 640,60 690,70",fill:"none",stroke:C.teal,"stroke-width":2.5,"marker-end":"url(#ah2)"}));
+  text(g,345,118,"expectations",{fill:C.teal,size:13,mono:true,anchor:"middle"});
+  text(g,610,52,"window functions",{fill:C.teal,size:13,mono:true,anchor:"middle"});
+  // split note
+  g.append(sv("rect",{x:0,y:20,width:250,height:118,rx:8,fill:C.panel,stroke:C.line}));
+  text(g,16,48,"train  20,631 rows, 100 engines",{size:15,mono:true});
+  text(g,16,74,"test   13,096 rows, 100 engines",{size:15,mono:true});
+  text(g,16,100,"RUL file  100 values",{size:15,mono:true});
+  text(g,16,126,"0 rows shared by the splits",{fill:C.muted,size:13,mono:true});
+  document.getElementById("medallion").append(svg);
+})();
+
+/* ---------- 5. baseline bars and error bins ---------- */
+(function(){
+  const rows=[["Constant mean",43.07,C.dim],["Cycle only, linear",33.34,C.dim],["Ridge, 85 features",21.80,C.muted],["HistGradientBoosting v1",18.44,C.teal]];
+  const W=520,H=rows.length*56+6,svg=sv("svg",{viewBox:`0 0 ${W} ${H}`,width:W,height:H});
+  rows.forEach(([n,v,col],i)=>{
+    const y=i*56; text(svg,0,y+18,n,{size:18,fill:i===3?C.text:C.muted,weight:i===3?600:400});
+    svg.append(sv("rect",{x:0,y:y+27,width:W-90,height:12,rx:3,fill:"#121821"}));
+    svg.append(sv("rect",{x:0,y:y+27,width:(W-90)*v/45,height:12,rx:3,fill:col}));
+    text(svg,W,y+39,v.toFixed(2),{size:20,mono:true,anchor:"end",fill:i===3?C.teal:C.text,weight:500});
+  });
+  document.getElementById("bars").append(svg);
+  const bins=[["0 to 30",25,14.3,"+5.5"],["31 to 60",14,8.5,"+3.0"],["61 to 90",15,19.0,"+5.7"],["91 to 125",35,17.8,"-1.5"],["126 or more",11,32.2,"-28.6"]];
+  const t=document.createElement("table"); t.style.cssText="width:100%;border-collapse:collapse;font-family:IBM Plex Mono;font-size:16px";
+  const hdr=["actual RUL","engines","RMSE","bias"];
+  const trh=document.createElement("tr"); hdr.forEach((h,i)=>{const th=document.createElement("th"); th.textContent=h; th.style.cssText="text-align:"+(i?"right":"left")+";color:#8A96A8;font-weight:400;padding:6px 10px;border-bottom:1px solid #1F2732"; trh.append(th);}); t.append(trh);
+  bins.forEach(b=>{const tr=document.createElement("tr"); b.forEach((v,i)=>{const td=document.createElement("td"); td.textContent=v; td.style.cssText="text-align:"+(i?"right":"left")+";padding:5px 10px;border-bottom:1px solid #1F2732;color:"+(i===3&&String(v).startsWith("+")?"#FF6B3D":"#E6EAF0"); tr.append(td);}); t.append(tr);});
+  document.getElementById("bins").append(t);
+})();
+
+/* ---------- 6. trace chain for engine 34 ---------- */
+(function(){
+  const W=936,H=190,svg=sv("svg",{viewBox:`0 0 ${W} ${H}`,width:W,height:H});
+  const steps=[["gold features","engine 34, cycle 203","85 inputs"],["MLflow model","rul_model v1","@champion"],["endpoint","REST invocation","3.118922691130997"],["scoring table","batch score","3.12"],["/api/engines","app session","3.12"],["dashboard","engine card","3 cycles"]];
+  const w=148,gap=(W-6*w)/5;
+  const defs=sv("defs"); const m=sv("marker",{id:"ah3",viewBox:"0 0 10 10",refX:"9",refY:"5",markerWidth:"7",markerHeight:"7",orient:"auto-start-reverse"}); m.append(sv("path",{d:"M0,0 L10,5 L0,10 z",fill:C.teal})); defs.append(m); svg.append(defs);
+  text(svg,0,18,"ONE ROW, EVERY LINK: ENGINE 34 (ACTUAL RUL 7, TEST GROUND TRUTH)",{fill:C.muted,size:13,mono:true,ls:"0.06em"});
+  steps.forEach(([a,b,c],i)=>{
+    const x=i*(w+gap);
+    svg.append(sv("rect",{x,y:36,width:w,height:124,rx:8,fill:C.panel,stroke:i===2?C.teal:C.line,"stroke-width":1.5}));
+    text(svg,x+12,64,a,{size:16,weight:600});
+    text(svg,x+12,88,b,{fill:C.muted,size:12,mono:true});
+    text(svg,x+12,140,c,{fill:i>=2?C.teal:C.text,size:i===2?12.5:20,mono:true,weight:500});
+    if(i<5) svg.append(sv("line",{x1:x+w+4,y1:98,x2:x+w+gap-4,y2:98,stroke:C.teal,"stroke-width":2,"marker-end":"url(#ah3)"}));
+  });
+  text(svg,0,184,"Same exercise for all 100 engines in one call: 0 mismatches between round(endpoint, 2) and the table.",{fill:C.muted,size:15});
+  document.getElementById("trace").append(svg);
+})();
+
+/* ---------- 8. RAG flow ---------- */
+(function(){
+  const W=936,H=112,svg=sv("svg",{viewBox:`0 0 ${W} ${H}`,width:W,height:H});
+  const steps=[["question","any language"],["rewrite","EN + 3 queries"],["hybrid search","AI Search, RRF"],["structured answer","status + claims"],["verify each claim","judge + rules"],["answer","cited, with gaps"]];
+  const w=142,gap=(W-6*w)/5;
+  const defs=sv("defs"); const m=sv("marker",{id:"ah4",viewBox:"0 0 10 10",refX:"9",refY:"5",markerWidth:"7",markerHeight:"7",orient:"auto-start-reverse"}); m.append(sv("path",{d:"M0,0 L10,5 L0,10 z",fill:C.violet})); defs.append(m); svg.append(defs);
+  steps.forEach(([a,b],i)=>{
+    const x=i*(w+gap);
+    svg.append(sv("rect",{x,y:10,width:w,height:92,rx:8,fill:C.panel,stroke:i===4?C.violet:C.line,"stroke-width":1.5}));
+    text(svg,x+12,42,a,{size:15,weight:600});
+    text(svg,x+12,66,b,{fill:C.muted,size:12.5,mono:true});
+    if(i<5) svg.append(sv("line",{x1:x+w+4,y1:56,x2:x+w+gap-4,y2:56,stroke:C.violet,"stroke-width":2,"marker-end":"url(#ah4)"}));
+  });
+  document.getElementById("ragflow").append(svg);
+})();
+
+/* ---------- 10. stack chips and closing art ---------- */
+(function(){
+  const items=["Databricks Asset Bundles","Lakeflow Declarative Pipelines","Unity Catalog","Delta Lake","Auto Loader","Spark SQL","pandas","scikit-learn","MLflow","Model Serving","AI Search (vector)","Foundation Model APIs","Databricks Apps","FastAPI","SVG, no framework","pytest (142)","GitHub Actions","Playwright"];
+  const stackEl=document.getElementById("stack");
+  items.forEach(s=>{const e=document.createElement("span"); e.textContent=s; e.style.cssText="font:400 15px IBM Plex Mono;color:#E6EAF0;border:1px solid #2A3442;border-radius:4px;padding:5px 9px"; stackEl.append(e);});
+  const W=1080,H=380,svg=sv("svg",{viewBox:`0 0 ${W} ${H}`,width:W,height:H});
+  const g=sv("g"); svg.append(g);
+  // a short row of engines fading to the right, with three highlighted
+  const TW=70,TH=35; const n=16;
+  for(let i=0;i<n;i++){ const x=110+i*(TW*0.82), y=250-i*5, st=i===3?C.crit:i===7?C.watch:C.teal; const h=30+((i*53)%70); const b=box(g,x,y-h,h,TW/2*0.68,TH/2*0.68,st); const op=Math.max(.12,1-i/n*1.1); [b.top,b.L,b.R].forEach(p=>p.setAttribute("opacity",op)); }
+  document.getElementById("close-art").append(svg);
+})();
+</script>
+</body>
+</html>

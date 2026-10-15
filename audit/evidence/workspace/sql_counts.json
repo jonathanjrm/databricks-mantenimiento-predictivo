@@ -1,0 +1,83 @@
+{
+ "statement_id": "01f1c74e-99ba-1053-adff-e540408fbed9",
+ "status": {
+  "state": "SUCCEEDED"
+ },
+ "manifest": {
+  "format": "JSON_ARRAY",
+  "schema": {
+   "column_count": 2,
+   "columns": [
+    {
+     "name": "t",
+     "type_text": "STRING",
+     "type_name": "STRING",
+     "position": 0
+    },
+    {
+     "name": "n",
+     "type_text": "BIGINT",
+     "type_name": "LONG",
+     "position": 1
+    }
+   ]
+  },
+  "total_chunk_count": 1,
+  "chunks": [
+   {
+    "chunk_index": 0,
+    "row_offset": 0,
+    "row_count": 10
+   }
+  ],
+  "total_row_count": 10,
+  "truncated": false
+ },
+ "result": {
+  "chunk_index": 0,
+  "row_offset": 0,
+  "row_count": 10,
+  "data_array": [
+   [
+    "bronze_cmapss_lecturas",
+    "33727"
+   ],
+   [
+    "bronze_cmapss_rul",
+    "1"
+   ],
+   [
+    "silver_lecturas",
+    "33727"
+   ],
+   [
+    "silver_rul_test",
+    "100"
+   ],
+   [
+    "gold_features",
+    "33727"
+   ],
+   [
+    "gold_test_verdad",
+    "100"
+   ],
+   [
+    "gold_salud_curva",
+    "33727"
+   ],
+   [
+    "gold_predicciones",
+    "100"
+   ],
+   [
+    "gold_model_metrics",
+    "3"
+   ],
+   [
+    "gold_control_calidad",
+    "2"
+   ]
+  ]
+ }
+}

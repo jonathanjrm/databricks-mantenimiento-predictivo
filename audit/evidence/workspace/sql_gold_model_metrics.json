@@ -1,0 +1,154 @@
+{
+ "statement_id": "01f1c74e-9d2d-1b2c-8870-49e29cecfa3a",
+ "status": {
+  "state": "SUCCEEDED"
+ },
+ "manifest": {
+  "format": "JSON_ARRAY",
+  "schema": {
+   "column_count": 13,
+   "columns": [
+    {
+     "name": "trained_at",
+     "type_text": "TIMESTAMP",
+     "type_name": "TIMESTAMP",
+     "position": 0
+    },
+    {
+     "name": "run_id",
+     "type_text": "STRING",
+     "type_name": "STRING",
+     "position": 1
+    },
+    {
+     "name": "model_name",
+     "type_text": "STRING",
+     "type_name": "STRING",
+     "position": 2
+    },
+    {
+     "name": "model_version",
+     "type_text": "INT",
+     "type_name": "INT",
+     "position": 3
+    },
+    {
+     "name": "model_type",
+     "type_text": "STRING",
+     "type_name": "STRING",
+     "position": 4
+    },
+    {
+     "name": "rmse_test",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 5
+    },
+    {
+     "name": "phm08_test",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 6
+    },
+    {
+     "name": "mae_test",
+     "type_text": "DOUBLE",
+     "type_name": "DOUBLE",
+     "position": 7
+    },
+    {
+     "name": "rul_clip",
+     "type_text": "INT",
+     "type_name": "INT",
+     "position": 8
+    },
+    {
+     "name": "n_train_rows",
+     "type_text": "BIGINT",
+     "type_name": "LONG",
+     "position": 9
+    },
+    {
+     "name": "n_features",
+     "type_text": "INT",
+     "type_name": "INT",
+     "position": 10
+    },
+    {
+     "name": "promoted_to_champion",
+     "type_text": "BOOLEAN",
+     "type_name": "BOOLEAN",
+     "position": 11
+    },
+    {
+     "name": "decisi\u00f3n",
+     "type_text": "STRING",
+     "type_name": "STRING",
+     "position": 12
+    }
+   ]
+  },
+  "total_chunk_count": 1,
+  "chunks": [
+   {
+    "chunk_index": 0,
+    "row_offset": 0,
+    "row_count": 3
+   }
+  ],
+  "total_row_count": 3,
+  "truncated": false
+ },
+ "result": {
+  "chunk_index": 0,
+  "row_offset": 0,
+  "row_count": 3,
+  "data_array": [
+   [
+    "2026-10-13T18:46:48.808Z",
+    "4688ee42eda5469fac3414ee8c3cf199",
+    "workspace.mantenimiento.rul_model",
+    null,
+    "baseline_media",
+    "43.06703554245684",
+    "33629.230598368384",
+    "35.9",
+    "125",
+    "20631",
+    "85",
+    "false",
+    "baseline"
+   ],
+   [
+    "2026-10-13T18:46:48.808Z",
+    "4688ee42eda5469fac3414ee8c3cf199",
+    "workspace.mantenimiento.rul_model",
+    null,
+    "baseline_ridge",
+    "21.796289834949274",
+    "1073.3844090930604",
+    "16.81347235209967",
+    "125",
+    "20631",
+    "85",
+    "false",
+    "baseline"
+   ],
+   [
+    "2026-10-13T18:46:48.808Z",
+    "4688ee42eda5469fac3414ee8c3cf199",
+    "workspace.mantenimiento.rul_model",
+    "1",
+    "hist_gradient_boosting",
+    "18.441849882005343",
+    "655.0239471190539",
+    "13.478027648560577",
+    "125",
+    "20631",
+    "85",
+    "true",
+    "no habia champion: se asigna a la primera version"
+   ]
+  ]
+ }
+}

@@ -13,6 +13,9 @@
 # MAGIC `RUL_sin_el_sensor - RUL_original`: cuanta vida restante "devolveria" ese sensor si estuviese sano.
 # MAGIC Positivo = el sensor empuja la RUL hacia abajo.
 # MAGIC
+# MAGIC Estado y texto de acción son **orientativos**: umbrales demostrativos sobre una estimación estadística
+# MAGIC sin intervalos calibrados; toda decisión operativa requiere revisión de ingeniería.
+# MAGIC
 # MAGIC Es una **sensibilidad local por oclusión**, no valores SHAP: las contribuciones no suman la
 # MAGIC predicción, el modelo puede responder de forma poco fiable a combinaciones irreales (un sensor
 # MAGIC sano con los demas degradados) y sensores correlacionados se reparten el efecto de forma
@@ -49,7 +52,8 @@ for _d in reversed(_code_dirs()):
         sys.path.insert(0, _d)
 
 from lib.cmapss import (ACTIVE_SENSORS, HEALTHY_CYCLES, classify_state, feature_columns,  # noqa: E402
-                        occlusion_contributions, phm08_score, recommended_action, rmse, top_k_sensors)
+                        occlusion_contributions, phm08_score, recommended_action, rmse, top_k_sensors,
+                        validate_feature_frame)
 
 dbutils.widgets.text("catalog", "workspace", "Catálogo")
 dbutils.widgets.text("schema", "mantenimiento", "Schema")
@@ -88,6 +92,7 @@ test = (feat.filter("split = 'test'").select("unit", "cycle", *FEATS[1:])
         .sort_values("unit").reset_index(drop=True))
 assert len(test) == 100, f"se esperaban 100 motores y hay {len(test)}"
 X = test[FEATS].astype("float64")
+validate_feature_frame(X, FEATS)  # explicit error on null/inf/missing sensors; no silent prediction
 
 # Referencia sana: mediana de las variables en los primeros 30 ciclos de los motores de train.
 sano = (feat.filter(f"split = 'train' AND cycle <= {HEALTHY_CYCLES}").select(*FEATS).toPandas()

@@ -1,0 +1,16 @@
+{
+ "captured_at": "2026-10-14T22:3xZ",
+ "endpoint": "dev_jjrm199867_rul-model-dev (recreated by bundle deploy A_52, id dd2a3f66...)",
+ "n": 100,
+ "max_abs_diff_round2_vs_gold_predicciones": 0,
+ "n_discrepancies": 0,
+ "rmse_endpoint_vs_rul_real": 18.44184988200534,
+ "engine_34": 3.118922691130997,
+ "engine_60": 82.26835521034641,
+ "engine_85": 124.90846155881731,
+ "gold_34_60_85": [
+  3.12,
+  82.27,
+  124.91
+ ]
+}
