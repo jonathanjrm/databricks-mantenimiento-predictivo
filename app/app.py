@@ -197,15 +197,7 @@ SENSOR_NAMES = {
     "s21": "W32 LPT coolant bleed",
 }
 
-# State values written by the first deployment (Spanish schema), kept readable as a fallback.
-LEGACY_STATES = {"critico": "critical", "vigilar": "watch", "sano": "healthy"}
 ACTION_PREFIX = "Demo estimate; requires engineering review. "
-
-
-def normalize_state(state: Any) -> str:
-    """Accepts both legacy Spanish (critico, vigilar, sano) and English state values."""
-    st = str(state or "").strip().lower()
-    return LEGACY_STATES.get(st, st)
 
 
 def recommended_action(state: str, rul: float, sensors: Iterable[str] = ()) -> str:
@@ -219,7 +211,7 @@ def recommended_action(state: str, rul: float, sensors: Iterable[str] = ()) -> s
     shutdown or replacement. The model's uncertainty is not calibrated (no prediction
     intervals); the typical error is only the test RMSE shown in the app.
     """
-    state = normalize_state(state)
+    state = str(state or "").strip().lower()
     n = round(max(float(rul), 0.0))
     sens = [s for s in sensors if s][:2]
     if state == "critical":
@@ -251,7 +243,7 @@ def _valid_rul(v: Any) -> bool:
 
 def _prepare_engine(r: dict) -> dict:
     e = dict(r)
-    e["state"] = normalize_state(e.get("state"))
+    e["state"] = str(e.get("state") or "").strip().lower()
     if _valid_rul(e.get("rul_pred")):
         e["action"] = recommended_action(
             e["state"], float(e["rul_pred"]), [e.get("sensor_1"), e.get("sensor_2")]

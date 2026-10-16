@@ -68,7 +68,7 @@ def build_tables() -> tuple[list[dict], dict, dict[int, list[dict]], int]:
             "error": round(float(pred[i] - fr["y_test"].iloc[i]), 2),
             "state": classify_state(pred[i], CRITICAL_THRESHOLD, WATCH_THRESHOLD),
             "model_version": 1,
-            "scored_at": dt.datetime.now().isoformat(),
+            "scored_at": dt.datetime.now(dt.timezone.utc).isoformat(),
             "critical_threshold": CRITICAL_THRESHOLD,
             "watch_threshold": WATCH_THRESHOLD,
         }
@@ -120,7 +120,7 @@ def main() -> None:
                     "model_version": 1,
                     "rmse_test": m["rmse_test"],
                     "phm08_test": m["phm08_test"],
-                    "trained_at": dt.datetime.now().isoformat(),
+                    "trained_at": dt.datetime.now(dt.timezone.utc).isoformat(),
                 }
             ]
         if "COUNT(*)" in s:

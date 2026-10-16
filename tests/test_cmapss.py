@@ -189,14 +189,8 @@ def test_occlusion_contributions_linear_model():
     assert top[0][0][0] == "s2" and len(top[0]) == 2
 
 
-def test_normalize_state_and_action():
-    assert [C.normalize_state(s) for s in ("critico", "vigilar", "sano", "watch")] == [
-        "critical",
-        "watch",
-        "healthy",
-        "watch",
-    ]
-    a = C.recommended_action("critico", 12.4, ["s4", "s11", "s2"])
+def test_recommended_action_texts():
+    a = C.recommended_action("critical", 12.4, ["s4", "s11", "s2"])
     assert a == (
         "Demo estimate; requires engineering review. Estimated RUL is low (about 12 cycles): "
         "consider prioritising an inspection. Sensors to check first: s4 and s11."

@@ -17,7 +17,7 @@ ROWS = [
         "rul_pred": 10.0,
         "rul_real": 12,
         "error": -2.0,
-        "state": "critico",
+        "state": "critical",
         "sensor_1": "s4",
         "contrib_1": 5.0,
         "sensor_2": "s11",
@@ -33,7 +33,7 @@ ROWS = [
         "rul_pred": 30.0,
         "rul_real": 28,
         "error": 2.0,
-        "state": "vigilar",
+        "state": "watch",
         "sensor_1": "s4",
         "contrib_1": 5.0,
         "sensor_2": "s11",
@@ -264,7 +264,7 @@ def test_get_kinds_is_cached_and_tolerant(monkeypatch):
     assert A.get_kinds() is None
 
 
-def test_legacy_states_and_english_actions(monkeypatch):
+def test_states_and_english_actions(monkeypatch):
     monkeypatch.setattr(A, "run_query", _fake)
     j = TestClient(A.app).get("/api/engines").json()
     assert [e["state"] for e in j["engines"]] == ["critical", "watch", "healthy"]
@@ -284,7 +284,7 @@ def test_front_page():
 def test_action_text_identical_in_app_and_lib():
     from lib import cmapss as C
 
-    for st in ("critical", "watch", "healthy", "critico"):
+    for st in ("critical", "watch", "healthy", "unknown"):
         for rul in (0.0, 12.4, 40.0, 100.0):
             assert A.recommended_action(st, rul, ["s4", "s11", "s2"]) == C.recommended_action(
                 st, rul, ["s4", "s11", "s2"]

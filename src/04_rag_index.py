@@ -54,8 +54,8 @@ from lib.chunking import chunk_pages
 dbutils.widgets.text("catalog", "workspace", "Catalog")
 dbutils.widgets.text("schema", "maintenance", "Schema")
 dbutils.widgets.dropdown("parser", "auto", ["auto", "pypdf", "ai_parse_document"], "Text extraction")
-# Free Edition allows a single AI Search endpoint: the one created by the first deployment is reused.
-dbutils.widgets.text("endpoint_name", "mantenimiento_ai_search", "AI Search endpoint")
+# Free Edition allows a single AI Search endpoint; it is created once and reused afterwards.
+dbutils.widgets.text("endpoint_name", "maintenance_ai_search", "AI Search endpoint")
 # Databricks-managed embedding model. The list changes over time (check the Serving tab):
 # alternatives in the October 2026 docs are databricks-bge-large-en and
 # databricks-qwen3-embedding-0-6b (Public Preview, multilingual). gte-large-en is English only.

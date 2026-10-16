@@ -243,8 +243,7 @@ footer{margin-top:24px;padding-top:14px;border-top:1px solid var(--line);font-si
 "use strict";
 const COLORS = {critical:"#FF6B3D", watch:"#F2B33D", healthy:"#3FC1B0"};
 const LABEL = {critical:"Critical", watch:"Watch", healthy:"Healthy"};
-const LEGACY = {critico:"critical", vigilar:"watch", sano:"healthy"};
-const stateOf = (s) => LEGACY[s] || s;
+const stateOf = (s) => s || "unknown";
 const NS = "http://www.w3.org/2000/svg";
 const clampRul = (v) => (v===null||v===undefined) ? null : Math.max(v,0);
 const state = {engines:[], names:{}, sel:null, overview:null, filter:"all", sourceTable:null, health:null};

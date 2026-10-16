@@ -60,8 +60,8 @@ from lib.retrieval import doc_frequency, evaluate_retrieval, extractive_question
 
 dbutils.widgets.text("catalog", "workspace", "Catalog")
 dbutils.widgets.text("schema", "maintenance", "Schema")
-# Free Edition allows a single AI Search endpoint: the one created by the first deployment is reused.
-dbutils.widgets.text("endpoint_name", "mantenimiento_ai_search", "AI Search endpoint")
+# Free Edition allows a single AI Search endpoint; it is created once and reused afterwards.
+dbutils.widgets.text("endpoint_name", "maintenance_ai_search", "AI Search endpoint")
 dbutils.widgets.text("n_questions", "40", "Number of questions")
 dbutils.widgets.dropdown("use_llm", "yes", ["yes", "no"], "Generate questions with an LLM")
 # Chat endpoint of Foundation Model APIs; hosted models change, check the Serving tab.

@@ -271,8 +271,6 @@ def validate_feature_frame(X: pd.DataFrame, columns: Iterable[str]) -> None:
 
 
 STATES = ("critical", "watch", "healthy")
-# State values written by the first deployment (Spanish schema), kept readable as a fallback.
-LEGACY_STATES = {"critico": "critical", "vigilar": "watch", "sano": "healthy"}
 ACTION_PREFIX = "Demo estimate; requires engineering review. "
 
 
@@ -285,12 +283,6 @@ def classify_state(rul: float, critical: float = 20.0, watch: float = 35.0) -> s
     return "healthy"
 
 
-def normalize_state(state: str) -> str:
-    """Maps legacy Spanish state values (critico, vigilar, sano) to the English ones."""
-    s = (state or "").strip().lower()
-    return LEGACY_STATES.get(s, s)
-
-
 def recommended_action(state: str, rul: float, sensors: Iterable[str] = ()) -> str:
     """Advisory text for an engine, from its state, estimated RUL and top sensors.
 
@@ -301,7 +293,7 @@ def recommended_action(state: str, rul: float, sensors: Iterable[str] = ()) -> s
     """
     n = round(max(float(rul), 0.0))
     sens = [s for s in sensors if s][:2]
-    state = normalize_state(state)
+    state = (state or "").strip().lower()
     if state == "critical":
         txt = ACTION_PREFIX + f"Estimated RUL is low (about {n} cycles): consider prioritising an inspection."
         if sens:
