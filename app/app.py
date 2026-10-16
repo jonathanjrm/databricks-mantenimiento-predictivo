@@ -63,6 +63,37 @@ SNIPPET_CHARS = 300
 
 app = FastAPI(title="Predictive turbine maintenance", docs_url=None, redoc_url=None)
 
+# Security headers (audit finding D-06). The CSP's font-src/style-src allowlist matches exactly
+# what app/static/index.html loads (Google Fonts) -- nothing broader. index.html's whole frontend
+# is one inline <script> block (no bundler/build step for this app), so script-src must allow
+# 'unsafe-inline' too, or the dashboard would load with no JavaScript at all. This still blocks
+# the things that matter without a build step: loading a script from any other origin, framing
+# the page, and MIME-sniffing a response into something executable.
+_SECURITY_HEADERS = {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "same-origin",
+    "Content-Security-Policy": (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com; "
+        "img-src 'self' data:; "
+        "connect-src 'self'; "
+        "frame-ancestors 'none'; "
+        "base-uri 'self'; "
+        "form-action 'self'"
+    ),
+}
+
+
+@app.middleware("http")
+async def _security_headers(request, call_next):
+    response = await call_next(request)
+    for header, value in _SECURITY_HEADERS.items():
+        response.headers.setdefault(header, value)
+    return response
+
 
 class TableUnavailable(Exception):
     """The queried table or view does not exist yet."""

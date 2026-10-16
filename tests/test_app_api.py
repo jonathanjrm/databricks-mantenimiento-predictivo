@@ -87,6 +87,19 @@ def _fake(sql, params=None):
     return []
 
 
+def test_security_headers_present_on_every_response():
+    # D-06: CSP, frame and MIME-sniffing protection must be on every response, not just the
+    # frontend page, and must still allow the app's own inline-script frontend to run.
+    resp = TestClient(A.app).get("/")
+    assert resp.headers["X-Content-Type-Options"] == "nosniff"
+    assert resp.headers["X-Frame-Options"] == "DENY"
+    csp = resp.headers["Content-Security-Policy"]
+    assert "default-src 'self'" in csp
+    assert "frame-ancestors 'none'" in csp
+    assert "script-src 'self' 'unsafe-inline'" in csp  # index.html's whole app is one inline <script>
+    assert "fonts.googleapis.com" in csp and "fonts.gstatic.com" in csp
+
+
 def test_overview_with_data(monkeypatch):
     monkeypatch.setattr(A, "run_query", _fake)
     j = TestClient(A.app).get("/api/overview").json()
