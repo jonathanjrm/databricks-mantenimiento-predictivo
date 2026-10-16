@@ -1,0 +1,168 @@
+{
+  "run_at_utc": "2026-10-16T23:23:32.731366+00:00",
+  "methodology": "20 of 100 FD001 train engines set aside with a fixed seed before any fitting, tuning or GroupKFold selection touched the data. Candidate trained on the remaining 80 engines with the frozen champion hyperparameters (no re-tuning). Evaluated with the same truncate-at-random-cycle convention as the official test set and as validation_rmse_by_engine. This is a single run, not repeated or cherry-picked.",
+  "n_fit_engines": 80,
+  "n_holdout_engines": 20,
+  "holdout_units": [
+    3,
+    7,
+    10,
+    15,
+    18,
+    30,
+    32,
+    33,
+    41,
+    54,
+    58,
+    64,
+    66,
+    69,
+    70,
+    73,
+    76,
+    84,
+    86,
+    90
+  ],
+  "hgb_params": {
+    "max_iter": 300,
+    "learning_rate": 0.05,
+    "max_leaf_nodes": 31,
+    "min_samples_leaf": 40,
+    "l2_regularization": 1.0,
+    "early_stopping": false,
+    "random_state": 42
+  },
+  "rmse": 23.966129769063265,
+  "mae": 19.182331001845657,
+  "phm08": 277.20969076666063,
+  "bias_mean_error": -0.8226390202706586,
+  "per_engine": [
+    {
+      "unit": 3,
+      "cut_cycle": 139,
+      "rul_true": 40.0,
+      "rul_pred": 47.52000800510276
+    },
+    {
+      "unit": 7,
+      "cut_cycle": 128,
+      "rul_true": 131.0,
+      "rul_pred": 108.19401497447166
+    },
+    {
+      "unit": 10,
+      "cut_cycle": 196,
+      "rul_true": 26.0,
+      "rul_pred": 36.249051980244474
+    },
+    {
+      "unit": 15,
+      "cut_cycle": 132,
+      "rul_true": 75.0,
+      "rul_pred": 100.60505391658285
+    },
+    {
+      "unit": 18,
+      "cut_cycle": 129,
+      "rul_true": 66.0,
+      "rul_pred": 77.97481957238051
+    },
+    {
+      "unit": 30,
+      "cut_cycle": 119,
+      "rul_true": 75.0,
+      "rul_pred": 116.76787617162667
+    },
+    {
+      "unit": 32,
+      "cut_cycle": 109,
+      "rul_true": 82.0,
+      "rul_pred": 83.97869699407532
+    },
+    {
+      "unit": 33,
+      "cut_cycle": 141,
+      "rul_true": 59.0,
+      "rul_pred": 87.73136328414493
+    },
+    {
+      "unit": 41,
+      "cut_cycle": 138,
+      "rul_true": 78.0,
+      "rul_pred": 89.18314793614407
+    },
+    {
+      "unit": 54,
+      "cut_cycle": 116,
+      "rul_true": 141.0,
+      "rul_pred": 117.38624979136966
+    },
+    {
+      "unit": 58,
+      "cut_cycle": 61,
+      "rul_true": 86.0,
+      "rul_pred": 112.60989682738432
+    },
+    {
+      "unit": 64,
+      "cut_cycle": 209,
+      "rul_true": 74.0,
+      "rul_pred": 64.74215642939632
+    },
+    {
+      "unit": 66,
+      "cut_cycle": 66,
+      "rul_true": 136.0,
+      "rul_pred": 115.00218319944604
+    },
+    {
+      "unit": 69,
+      "cut_cycle": 333,
+      "rul_true": 29.0,
+      "rul_pred": 20.742248775006146
+    },
+    {
+      "unit": 70,
+      "cut_cycle": 3,
+      "rul_true": 134.0,
+      "rul_pred": 128.2358768945553
+    },
+    {
+      "unit": 73,
+      "cut_cycle": 143,
+      "rul_true": 70.0,
+      "rul_pred": 41.65253935373057
+    },
+    {
+      "unit": 76,
+      "cut_cycle": 208,
+      "rul_true": 2.0,
+      "rul_pred": 3.895708689041903
+    },
+    {
+      "unit": 84,
+      "cut_cycle": 158,
+      "rul_true": 109.0,
+      "rul_pred": 45.396098606066566
+    },
+    {
+      "unit": 86,
+      "cut_cycle": 215,
+      "rul_true": 63.0,
+      "rul_pred": 45.59893175479459
+    },
+    {
+      "unit": 90,
+      "cut_cycle": 138,
+      "rul_true": 16.0,
+      "rul_pred": 32.081296439022175
+    }
+  ],
+  "context_for_comparison": {
+    "fd001_test_rmse_champion_seen_test_set": 18.441849882005343,
+    "fd001_validation_rmse_truncated_train_only": 19.724,
+    "note": "This holdout RMSE is expected to differ from both of the above: it uses only 80 training engines (20 fewer than the champion), a different random engine split, and a different truncation seed. It is not comparable cycle-for-cycle; it is a sanity check that the model generalises to engines it never saw in any form, within the same FD001 operating regime and fault mode."
+  }
+}
