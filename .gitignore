@@ -23,3 +23,6 @@ consultas/
 
 # Exception: the portfolio carousel is versioned (it is not a manual)
 !portfolio/carousel/carousel.pdf
+
+# Local video drafts (not published)
+portfolio/video/
