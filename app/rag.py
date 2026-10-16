@@ -14,12 +14,13 @@ Two configurations are kept side by side so before/after can be measured with on
   applicability (QUALIFIERS; a claim that drops "on centrifugal flow engines" becomes PARTIAL) and
   removal of instruction-like text from passages and questions (treated as data).
 """
+
 from __future__ import annotations
 
 import json
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, Optional
 
 # llm(messages, max_tokens) -> str ; search(query_text, num_results) -> list[dict]
 LLM = Callable[[list, int], str]
@@ -28,16 +29,29 @@ Search = Callable[[str, int], list]
 STATUSES = ("answered", "insufficient_evidence", "requires_manufacturer_documentation", "not_found")
 
 CONFIGS = {
-    "v1_baseline": {"multi_query": False, "k": 6, "fetch_k": 6, "filter_non_body": False,
-                    "structured": False, "verify": False},
-    "v2": {"multi_query": True, "k": 6, "fetch_k": 12, "filter_non_body": True,
-           "structured": True, "verify": True},
+    "v1_baseline": {
+        "multi_query": False,
+        "k": 6,
+        "fetch_k": 6,
+        "filter_non_body": False,
+        "structured": False,
+        "verify": False,
+    },
+    "v2": {
+        "multi_query": True,
+        "k": 6,
+        "fetch_k": 12,
+        "filter_non_body": True,
+        "structured": True,
+        "verify": True,
+    },
 }
 
 # ---------------------------------------------------------------------------
 # Query rewriting
 # ---------------------------------------------------------------------------
-# v1: prompt that was in production (kept verbatim, in Spanish, for a faithful baseline).
+# v1: prompt that was in production (kept verbatim, in Spanish, so that the baseline stays faithful;
+# the v1 configuration is only used by the evaluation harness, never by the deployed app).
 V1_REWRITE_PROMPT = (
     "Convierte la pregunta del usuario en una consulta de búsqueda en INGLES para un manual "
     "técnico de motores de aviación (FAA Powerplant Handbook) y un artículo de NASA sobre "
@@ -66,16 +80,22 @@ def rewrite_queries(question: str, llm: LLM, multi: bool) -> list[str]:
     """English search queries for `question`. Falls back to the question itself on failure."""
     if not multi:
         try:
-            q = _one_line(llm([{"role": "system", "content": V1_REWRITE_PROMPT},
-                               {"role": "user", "content": question}], 400))
+            q = _one_line(
+                llm(
+                    [{"role": "system", "content": V1_REWRITE_PROMPT}, {"role": "user", "content": question}],
+                    400,
+                )
+            )
             return [q or question]
         except Exception:
             return [question]
     qs = []
-    for _attempt in range(2):              # reasoning models sometimes run out of tokens
+    for _attempt in range(2):  # reasoning models sometimes run out of tokens
         try:
-            raw = llm([{"role": "system", "content": V2_REWRITE_PROMPT},
-                       {"role": "user", "content": question}], 1000)
+            raw = llm(
+                [{"role": "system", "content": V2_REWRITE_PROMPT}, {"role": "user", "content": question}],
+                1000,
+            )
             arr = json.loads(_extract_json(raw, "["))
             qs = [_one_line(str(x)) for x in arr if str(x).strip()][:3]
             if qs:
@@ -83,7 +103,7 @@ def rewrite_queries(question: str, llm: LLM, multi: bool) -> list[str]:
         except Exception:
             qs = []
     seen, out = set(), []
-    for q in qs + [question]:
+    for q in [*qs, question]:
         if q.lower() not in seen:
             seen.add(q.lower())
             out.append(q)
@@ -141,8 +161,9 @@ def rrf_fuse(result_lists: list[list[dict]], k: int = 60) -> list[dict]:
     return fused
 
 
-def retrieve(queries: list[str], search: Search, cfg: dict,
-             kinds: Optional[dict] = None) -> tuple[list[dict], list[dict]]:
+def retrieve(
+    queries: list[str], search: Search, cfg: dict, kinds: dict | None = None
+) -> tuple[list[dict], list[dict]]:
     """Returns (final top-k chunks, trace of every query with its raw results).
     `kinds` is the page_kind_map; without it the chunk's own text is classified."""
     trace, lists = [], []
@@ -150,9 +171,21 @@ def retrieve(queries: list[str], search: Search, cfg: dict,
         res = search(q, cfg["fetch_k"])
         for c in res:
             c["kind"] = (kinds or {}).get((c["source"], int(c["page"]))) or page_kind(c.get("text", ""))
-        trace.append({"query": q, "results": [
-            {"chunk_id": c["chunk_id"], "source": c["source"], "page": c["page"],
-             "score": c.get("score"), "kind": c["kind"]} for c in res]})
+        trace.append(
+            {
+                "query": q,
+                "results": [
+                    {
+                        "chunk_id": c["chunk_id"],
+                        "source": c["source"],
+                        "page": c["page"],
+                        "score": c.get("score"),
+                        "kind": c["kind"],
+                    }
+                    for c in res
+                ],
+            }
+        )
         lists.append(res)
     if len(lists) == 1:
         ranked = lists[0]
@@ -168,6 +201,7 @@ def retrieve(queries: list[str], search: Search, cfg: dict,
 # ---------------------------------------------------------------------------
 # Generation
 # ---------------------------------------------------------------------------
+# v1 system prompt kept verbatim (Spanish) for the same reason as V1_REWRITE_PROMPT.
 V1_SYSTEM_PROMPT = (
     "Eres un asistente de mantenimiento de turbinas. Responde SOLO con la información del contexto. "
     "Cita cada afirmacion con el número de la fuente entre corchetes, por ejemplo [1]. "
@@ -212,7 +246,7 @@ def _extract_json(raw: str, opener: str = "{") -> str:
     s, e = raw.find(opener), raw.rfind(closer)
     if s < 0 or e <= s:
         raise ValueError("no JSON in model output")
-    return raw[s:e + 1]
+    return raw[s : e + 1]
 
 
 _CITE = re.compile(r"[\[【](\d+)[\]】]")
@@ -232,6 +266,7 @@ def claims_from_free_text(answer: str) -> list[dict]:
 
 
 def v1_status(answer: str) -> str:
+    """v1 answered in free text: its only abstention signal was the Spanish "I cannot find it" wording."""
     a = (answer or "").lower()
     if "no lo encuentro" in a or "no encuentro" in a:
         return "not_found"
@@ -241,27 +276,53 @@ def v1_status(answer: str) -> str:
 def generate(question: str, chunks: list[dict], llm: LLM, cfg: dict) -> dict:
     ctx = build_context(chunks)
     if not cfg["structured"]:
-        text = llm([{"role": "system", "content": V1_SYSTEM_PROMPT},
-                    {"role": "user", "content": f"Contexto:\n{ctx}\n\nPregunta: {question}"}], 800)
-        return {"status": v1_status(text), "summary": text, "claims": claims_from_free_text(text),
-                "gaps": "", "manufacturer_note": "", "raw": text}
-    raw = llm([{"role": "system", "content": V2_SYSTEM_PROMPT},
-               {"role": "user", "content": f"Context passages:\n{ctx}\n\nQuestion: {question}"}], 1500)
+        text = llm(
+            [
+                {"role": "system", "content": V1_SYSTEM_PROMPT},
+                {"role": "user", "content": f"Contexto:\n{ctx}\n\nPregunta: {question}"},
+            ],
+            800,
+        )
+        return {
+            "status": v1_status(text),
+            "summary": text,
+            "claims": claims_from_free_text(text),
+            "gaps": "",
+            "manufacturer_note": "",
+            "raw": text,
+        }
+    raw = llm(
+        [
+            {"role": "system", "content": V2_SYSTEM_PROMPT},
+            {"role": "user", "content": f"Context passages:\n{ctx}\n\nQuestion: {question}"},
+        ],
+        1500,
+    )
     try:
         d = json.loads(_extract_json(raw))
     except Exception:
-        return {"status": "insufficient_evidence", "summary": "", "claims": [],
-                "gaps": "The model output could not be parsed; no claims are shown.",
-                "manufacturer_note": "", "raw": raw}
+        return {
+            "status": "insufficient_evidence",
+            "summary": "",
+            "claims": [],
+            "gaps": "The model output could not be parsed; no claims are shown.",
+            "manufacturer_note": "",
+            "raw": raw,
+        }
     status = d.get("status") if d.get("status") in STATUSES else "insufficient_evidence"
     claims = []
     for c in d.get("claims") or []:
         if isinstance(c, dict) and str(c.get("text", "")).strip():
             cites = [int(x) for x in (c.get("citations") or []) if str(x).isdigit()]
             claims.append({"text": str(c["text"]).strip(), "citations": cites})
-    return {"status": status, "summary": str(d.get("summary") or "").strip(), "claims": claims,
-            "gaps": str(d.get("gaps") or "").strip(),
-            "manufacturer_note": str(d.get("manufacturer_note") or "").strip(), "raw": raw}
+    return {
+        "status": status,
+        "summary": str(d.get("summary") or "").strip(),
+        "claims": claims,
+        "gaps": str(d.get("gaps") or "").strip(),
+        "manufacturer_note": str(d.get("manufacturer_note") or "").strip(),
+        "raw": raw,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -274,11 +335,15 @@ Answer ONLY with a JSON object {"verdict": "SUPPORTED" | "PARTIAL" | "NOT_SUPPOR
 - NOT_SUPPORTED: the passages do not state it.
 Judge only against the passages, not against your own knowledge."""
 
-_STOP = set("the a an of to in on for and or is are be by with as at from that this it its into "
-            "can may must not no if when which their there these those than then".split())
+_STOP = frozenset(
+    "the a an of to in on for and or is are be by with as at from that this it its into "
+    "can may must not no if when which their there these those than then".split()
+)
 
 
-_DASHES = str.maketrans({"\u2010": "-", "\u2011": "-", "\u2012": "-", "\u2013": "-", "\u2014": "-", "\u00a0": " ", "\u202f": " "})
+_DASHES = str.maketrans(
+    {"\u2010": "-", "\u2011": "-", "\u2012": "-", "\u2013": "-", "\u2014": "-", "\u00a0": " ", "\u202f": " "}
+)
 
 
 def _norm(text: str) -> str:
@@ -302,22 +367,29 @@ def lexical_support(claim: str, passage: str) -> float:
 # If the sentences that support a claim carry one of these and the claim does not, the claim is PARTIAL.
 # (label, kind, pattern in the source, pattern that must appear in the claim)
 QUALIFIERS = [
-    ("centrifugal flow engines", "scope", r"\bcentrifugal[- ]flow\b|\bcentrifugal (compressor|engine)s?\b", r"\bcentrifugal\b"),
+    (
+        "centrifugal flow engines",
+        "scope",
+        r"\bcentrifugal[- ]flow\b|\bcentrifugal (compressor|engine)s?\b",
+        r"\bcentrifugal\b",
+    ),
     ("axial flow engines", "scope", r"\baxial[- ]flow\b", r"\baxial\b"),
     ("reciprocating engines", "scope", r"\breciprocating\b", r"\breciprocating\b|\bpiston\b"),
     ("turboprop engines", "scope", r"\bturboprops?\b", r"\bturboprop"),
     ("turboshaft engines", "scope", r"\bturboshafts?\b", r"\bturboshaft"),
     ("APU", "scope", r"\bAPUs?\b|\bauxiliary power units?\b", r"\bAPU|\bauxiliary power"),
     ("helicopters", "scope", r"\bhelicopters?\b", r"\bhelicopter"),
-    ("typical or illustrative values", "hedge", r"\btypical\b|\billustrative\b|\bfor illustrative purposes\b",
-     r"\btypical|\billustrat|\bexample|\bmanufacturer|\bindicative"),
+    (
+        "typical or illustrative values",
+        "hedge",
+        r"\btypical\b|\billustrative\b|\bfor illustrative purposes\b",
+        r"\btypical|\billustrat|\bexample|\bmanufacturer|\bindicative",
+    ),
 ]
 _SCOPE_START = re.compile(r"^\s*(on|for|in|with|when (working )?on)\s", re.I)
-_SCOPE_LOOKBACK = 3
-_SCOPE_HEAD = 45          # characters of a scope-setting sentence in which the condition must appear
+_SCOPE_LOOKBACK = 3  # sentences before the supporting ones that can still set the scope
+_SCOPE_HEAD = 45  # characters of a scope-setting sentence in which the condition must appear
 _SENT_SPLIT = re.compile(r"(?<=[.!?])\s+")
-_SCOPE_LOOKBACK = 3
-_SCOPE_HEAD = 45          # characters of a scope-setting sentence in which the condition must appear
 
 
 def split_sentences(text: str) -> list[str]:
@@ -335,7 +407,7 @@ def supporting_sentences(claim: str, passage: str, min_overlap: float = 0.34) ->
     best, best_idx = 0.0, []
     for size in (1, 2, 3):
         for i in range(0, max(0, len(sents) - size + 1)):
-            sc = lexical_support(claim, " ".join(sents[i:i + size]))
+            sc = lexical_support(claim, " ".join(sents[i : i + size]))
             if sc >= max(min_overlap, _WINDOW_MIN[size]) and sc > best + 1e-9:
                 best, best_idx = sc, list(range(i, i + size))
     return best_idx
@@ -349,7 +421,9 @@ def missing_qualifiers(claim: str, passage: str) -> list[str]:
         return []
     first = idx[0]
     # scope-setting sentences: the supporting ones and up to 3 before the first of them
-    scope_heads = [x[:_SCOPE_HEAD] for x in sents[max(0, first - _SCOPE_LOOKBACK):idx[-1] + 1] if _SCOPE_START.match(x)]
+    scope_heads = [
+        x[:_SCOPE_HEAD] for x in sents[max(0, first - _SCOPE_LOOKBACK) : idx[-1] + 1] if _SCOPE_START.match(x)
+    ]
     support = " ".join(sents[i] for i in idx)
     missing = []
     for label, kind, src_pat, claim_pat in QUALIFIERS:
@@ -368,11 +442,16 @@ _INSTRUCTION_LIKE = re.compile(
     r"(ignore|disregard|forget|override)\s+(all\s+|the\s+|any\s+|your\s+)?(previous|prior|above|earlier|system)?\s*"
     r"(instructions?|prompts?|rules|guidelines)|\bsystem prompt\b|\bprompt (del|de) sistema\b|\bprompt syst[èe]me\b|"
     r"\byou are now\b|\bnew instructions?\s*:|\bimprime tu prompt\b|\bignora (todas )?las instrucciones\b|"
-    r"\bignore[sz]? (toutes )?les instructions\b|\brespond(?:e|s)? (only|solo|uniquement) with\b", re.I)
+    r"\bignore[sz]? (toutes )?les instructions\b|\brespond(?:e|s)? (only|solo|uniquement) with\b",
+    re.I,
+)
 
 
-_CLAUSE_SPLIT = re.compile(r"(?<=[.!?;])\s+|\s*,?\s+(?:and then|then|y (?:después|luego|a continuación)|"
-                           r"después|luego|et (?:ensuite|puis)|ensuite|puis)\s+", re.I)
+_CLAUSE_SPLIT = re.compile(
+    r"(?<=[.!?;])\s+|\s*,?\s+(?:and then|then|y (?:después|luego|a continuación)|"
+    r"después|luego|et (?:ensuite|puis)|ensuite|puis)\s+",
+    re.I,
+)
 
 
 def strip_instruction_like(text: str) -> tuple[str, int]:
@@ -384,12 +463,15 @@ def strip_instruction_like(text: str) -> tuple[str, int]:
     return (" ".join(keep) if removed else (text or ""), removed)
 
 
-def verify_claims(claims: list[dict], chunks: list[dict], llm: Optional[LLM]) -> list[dict]:
+def verify_claims(claims: list[dict], chunks: list[dict], llm: LLM | None) -> list[dict]:
     out = []
     for c in claims:
         valid = [n for n in c["citations"] if 1 <= n <= len(chunks)]
-        r = {**c, "valid_citations": valid,
-             "invalid_citations": [n for n in c["citations"] if n not in valid]}
+        r = {
+            **c,
+            "valid_citations": valid,
+            "invalid_citations": [n for n in c["citations"] if n not in valid],
+        }
         if not valid:
             r.update(verdict="NOT_SUPPORTED", reason="no valid citation", lexical=0.0)
             out.append(r)
@@ -400,9 +482,11 @@ def verify_claims(claims: list[dict], chunks: list[dict], llm: Optional[LLM]) ->
             r.update(verdict="UNVERIFIED", reason="no judge")
         else:
             r.update(verdict="UNVERIFIED", reason="judge gave no valid verdict")
-            msgs = [{"role": "system", "content": JUDGE_PROMPT},
-                    {"role": "user", "content": f"Claim: {c['text']}\n\nCited passages:\n{passages}"}]
-            for _attempt in range(2):          # reasoning models sometimes run out of tokens
+            msgs = [
+                {"role": "system", "content": JUDGE_PROMPT},
+                {"role": "user", "content": f"Claim: {c['text']}\n\nCited passages:\n{passages}"},
+            ]
+            for _attempt in range(2):  # reasoning models sometimes run out of tokens
                 try:
                     d = json.loads(_extract_json(llm(msgs, 1200)))
                     v = d.get("verdict")
@@ -416,8 +500,13 @@ def verify_claims(claims: list[dict], chunks: list[dict], llm: Optional[LLM]) ->
         if mq:
             r["missing_qualifiers"] = mq
             if r["verdict"] == "SUPPORTED":
-                r.update(verdict="PARTIAL", reason=(r.get("reason", "") + " | deterministic check: the source "
-                                                    f"limits this to {', '.join(mq)}").strip(" |"))
+                r.update(
+                    verdict="PARTIAL",
+                    reason=(
+                        r.get("reason", "") + " | deterministic check: the source "
+                        f"limits this to {', '.join(mq)}"
+                    ).strip(" |"),
+                )
         out.append(r)
     return out
 
@@ -435,8 +524,10 @@ Answer ONLY with JSON {"coverage": "specific" | "general_only" | "none", "explan
 
 
 def assess_coverage(question: str, chunks: list[dict], llm: LLM) -> dict:
-    msgs = [{"role": "system", "content": COVERAGE_PROMPT},
-            {"role": "user", "content": f"Passages:\n{build_context(chunks)}\n\nQuestion: {question}"}]
+    msgs = [
+        {"role": "system", "content": COVERAGE_PROMPT},
+        {"role": "user", "content": f"Passages:\n{build_context(chunks)}\n\nQuestion: {question}"},
+    ]
     for _attempt in range(2):
         try:
             d = json.loads(_extract_json(llm(msgs, 1200)))
@@ -458,10 +549,14 @@ _NUMERIC_REQUEST = re.compile(
     r"\b(what|which|cu[aá]l(es)?|cu[aá]nt[oa]s?|quel(le)?s?|combien)\b[^?]{0,40}\b(depth|profundidad|profondeur|"
     r"pressure|presi[oó]n|pression|clearance|rpm|speed|velocidad|vitesse|voltage|voltaje|thickness|espesor|"
     r"[ée]paisseur|diameter|di[aá]metro|diam[èe]tre|radius|radio|rayon|gap|weight|peso|poids|setting|ajuste|"
-    r"r[ée]glage)\b)", re.I)
+    r"r[ée]glage)\b)",
+    re.I,
+)
 _NUMBER_WITH_UNIT = re.compile(
     r"\d+(\s*/\s*\d+)?[\s-]*(in\b|inch|inches|\"|mm|cm|lbs?\b|ft-?lbs?|in-?lbs?|nm\b|n·m|psi|°|º|deg|rpm|hours|cycles|%)"
-    r"|\b\d+/\d+\b|(?<![\d.])0?\.\d{2,}\b", re.I)
+    r"|\b\d+/\d+\b|(?<![\d.])0?\.\d{2,}\b",
+    re.I,
+)
 
 
 # Named engine models (families from the main manufacturers). A question about one of them asks for
@@ -470,7 +565,9 @@ _ENGINE_MODEL = re.compile(
     r"\b(CFM ?56|CFM ?LEAP|LEAP(-| )?1[ABC]?|PW ?\d{3,4}[A-Z]?(-\d+)?|PW ?1\d{3}G(-JM)?|JT ?\d[A-Z]?D?(-\d+)?|"
     r"V ?2500|Trent ?\d{3,4}|RB ?211|GE ?90|GEnx|GE ?9X|CF ?6|CF ?34|GP ?7\d{3}|TFE ?731|PT ?6[A-Z]?|TPE ?331|"
     r"AE ?[123]\d{3}|BR ?7\d{2}|Passport ?20|Pearl ?\d{3}|HTF ?7\d{3}|T ?700|CT ?7|Arriel|Makila|M88|F ?110|"
-    r"F ?135|LM ?\d{4}|Olympus|Tay ?6\d{2}|Spey|Dart|Allison ?\d{3}|Lycoming ?[IO]{1,2}-?\d{3}|Continental ?[IO]{1,2}-?\d{3})\b", re.I)
+    r"F ?135|LM ?\d{4}|Olympus|Tay ?6\d{2}|Spey|Dart|Allison ?\d{3}|Lycoming ?[IO]{1,2}-?\d{3}|Continental ?[IO]{1,2}-?\d{3})\b",
+    re.I,
+)
 
 
 def mentions_engine_model(question: str) -> bool:
@@ -503,14 +600,20 @@ class Answer:
     manufacturer_note: str = ""
     raw: str = ""
     coverage: dict = field(default_factory=dict)
-    adjustments: list = field(default_factory=list)   # every automatic status/content change, with reason
+    adjustments: list = field(default_factory=list)  # every automatic status/content change, with reason
 
     def to_dict(self) -> dict:
         return self.__dict__.copy()
 
 
-def answer(question: str, llm: LLM, search: Search, config: str = "v2",
-           judge: Optional[LLM] = None, kinds: Optional[dict] = None) -> Answer:
+def answer(
+    question: str,
+    llm: LLM,
+    search: Search,
+    config: str = "v2",
+    judge: LLM | None = None,
+    kinds: dict | None = None,
+) -> Answer:
     cfg = CONFIGS[config]
     adjustments: list = []
     q_model = question
@@ -518,13 +621,24 @@ def answer(question: str, llm: LLM, search: Search, config: str = "v2",
         cleaned, n_removed = strip_instruction_like(question)
         if n_removed and len(cleaned) >= 10:
             q_model = cleaned
-            adjustments.append(f"question: {n_removed} instruction-like sentence(s) removed before the model "
-                               "(passages and questions are data, not instructions)")
+            adjustments.append(
+                f"question: {n_removed} instruction-like sentence(s) removed before the model "
+                "(passages and questions are data, not instructions)"
+            )
     queries = rewrite_queries(q_model, llm, cfg["multi_query"])
     chunks, trace = retrieve(queries, search, cfg, kinds)
     if not chunks:
-        return Answer(config, question, queries, trace, [], "not_found",
-                      "No relevant passage was retrieved.", [], adjustments=adjustments)
+        return Answer(
+            config,
+            question,
+            queries,
+            trace,
+            [],
+            "not_found",
+            "No relevant passage was retrieved.",
+            [],
+            adjustments=adjustments,
+        )
     g = generate(q_model, chunks, llm, cfg)
     claims, removed = g["claims"], []
     status, summary, gaps = g["status"], g["summary"], g["gaps"]
@@ -541,39 +655,65 @@ def answer(question: str, llm: LLM, search: Search, config: str = "v2",
             keep = []
             for c in claims:
                 if states_specific_values(c["text"]):
-                    removed.append({**c, "verdict": "WITHHELD",
-                                    "reason": "states specific numeric values; use the manufacturer's data"
-                                              + (" (question names an engine model)" if model_q and not numeric_q else "")})
+                    removed.append(
+                        {
+                            **c,
+                            "verdict": "WITHHELD",
+                            "reason": "states specific numeric values; use the manufacturer's data"
+                            + (" (question names an engine model)" if model_q and not numeric_q else ""),
+                        }
+                    )
                 else:
                     keep.append(c)
             withheld = len(claims) - len(keep)
             claims = keep
             if summary and states_specific_values(summary):
-                removed.append({"text": summary, "citations": [], "verdict": "WITHHELD",
-                                "reason": "summary states specific numeric values; use the manufacturer's data"})
+                removed.append(
+                    {
+                        "text": summary,
+                        "citations": [],
+                        "verdict": "WITHHELD",
+                        "reason": "summary states specific numeric values; use the manufacturer's data",
+                    }
+                )
                 adjustments.append("summary hidden: states specific numeric values")
                 summary = ""
                 withheld += 1
             if status not in ("not_found", "requires_manufacturer_documentation") and (numeric_q or withheld):
-                why = ("asks for specific limits, values or intervals" if numeric_q
-                       else "names an engine model and the answer stated numeric values")
-                adjustments.append(f"status {status} -> requires_manufacturer_documentation: the question {why}")
+                why = (
+                    "asks for specific limits, values or intervals"
+                    if numeric_q
+                    else "names an engine model and the answer stated numeric values"
+                )
+                adjustments.append(
+                    f"status {status} -> requires_manufacturer_documentation: the question {why}"
+                )
                 status = "requires_manufacturer_documentation"
         # 3. Does the retrieved text cover the specific subject or only a general one?
         if status != "not_found":
             coverage = assess_coverage(q_model, chunks, j)
             if status == "answered" and coverage["coverage"] in ("general_only", "none"):
-                adjustments.append(f"status answered -> insufficient_evidence: coverage check = "
-                                   f"{coverage['coverage']} ({coverage['explanation']})")
+                adjustments.append(
+                    f"status answered -> insufficient_evidence: coverage check = "
+                    f"{coverage['coverage']} ({coverage['explanation']})"
+                )
                 status = "insufficient_evidence"
                 if not gaps:
                     gaps = coverage["explanation"]
         # 4. The summary is the most read sentence: it must be supported too.
         if summary and status != "not_found":
-            sv = verify_claims([{"text": summary, "citations": list(range(1, len(chunks) + 1))}], chunks, j)[0]
+            sv = verify_claims([{"text": summary, "citations": list(range(1, len(chunks) + 1))}], chunks, j)[
+                0
+            ]
             if sv["verdict"] != "SUPPORTED":
-                removed.append({"text": summary, "citations": [], "verdict": sv["verdict"],
-                                "reason": "summary: " + sv.get("reason", "")})
+                removed.append(
+                    {
+                        "text": summary,
+                        "citations": [],
+                        "verdict": sv["verdict"],
+                        "reason": "summary: " + sv.get("reason", ""),
+                    }
+                )
                 adjustments.append(f"summary hidden: verdict {sv['verdict']}")
                 summary = ""
     if cfg["structured"]:
@@ -582,8 +722,22 @@ def answer(question: str, llm: LLM, search: Search, config: str = "v2",
             status = "insufficient_evidence"
         if status == "not_found":
             claims = []
-    return Answer(config, question, queries, trace, chunks, status, summary, claims,
-                  removed, gaps, g["manufacturer_note"], g["raw"], coverage, adjustments)
+    return Answer(
+        config,
+        question,
+        queries,
+        trace,
+        chunks,
+        status,
+        summary,
+        claims,
+        removed,
+        gaps,
+        g["manufacturer_note"],
+        g["raw"],
+        coverage,
+        adjustments,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -594,25 +748,44 @@ def extract_text(resp: dict) -> str:
     (reasoning + text): only text blocks are kept."""
     content = (((resp or {}).get("choices") or [{}])[0].get("message") or {}).get("content")
     if isinstance(content, list):
-        content = "".join(b.get("text", "") for b in content
-                          if isinstance(b, dict) and b.get("type") in (None, "text", "output_text"))
+        content = "".join(
+            b.get("text", "")
+            for b in content
+            if isinstance(b, dict) and b.get("type") in (None, "text", "output_text")
+        )
     return (content or "").strip()
 
 
 def databricks_clients(w, llm_endpoint: str, index_name: str) -> tuple:
     """(llm, search) bound to a WorkspaceClient `w`, a Foundation Model chat endpoint and an
     AI Search index with columns chunk_id, source, page, text (hybrid search)."""
+
     def llm(messages: list, max_tokens: int = 800) -> str:
-        resp = w.api_client.do("POST", f"/serving-endpoints/{llm_endpoint}/invocations",
-                               body={"messages": messages, "max_tokens": max_tokens, "temperature": 0.1})
+        resp = w.api_client.do(
+            "POST",
+            f"/serving-endpoints/{llm_endpoint}/invocations",
+            body={"messages": messages, "max_tokens": max_tokens, "temperature": 0.1},
+        )
         return extract_text(resp)
 
     def search(query_text: str, num_results: int) -> list:
         res = w.vector_search_indexes.query_index(
-            index_name=index_name, columns=["chunk_id", "source", "page", "text"],
-            query_text=query_text, num_results=num_results, query_type="HYBRID")
+            index_name=index_name,
+            columns=["chunk_id", "source", "page", "text"],
+            query_text=query_text,
+            num_results=num_results,
+            query_type="HYBRID",
+        )
         rows = (res.result.data_array if res and res.result else None) or []
-        return [{"chunk_id": r[0], "source": r[1], "page": int(r[2]) if r[2] is not None else None,
-                 "text": r[3], "score": float(r[-1]) if r[-1] is not None else None} for r in rows]
+        return [
+            {
+                "chunk_id": r[0],
+                "source": r[1],
+                "page": int(r[2]) if r[2] is not None else None,
+                "text": r[3],
+                "score": float(r[-1]) if r[-1] is not None else None,
+            }
+            for r in rows
+        ]
 
     return llm, search

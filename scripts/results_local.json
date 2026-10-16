@@ -1,5 +1,5 @@
 {
-  "fecha": "2026-10-13",
+  "date": "2026-10-13",
   "dataset": "C-MAPSS FD001",
   "rul_clip": 125,
   "n_train_rows": 20631,
@@ -16,8 +16,8 @@
     "early_stopping": false,
     "random_state": 42
   },
-  "resultados": {
-    "baseline_media": {
+  "results": {
+    "baseline_mean": {
       "rmse_test": 43.06703554245684,
       "phm08_test": 33629.230598368384,
       "mae_test": 35.9

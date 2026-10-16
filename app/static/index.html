@@ -293,11 +293,11 @@ function renderUncertainty(o){
     document.createTextNode(" (RMSE "+fmt(nf.rmse_cycles,1)+"; "+nf.overestimated+" of "+nf.n+" overestimated). A positive bias means the model tends to overstate the remaining life close to failure, the unsafe direction.")); }
   else N.append(document.createTextNode("Not computable: no scored engine with a low actual RUL."));
   const T=$("unc-t"); T.replaceChildren();
-  T.append(document.createTextNode("Predictions are batch scores read from "), el("b",{},m.source_table||"gold_predicciones"),
+  T.append(document.createTextNode("Predictions are batch scores read from "), el("b",{},m.source_table||"gold_predictions"),
     document.createTextNode(", model "), el("b",{},m.version?("v"+m.version+" @"+(m.alias||"champion")):"--"),
     document.createTextNode(", scored "), el("b",{},fmtTs(m.scored_at)), document.createTextNode(", trained "), el("b",{},fmtTs(m.trained_at)),
     document.createTextNode(". No live inference: the app does not call the serving endpoint."));
-  const ft=$("foot-trace"); if(ft) ft.textContent=" Source: "+(m.source_table||"gold_predicciones")+" | model v"+(m.version||"--")+" | scored "+fmtTs(m.scored_at)+".";
+  const ft=$("foot-trace"); if(ft) ft.textContent=" Source: "+(m.source_table||"gold_predictions")+" | model v"+(m.version||"--")+" | scored "+fmtTs(m.scored_at)+".";
 }
 function renderOverview(o){
   state.overview=o;
@@ -331,7 +331,7 @@ function renderOverview(o){
 
 /* ---------- isometric fleet ---------- */
 const TW=54, TH=27, COLS=10;
-function counts(){ const c={all:state.engines.length,critical:0,watch:0,healthy:0,unknown:0}; state.engines.forEach(e=>{ const s=stateOf(e.estado); c[s]=(c[s]||0)+1; }); return c; }
+function counts(){ const c={all:state.engines.length,critical:0,watch:0,healthy:0,unknown:0}; state.engines.forEach(e=>{ const s=stateOf(e.state); c[s]=(c[s]||0)+1; }); return c; }
 function renderFilters(){
   const box=$("filters"); box.replaceChildren(); if(!state.engines.length) return;
   const c=counts(); const list=[...FILTERS]; if(c.unknown) list.push(["unknown","No prediction"]);
@@ -341,7 +341,7 @@ function renderFilters(){
     b.addEventListener("click",()=>{ state.filter=k; renderFilters(); renderFleet(); });
     box.append(b); });
 }
-const visible=(e)=>state.filter==="all"||stateOf(e.estado)===state.filter;
+const visible=(e)=>state.filter==="all"||stateOf(e.state)===state.filter;
 function renderFleet(){
   const box=$("fleet"); box.replaceChildren(); box.removeAttribute("aria-busy");
   if(!state.engines.length && state.dataError){
@@ -352,7 +352,7 @@ function renderFleet(){
   if(!state.engines.length){
     const miss=(state.overview&&state.overview.missing||[]).join(", ");
     const d=el("div",{class:"empty"}); d.append(el("b",{},"No predictions yet"));
-    d.append(document.createTextNode("Run the job "), el("code",{},"mantenimiento_end_to_end"), document.createTextNode(" to create the gold tables and score the fleet."));
+    d.append(document.createTextNode("Run the job "), el("code",{},"maintenance_end_to_end"), document.createTextNode(" to create the gold tables and score the fleet."));
     if(miss){ d.append(el("div",{class:"note"},"Tables not available: "+miss)); }
     box.append(d); return;
   }
@@ -364,7 +364,7 @@ function renderFleet(){
   const order=asc.map((e,i)=>({e,r:rows-1-Math.floor(i/COLS),c:i%COLS})).sort((a,b)=>(a.r+a.c)-(b.r+b.c)||a.r-b.r);
   for(const {e,r,c} of order){
     const x=ox+(c-r)*TW/2, y=oy+(c+r)*TH/2, h=6+Math.min(clampRul(e.rul_pred)||0,125)/125*(maxH-6);
-    const st=stateOf(e.estado), a=TW/2*0.68, b=TH/2*0.68, col=COLORS[st]||"#8A96A8";
+    const st=stateOf(e.state), a=TW/2*0.68, b=TH/2*0.68, col=COLORS[st]||"#8A96A8";
     const vis=visible(e);
     const g=sv("g",{class:"eng"+(state.sel===e.unit?" sel":"")+(vis?"":" dim"),tabindex:vis?"0":"-1",role:"button","data-unit":e.unit,"aria-hidden":vis?"false":"true",
       "aria-label":`Engine ${e.unit}, estimated RUL ${fmt(e.rul_pred,0)} cycles, ${LABEL[st]||st}`});
@@ -378,7 +378,7 @@ function renderFleet(){
     svg.append(g);
   }
   box.append(svg);
-  const u=state.engines[0]; $("thr").textContent=u&&u.umbral_critico!==null&&u.umbral_critico!==undefined?`Demo thresholds: critical ≤ ${fmt(u.umbral_critico)}, watch ≤ ${fmt(u.umbral_vigilar)} cycles`:"";
+  const u=state.engines[0]; $("thr").textContent=u&&u.critical_threshold!==null&&u.critical_threshold!==undefined?`Demo thresholds: critical ≤ ${fmt(u.critical_threshold)}, watch ≤ ${fmt(u.watch_threshold)} cycles`:"";
   const n=state.engines.filter(visible).length; $("shown").textContent=state.filter==="all"?"":`Showing ${n} of ${state.engines.length} (filter: ${state.filter})`;
 }
 function tip(ev,text){ const t=$("tip"); if(!ev){ t.style.display="none"; return; } t.textContent=text; t.style.display="block"; t.style.left=(ev.clientX+14)+"px"; t.style.top=(ev.clientY+14)+"px"; }
@@ -394,7 +394,7 @@ function actionText(e, st){ // the API returns e.action (English); local fallbac
 function select(unit){
   state.sel=unit; renderFleet();
   const e=state.engines.find(x=>x.unit===unit); if(!e) return;
-  const st=stateOf(e.estado);
+  const st=stateOf(e.state);
   $("d-sub").textContent=`Engine ${e.unit} | observed cycle ${e.cycle}`;
   const d=$("detail"); d.replaceChildren();
   const big=el("div",{class:"big"}); big.append(el("span",{class:"rul"},e.rul_pred===null?"--":fmt(clampRul(e.rul_pred),0)), el("span",{class:"u"},"cycles of estimated RUL"), el("span",{class:"kind pred"},"model prediction"), el("span",{class:"badge "+st},LABEL[st]||st));
@@ -405,7 +405,7 @@ function select(unit){
   dl.append(dt1, el("dd",{},fmt(e.rul_real,0)), dt2, el("dd",{},e.error===null||e.error===undefined?"--":((e.error>0?"+":"")+fmt(e.error,1))));
   d.append(dl);
   d.append(el("div",{class:"action "+st},actionText(e,st)));
-  const tr=el("div",{class:"trace"}); tr.append(el("b",{},"Traceability "), document.createTextNode("model v"+(e.model_version??"--")+" @champion | scored "+fmtTs(e.scored_at)+" | source "+(state.sourceTable||"gold_predicciones")+" | batch score at observed cycle "+e.cycle+", no live inference"));
+  const tr=el("div",{class:"trace"}); tr.append(el("b",{},"Traceability "), document.createTextNode("model v"+(e.model_version??"--")+" @champion | scored "+fmtTs(e.scored_at)+" | source "+(state.sourceTable||"gold_predictions")+" | batch score at observed cycle "+e.cycle+", no live inference"));
   d.append(tr);
   const bars=el("div",{class:"bars"}); bars.append(el("h3",{},"Sensors that best explain the prediction"));
   const items=[1,2,3].map(i=>({s:e["sensor_"+i],v:e["contrib_"+i]})).filter(x=>x.s);
@@ -422,7 +422,7 @@ async function loadCurve(unit){
   const box=$("curve"), note=$("curve-note"); box.replaceChildren(); note.textContent="";
   const r=await getJSON(`/api/engines/${unit}/health`);
   if(state.sel!==unit) return;
-  if(!r.ok||!r.data||!r.data.ready){ const d=el("div",{class:"empty"}); d.append(el("b",{},"Curve not available"),document.createTextNode(r.status===503?"The data source could not be queried (SQL warehouse error or timeout). Nothing is estimated in its place.":"The gold_salud_curva table is missing: run the pipeline.")); box.append(d); return; }
+  if(!r.ok||!r.data||!r.data.ready){ const d=el("div",{class:"empty"}); d.append(el("b",{},"Curve not available"),document.createTextNode(r.status===503?"The data source could not be queried (SQL warehouse error or timeout). Nothing is estimated in its place.":"The gold_health_curve table is missing: run the pipeline.")); box.append(d); return; }
   const {history:h, projection:p, threshold:T}=r.data;
   const W=640,H=260,m={l:44,r:16,t:14,b:30};
   const xmax=Math.max(h[h.length-1][0], p.cross_cycle||0)+2, xmin=h[0][0];
@@ -439,7 +439,7 @@ async function loadCurve(unit){
   svg.append(sv("line",{x1:m.l,x2:W-m.r,y1:Y(T),y2:Y(T),stroke:"#FF6B3D","stroke-dasharray":"4 4","stroke-width":1}));
   svg.append(sv("polyline",{points:h.map(q=>X(q[0])+","+Y(q[1])).join(" "),fill:"none",stroke:"#E6EAF0","stroke-width":1.6,"stroke-linejoin":"round"}));
   if(p.projection&&p.projection.length>1){
-    svg.append(sv("polyline",{points:p.projection.map(q=>X(q[0])+","+Y(q[1])).join(" "),fill:"none",stroke:COLORS[stateOf((state.engines.find(e=>e.unit===unit)||{}).estado)]||"#8A96A8","stroke-width":1.6,"stroke-dasharray":"6 4"}));
+    svg.append(sv("polyline",{points:p.projection.map(q=>X(q[0])+","+Y(q[1])).join(" "),fill:"none",stroke:COLORS[stateOf((state.engines.find(e=>e.unit===unit)||{}).state)]||"#8A96A8","stroke-width":1.6,"stroke-dasharray":"6 4"}));
     svg.append(sv("circle",{cx:X(p.cross_cycle),cy:Y(T),r:3.5,fill:"#FF6B3D"}));
   }
   const last=h[h.length-1]; svg.append(sv("circle",{cx:X(last[0]),cy:Y(last[1]),r:3.5,fill:"#E6EAF0"}));
