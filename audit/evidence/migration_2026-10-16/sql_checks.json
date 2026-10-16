@@ -1,0 +1,9 @@
+{"captured_at":"2026-10-16T07:4xZ","method":"SQL statements API on the 2X-Small warehouse (PC queue R_10 to R_14)",
+"gold_model_metrics":[
+ {"model_type":"baseline_mean","model_version":null,"rmse_test":43.06703554245684,"mae_test":35.9,"phm08_test":33629.230598368384,"decision":"baseline"},
+ {"model_type":"baseline_ridge","model_version":null,"rmse_test":21.796289834949107,"mae_test":16.813472352099655,"phm08_test":1073.3844090930288,"decision":"baseline"},
+ {"model_type":"hist_gradient_boosting","model_version":1,"rmse_test":18.441849882005343,"mae_test":13.478027648560577,"phm08_test":655.0239471190539,"rmse_val_truncated":19.723964285514842,"rmse_val_all_cycles":16.185550581411086,"std_folds":2.0547339290891986,"n_train_rows":20631,"n_features":85,"promoted_to_champion":true,"decision":"no champion yet: the first version is promoted","trained_at":"2026-10-16T01:11:31.907Z"}],
+"predictions_new_vs_audited":{"query":"JOIN workspace.maintenance.gold_predictions ON workspace.mantenimiento.gold_predicciones BY (unit, cycle), before the Spanish schema was dropped","n":100,"same_rul_pred_rounded_2":100,"max_abs_diff_rul_pred":0.0,"same_state":100,"same_top_sensor":100},
+"counts":{"bronze_cmapss_readings":33727,"silver_readings":33727,"gold_features":33727,"gold_test_truth":100,"gold_predictions":100,"gold_health_curve":33727,"manual_chunks":720,"rag_eval_questions":40},
+"gold_quality_control":[{"split":"test","rows":13096,"distinct_keys":13096,"engines":100,"max_cycle":303},{"split":"train","rows":20631,"distinct_keys":20631,"engines":100,"max_cycle":362}],
+"gold_predictions_by_state":[{"state":"healthy","n":79,"rmse":20.592},{"state":"critical","n":14,"rmse":3.261},{"state":"watch","n":7,"rmse":7.182}]}

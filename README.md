@@ -25,7 +25,9 @@ README that is not there.
 | Same measure locally (scikit-learn 1.9.1, pandas features) | 19.10 cycles (PHM08 727) | `scripts/results_local.json`, reproducible with `python scripts/train_local.py` |
 | Baselines on the same test set | constant mean 43.07; Ridge 21.80 | `audit/02_MODEL_VALIDATION.md` B2.2 |
 | Engines near failure (actual RUL <= 30, n = 25) | RMSE 14.3; bias +5.5 cycles (tends to overestimate) | `audit/02_MODEL_VALIDATION.md` B2.2 |
-| Validation by engine on train only (GroupKFold 5, random cut per engine) | RMSE 19.21 (fold-to-fold deviation 3.14); Ridge 22.11 | `audit/02_MODEL_VALIDATION.md` B2.5, `evidence/validation_protocol_train_only.json` |
+| Validation by engine on train only (GroupKFold 5, random cut per engine), local | RMSE 19.21 (fold-to-fold deviation 3.14); Ridge 22.11 | `audit/02_MODEL_VALIDATION.md` B2.5, `evidence/validation_protocol_train_only.json` |
+| Same validation computed by the training job in the workspace (scikit-learn 1.7.2, Spark features), 16 October | RMSE 19.72 (fold-to-fold deviation 2.05) | `gold_model_metrics` of schema `maintenance`; `audit/FINAL_READINESS_REPORT.md` §5 |
+| Re-training in the English schema `maintenance` (16 October, same data, code and seed) | RMSE 18.441849882005343, MAE 13.478, PHM08 655.02; 100/100 predictions identical to the audited table | `audit/FINAL_READINESS_REPORT.md` §5 |
 
 Two caveats the audit requires to be stated:
 
@@ -43,8 +45,9 @@ Two caveats the audit requires to be stated:
 move the alias: it computes `rmse_val_truncated` with `GroupKFold` by engine on train (every held-out engine is cut at
 a seeded cycle and evaluated like the test set) and promotes only if it improves by more than `std_folds / sqrt(k)`.
 If the champion has no such metric (the case of v1), the new version stays as `challenger` and the decision is manual.
-It is implemented and tested (`tests/test_modeling_selection.py`); the first version registered in the English schema
-(see "Deployed names") was promoted by the "no champion yet" rule.
+It is implemented and tested (`tests/test_modeling_selection.py`) and was exercised in the workspace on 16 October,
+when the stack was re-created under the English names: version 1 of `workspace.maintenance.rul_model` was promoted by
+the "no champion yet" rule with `rmse_val_truncated` 19.72 and `std_folds` 2.05 recorded in `gold_model_metrics`.
 
 **RAG assistant v2** (`app/rag.py`), measured on a held-out set of 85 questions in Spanish, English and French that
 was never used to decide any change (`eval/rag_eval_set_holdout.json`), with an independent judge from another model
@@ -167,7 +170,7 @@ app/                        Databricks App: app.yaml, requirements.txt, app.py, 
 tests/                      pytest (142 tests: pure functions, Spark equivalence, API, 25 negative, RAG, model selection)
 scripts/                    train_local.py (local RMSE), demo_local.py (app without Databricks)
 data/cmapss/                NASA data and SOURCE.md
-eval/                       RAG evaluation sets, results per run (resultados/), MANUAL_REVIEW.md, RAG_REPORT.md
+eval/                       RAG evaluation sets, results per run (results/), MANUAL_REVIEW.md, RAG_REPORT.md
 audit/                      01_BASELINE, 02_MODEL_VALIDATION, 03_RAG_VALIDATION, 04_SECURITY_QA, FINAL_READINESS_REPORT and evidence/
 portfolio/                  case study, real screenshots, carousel (HTML, PDF, PNG), posts, demo script, SOURCES.md
 .github/workflows/          deploy.yml
@@ -183,14 +186,17 @@ The code uses English Unity Catalog names: schema `maintenance`, volumes `raw`, 
 `manual_chunks_index` and `rag_eval_questions`; bundle `predictive-maintenance` with jobs `maintenance_end_to_end`,
 `maintenance_rag`, `maintenance_eval_assistant`, pipeline `maintenance_pipeline` and app `predictive-maintenance-<target>`.
 
-The audit (`audit/`, 13 to 15 October) and the evaluation results (`eval/resultados/`) were produced on the first
+The audit (`audit/`, 13 to 15 October) and the evaluation results (`eval/results/`) were produced on the first
 deployment, which used Spanish names: schema `mantenimiento`, volumes `codigo` and `manuales`, tables
 `bronze_cmapss_lecturas`, `silver_lecturas`, `gold_test_verdad`, `gold_salud_parametros`, `gold_salud_curva`,
 `gold_control_calidad`, `gold_predicciones` (columns `estado`, `accion`, `umbral_critico`, `umbral_vigilar`),
-`rag_eval_preguntas`, bundle `mantenimiento-predictivo` and app `mantenimiento-predictivo-dev`. Those documents and
-evidence files keep the names as captured. The Spanish schema was left untouched in the workspace as a fallback and
-the app still accepts its legacy state values (`critico`, `vigilar`, `sano`). The AI Search endpoint keeps its
-original name `mantenimiento_ai_search` because Free Edition allows a single endpoint.
+`rag_eval_preguntas`, bundle `mantenimiento-predictivo`, app `mantenimiento-predictivo-dev`, AI Search endpoint
+`mantenimiento_ai_search` and MLflow experiment `mantenimiento_predictivo`. Those documents and the raw files under
+`audit/evidence/` and `eval/results/` keep the names as captured. On 16 October the stack was re-created under the
+English names (schema, volumes, jobs, pipeline, app, AI Search endpoint `maintenance_ai_search`, serving endpoint
+pointing to `workspace.maintenance.rul_model` v1), the results were checked against the audited ones
+(`audit/FINAL_READINESS_REPORT.md` §5) and the Spanish objects were deleted. The GitHub repository keeps its
+original name `databricks-mantenimiento-predictivo` so that published links keep working.
 
 ## How to deploy
 
@@ -237,7 +243,7 @@ same for `code` and `manuals`) so that the copies above have a destination.
    again. The endpoint points to a specific version, it does not follow the alias. In `mode: development` the real
    name carries a user prefix (`dev_<user>_rul-model-dev`).
 8. Assistant evaluation (optional): job `maintenance_eval_assistant` with parameters `dataset` (`dev` or `holdout`),
-   `configs` and `eval_judge_endpoint`. The results are written to the `code` volume and copied to `eval/resultados/`.
+   `configs` and `eval_judge_endpoint`. The results are written to the `code` volume and copied to `eval/results/`.
 
 **Before a demo**: `databricks apps start predictive-maintenance-dev`, check `/api/health` (warehouse, index and LLM
 at `ok`) and, if the serving endpoint does not exist, `databricks bundle deploy -t dev`.
