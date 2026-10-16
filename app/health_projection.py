@@ -29,6 +29,10 @@ def project_health(
     }
     if len(pts) < MIN_POINTS:
         return out
+    if any(not math.isfinite(c) or not math.isfinite(v) for c, v in pts):
+        # A NaN/Inf reading must not leak into the fit or the JSON response
+        # (NaN is not valid JSON); treat it the same as "no trend".
+        return out
     n = len(pts)
     sx = sum(c for c, _ in pts)
     sy = sum(v for _, v in pts)

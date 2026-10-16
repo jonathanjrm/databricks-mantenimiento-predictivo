@@ -18,6 +18,7 @@ import concurrent.futures as cf
 import datetime as dt
 import decimal
 import logging
+import math
 import os
 import re
 import threading
@@ -451,7 +452,13 @@ def api_health(unit: int):
         )
     except DataUnavailable as e:
         return _unavailable(e)
-    pts = [(int(r["cycle"]), float(r["health_index"])) for r in rows if r["health_index"] is not None]
+    # Drop null/NaN/Inf readings: a corrupt sensor row must not leak a non-finite
+    # value into the JSON response (NaN/Inf are not valid JSON).
+    pts = [
+        (int(r["cycle"]), float(r["health_index"]))
+        for r in rows
+        if r["health_index"] is not None and math.isfinite(float(r["health_index"]))
+    ]
     if not pts and not missing:
         raise HTTPException(status_code=404, detail=f"no health curve for engine {unit}")
     return {
