@@ -1,5 +1,9 @@
 # Predictive turbine maintenance with Databricks
 
+## Demo
+
+https://github.com/user-attachments/assets/0388a033-0c4b-4f01-8b9c-fd5dcd4d8496
+
 Industrial engineering portfolio project: from turbofan sensor data (NASA C-MAPSS FD001) to a web control
 room that shows the remaining useful life (RUL) of every engine, its state, an advisory recommendation and an
 assistant that answers with verified citations from technical manuals in PDF.
