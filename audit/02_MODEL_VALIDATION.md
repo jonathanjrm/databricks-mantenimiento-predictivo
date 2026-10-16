@@ -202,7 +202,7 @@ Facts about the use of the test set, as they were in the code:
 3. **Other design decisions** (clip at 125, windows 5 and 10, slope over 10, including `cycle`, removing `s6`, choosing HGB over Ridge): they are justified with the literature in the comments, but there is no record of whether test metrics were looked at when deciding.
 4. **The FD001 test set is already a seen set.** Its RMSE has been published in the README, compared with baselines and compared across environments. Any new figure computed on that same test set is not independent and is not presented here as such. The B2.2 figures are a **description of the behaviour of the frozen model on a known set**, not an independent estimate of future error.
 
-Proposed protocol (steps 1, 2 and 6 are implemented in the code since 15 October, see B2.5; step 5 has not been executed):
+Proposed protocol (steps 1, 2 and 6 are implemented in the code since 15 October, see B2.5; step 5, Option A, was executed on 17 October, see B2.6):
 
 | Step | What to do | Rule |
 |---|---|---|
@@ -217,6 +217,49 @@ Development estimate executed (`evidence/dev_protocol_heldout_train.py`, `dev_pr
 from the marginal RUL distribution of the test set (without using the per-engine labels nor the test model); unclipped actual RUL; 200 repetitions.
 Mean RMSE **18.04**, deviation across repetitions **1.24**, percentiles 5 and 95: 15.9 and 19.8 (scikit-learn 1.9.1, pandas features). OOF RMSE over every cycle with the clipped label: 16.12.
 This figure **is not an independent evaluation** (the hyperparameters were chosen with the same train set) but shows that the expected typical error is about 16 to 20 cycles and that the range from different cuts alone (±1.2) is larger than the difference between environments.
+
+### B2.6 Option A executed: fresh evaluation on untouched engines (17 October 2026)
+
+Script: `scripts/independent_holdout_eval.py`. Evidence: `audit/evidence/independent_holdout_eval.json`.
+
+20 of the 100 FD001 train engines (fixed seed 2026, listed in the evidence file) were set aside
+**before** anything else touched the data: no fitting, no `GroupKFold` selection, no
+hyperparameter tuning ever saw them, in this run or any earlier one (hyperparameters are the
+already-frozen `HGB_PARAMS`, imported unchanged — nothing is re-tuned here). The model was
+trained on the remaining 80 engines only, then each of the 20 held-out engines was truncated at
+a randomly chosen cycle (same convention as the official test set and as
+`validation_rmse_by_engine`) and scored once at that cut.
+
+Result of this single run: **RMSE 23.97, MAE 19.18, PHM08 277.2, mean bias −0.82** (no
+systematic early/late skew). This is **worse** than both the seen-test-set RMSE (18.44) and the
+train-only validation RMSE (19.72, B2.5) — expected and reported as-is, not adjusted: this run
+trains on 20 fewer engines than the champion, draws a single random 20-engine holdout (so it
+carries real sampling variance; the B2.5 development estimate above shows a ±1.2 to ±1.9 spread
+from cut-seed variance alone on the *same* training set, and here the training set itself also
+changes), and is a single run, not averaged over repetitions the way B2.5 is.
+
+What this does and does not show:
+- It **does** show the model generalises, in a scientifically meaningful sense, to engines that
+  were never in any training, tuning, or selection step of this exercise, within the same FD001
+  operating regime and fault mode. The errors are not degenerate (no negative or wildly
+  implausible RUL predictions in the per-engine evidence) and the bias is near zero.
+- It does **not** supersede or invalidate the published champion metrics: the champion itself
+  (trained on all 100 engines) was never retrained or replaced by this exercise, and this
+  holdout figure is not comparable cycle-for-cycle to the test RMSE.
+- It is a single run. A fair uncertainty estimate would repeat this with several holdout seeds,
+  the way B2.5 repeats the cut seed 200 times; that repetition was not done here and is listed
+  as an open follow-up, not claimed as done.
+
+Option B (FD002/FD003/FD004) was **not executed**: those subsets are not present in this
+project's local `data/cmapss/` (only FD001 is), and this environment's network access does not
+reach NASA's data repository to download them. Even if it did, FD002 to FD004 introduce multiple
+operating conditions and, for FD003/FD004, a second fault mode — running the FD001-trained
+champion on them would not be a like-for-like independent evaluation of the same problem, and
+presenting such a number without that caveat would be exactly the kind of misleading equivalence
+the mission brief warns against. If this is wanted, it requires: downloading the official
+FD002–FD004 files, deciding and declaring whether to retrain per subset or test cross-regime
+generalisation explicitly, and reporting regime/fault-mode differences alongside any RMSE. None
+of that was done here; this paragraph is the proposal, not a result.
 
 ### B2.5 Change applied in the code: promotion without the test set (15 October 2026)
 

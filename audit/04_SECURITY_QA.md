@@ -71,12 +71,12 @@ Risks and recommendations:
 | D-03 | Medium (**closed**) | SQL errors were presented as an empty 200 state | `app/app.py` fixed and deployed to dev (E05, A_52); verified by `tests/test_negative_api.py` and by the SHA-256 of the served `index.html` |
 | D-04 | Low | Any workspace user with `CAN_USE` can consume the LLM without a rate limit | Rate limit or quota if the app is shared; Free Edition has platform quotas |
 | D-05 | Low | `/healthz` reachable without authentication | Acceptable (it reveals no data); document it |
-| D-06 | Low | No security headers (CSP, `X-Content-Type-Options`, `X-Frame-Options`) in the app responses; external font from Google Fonts | Add a middleware with headers and host the font locally |
+| D-06 | Low (**closed 17 October**) | No security headers (CSP, `X-Content-Type-Options`, `X-Frame-Options`) in the app responses; external font from Google Fonts | `app/app.py` now adds a `@app.middleware("http")` that sets `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: same-origin`, and a `Content-Security-Policy` scoped to exactly what the frontend loads (self, Google Fonts, no third-party scripts, `frame-ancestors 'none'`). The CSP needed `script-src 'self' 'unsafe-inline'`: `index.html`'s entire frontend is one inline `<script>` block with no build step, and a stricter policy would have shipped a blank dashboard — verified by first reading the file, not assumed. Font not self-hosted (left as a smaller follow-up). Regression test: `tests/test_app_api.py::test_security_headers_present_on_every_response` |
 | D-07 | Low | `requirements-dev.txt` with open ranges; pip-audit results depend on the environment | Pin versions or generate a `requirements-dev.lock` |
 | D-08 | Low | `log.warning` with 200 to 300 characters of LLM/AI Search messages | Log only the exception type, as already done with SQL |
 | D-09 | Low | Local PC folders (`logs/`, `cola/`, `cola2/`, `consultas/`, `herramientas/`) are not in `.gitignore`; they contain workspace identifiers | Add them to `.gitignore` before any commit from the PC copy |
 | D-10 | Informative | `/healthz` answers 200 without a session: it is unclear whether the platform or the app serves it (both return the same) | No action |
-| D-11 | Low | `oauthlib 3.3.1` (transitive dependency of `databricks-sql-connector`, which pins `oauthlib<4.0.0`): PYSEC-2026-4114, non-constant comparison in `code_challenge_method_plain` of the OAuth PKCE **server**. The app only uses `oauthlib` as a client; there is no OAuth server of its own | No action possible until the connector allows `oauthlib>=4`; watch it in the next `pip-audit` |
+| D-11 | Low | `oauthlib 3.3.1` to `3.2.2` depending on environment (transitive dependency of `databricks-sql-connector`): PYSEC-2026-4114 / CVE-2026-49265, a timing side-channel (non-constant-time string comparison, CWE-208) in `code_challenge_method_plain`/`_s256` of oauthlib's PKCE Authorization-Code-Grant **server** handling. Independently re-verified 17 October: `databricks-sql-connector`'s latest release (4.6.0, confirmed the current latest via `pip index versions`) still declares `oauthlib>=3.1.0,<4.0.0` (checked in the wheel's own metadata), so pinning `oauthlib>=4.0.0` directly would create an unsatisfiable dependency conflict, not a fix. The advisory's own exploit scenario requires an already-intercepted `authorization_code` plus many timed requests against a token endpoint implementing PKCE verification (it calls real-world exploitability "limited"); this app only drives OAuth as a client (service-principal OAuth M2M / client-credentials, confirmed by grepping `app/*.py` and `src/lib/*.py` for any OAuth/PKCE code -- none), never runs an authorization server, and so never calls the vulnerable functions at all | No action possible until `databricks-sql-connector` lifts the `oauthlib<4.0.0` ceiling; re-run `pip-audit -r app/requirements.txt` whenever that dependency is upgraded |
 | D-12 | Medium | The serving endpoint disappeared from the workspace between 14 and 15 October without an accessible record (see `02_MODEL_VALIDATION.md`, B3.5). It does not affect the dashboard (it reads the batch table) but it does affect any direct integration | Recreated with the bundle; check its existence before a demo; consider documenting that Free Edition does not guarantee endpoint persistence |
 
 ## 5. Revalidation of 15 October 2026
@@ -97,3 +97,30 @@ Same audit environment (Python 3.13.16). Evidence in `audit/evidence/*_2026-10-1
 | Automated tests | `python3 -m pytest -q -rs` | pytest 9.1.1 | 142 passed, 0 skipped (includes 25 negative, 11 of phase E, 4 of the selection protocol) |
 | GitHub Actions | Reading of the corrected `deploy.yml` | | Secrets only in `validate` and `deploy-dev`; not executed (no push): `NOT_VERIFIED` |
 | Prompt injection in the RAG | Read-only (phase C) | | No changes in this phase; result in `03_RAG_VALIDATION.md` |
+
+## 6. CI/CD review (17 October 2026)
+
+The run cited in the mission brief (`38978657182`, 16 October) passed `test` and skipped `validate`
+and `deploy-dev`. Reading `.github/workflows/deploy.yml` confirms this is the intended behaviour,
+not a misconfiguration: both jobs carry `if: ... && vars.DEPLOY_ENABLED == 'true'`, a repository
+variable that is unset until the owner configures Databricks credentials (documented in the
+workflow's own header comment and in `RELEASE_HANDOFF_2026-10-17.md`). Confirmed still true: the
+`test` job never receives the Databricks secrets (D-01 above), and `deploy-dev` is additionally
+scoped to a protected `dev` environment for a manual-approval gate.
+
+Action pinning: `actions/checkout@v4`, `actions/setup-python@v5` and `databricks/setup-cli@v0.280.0`
+were mutable tags (a tag can be moved to point at a different, unreviewed commit; `setup-cli` was
+already pinned to one specific release, but by tag, not by commit). All three are now pinned to
+the exact commit SHA of the release they already used, resolved with `git ls-remote` against the
+real upstream repositories (not guessed, not taken from a web summary) and kept as a `# vX.Y.Z`
+comment for readability:
+`actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2`,
+`actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0`,
+`databricks/setup-cli@b77668807bef70152b5cf3dfa49a6f624e61c7b4 # v0.280.0`. No behaviour change:
+same released versions, just addressed by their immutable SHA instead of a tag.
+
+Still `NOT_VERIFIED`: no workflow run has been triggered from this environment (this session only
+edits files and pushes to the PR branch; GitHub Actions itself runs on GitHub's infrastructure).
+The push of this change will trigger `test` on the PR branch automatically; `validate` and
+`deploy-dev` stay skipped until `DEPLOY_ENABLED` is set and the workspace secrets exist, per the
+mission brief's instruction not to enable automatic deployment without authorization.

@@ -18,6 +18,7 @@ import concurrent.futures as cf
 import datetime as dt
 import decimal
 import logging
+import math
 import os
 import re
 import threading
@@ -61,6 +62,37 @@ HEALTH_THRESHOLD = 1.0  # health index level that marks the mean failure point
 SNIPPET_CHARS = 300
 
 app = FastAPI(title="Predictive turbine maintenance", docs_url=None, redoc_url=None)
+
+# Security headers (audit finding D-06). The CSP's font-src/style-src allowlist matches exactly
+# what app/static/index.html loads (Google Fonts) -- nothing broader. index.html's whole frontend
+# is one inline <script> block (no bundler/build step for this app), so script-src must allow
+# 'unsafe-inline' too, or the dashboard would load with no JavaScript at all. This still blocks
+# the things that matter without a build step: loading a script from any other origin, framing
+# the page, and MIME-sniffing a response into something executable.
+_SECURITY_HEADERS = {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "same-origin",
+    "Content-Security-Policy": (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com; "
+        "img-src 'self' data:; "
+        "connect-src 'self'; "
+        "frame-ancestors 'none'; "
+        "base-uri 'self'; "
+        "form-action 'self'"
+    ),
+}
+
+
+@app.middleware("http")
+async def _security_headers(request, call_next):
+    response = await call_next(request)
+    for header, value in _SECURITY_HEADERS.items():
+        response.headers.setdefault(header, value)
+    return response
 
 
 class TableUnavailable(Exception):
@@ -451,7 +483,13 @@ def api_health(unit: int):
         )
     except DataUnavailable as e:
         return _unavailable(e)
-    pts = [(int(r["cycle"]), float(r["health_index"])) for r in rows if r["health_index"] is not None]
+    # Drop null/NaN/Inf readings: a corrupt sensor row must not leak a non-finite
+    # value into the JSON response (NaN/Inf are not valid JSON).
+    pts = [
+        (int(r["cycle"]), float(r["health_index"]))
+        for r in rows
+        if r["health_index"] is not None and math.isfinite(float(r["health_index"]))
+    ]
     if not pts and not missing:
         raise HTTPException(status_code=404, detail=f"no health curve for engine {unit}")
     return {

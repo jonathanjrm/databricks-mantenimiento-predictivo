@@ -1,5 +1,8 @@
 """API tests of the Databricks App backend with simulated SQL and assistant clients."""
 
+import json
+import math
+
 import pytest
 
 pytest.importorskip("fastapi")
@@ -84,6 +87,19 @@ def _fake(sql, params=None):
     return []
 
 
+def test_security_headers_present_on_every_response():
+    # D-06: CSP, frame and MIME-sniffing protection must be on every response, not just the
+    # frontend page, and must still allow the app's own inline-script frontend to run.
+    resp = TestClient(A.app).get("/")
+    assert resp.headers["X-Content-Type-Options"] == "nosniff"
+    assert resp.headers["X-Frame-Options"] == "DENY"
+    csp = resp.headers["Content-Security-Policy"]
+    assert "default-src 'self'" in csp
+    assert "frame-ancestors 'none'" in csp
+    assert "script-src 'self' 'unsafe-inline'" in csp  # index.html's whole app is one inline <script>
+    assert "fonts.googleapis.com" in csp and "fonts.gstatic.com" in csp
+
+
 def test_overview_with_data(monkeypatch):
     monkeypatch.setattr(A, "run_query", _fake)
     j = TestClient(A.app).get("/api/overview").json()
@@ -115,11 +131,79 @@ def test_health_curve_and_projection(monkeypatch):
     assert TestClient(A.app).get("/api/engines/0/health").status_code == 422
 
 
+def test_health_curve_drops_non_finite_readings(monkeypatch):
+    # A corrupt gold_health_curve row (NaN/Inf health_index) must be dropped,
+    # never serialized, so the endpoint stays valid JSON.
+    def fake_with_bad_row(sql, params=None):
+        s = " ".join(sql.split())
+        if "gold_health_curve" in s:
+            return [{"cycle": c, "health_index": 0.01 * c} for c in range(1, 61)] + [
+                {"cycle": 61, "health_index": float("nan")},
+                {"cycle": 62, "health_index": float("inf")},
+            ]
+        return _fake(sql, params)
+
+    monkeypatch.setattr(A, "run_query", fake_with_bad_row)
+    resp = TestClient(A.app).get("/api/engines/1/health")
+    assert resp.status_code == 200
+    j = resp.json()
+    assert len(j["history"]) == 60  # the 2 corrupt rows were dropped
+    assert all(math.isfinite(v) for _, v in j["history"])
+    json.dumps(j, allow_nan=False)  # would raise ValueError if NaN/Inf leaked
+
+
 def test_projection_without_trend():
     pts = [(c, 0.2 - 0.001 * c) for c in range(1, 40)]
     p = project_health(pts)
     assert p["cycles_to_threshold"] is None and p["projection"] == []
     assert project_health([(1, 0.1)])["slope"] is None
+
+
+def test_projection_beyond_horizon_does_not_invent_a_crossing():
+    # A true crossing around cycle 400 must not be reported as cycle 250.
+    pts = [(c, 0.001 * c) for c in range(1, 31)]
+    result = project_health(pts, threshold=1.0, max_ahead=250)
+    assert result["slope"] == pytest.approx(0.001)
+    assert result["cycles_to_threshold"] is None
+    assert result["cross_cycle"] is None
+    assert result["projection"] == []
+
+
+def test_projection_at_horizon_remains_valid():
+    pts = [(c, 0.01 * c) for c in range(1, 31)]
+    result = project_health(pts, threshold=1.0, max_ahead=250)
+    assert result["cycles_to_threshold"] == 70
+    assert result["cross_cycle"] == 100
+
+
+def test_projection_negative_slope_reports_no_crossing():
+    # A clearly declining (improving) index must never report a future crossing.
+    pts = [(c, 0.9 - 0.02 * c) for c in range(1, 20)]
+    result = project_health(pts, threshold=1.0)
+    assert result["cycles_to_threshold"] is None
+    assert result["cross_cycle"] is None
+    assert result["projection"] == []
+
+
+@pytest.mark.parametrize("bad_value", [float("nan"), float("inf"), float("-inf")])
+def test_projection_rejects_non_finite_readings(bad_value):
+    # A NaN/Inf sensor reading must not leak into the fit or the JSON
+    # response (NaN/Inf are not valid JSON): treat it as "no trend", not a crash.
+    pts = [(c, 0.01 * c) for c in range(1, 9)] + [(9, bad_value)]
+    result = project_health(pts, threshold=1.0)
+    assert result["slope"] is None
+    assert result["intercept"] is None
+    assert result["cycles_to_threshold"] is None
+    assert result["cross_cycle"] is None
+    assert result["projection"] == []
+    json.dumps(result, allow_nan=False)  # would raise ValueError if NaN/Inf leaked
+
+
+def test_projection_single_duplicate_cycle_has_no_trend():
+    # All points on the same cycle (den == 0): no slope can be fitted.
+    result = project_health([(5, 0.1)] * 6, threshold=1.0)
+    assert result["slope"] is None
+    assert result["projection"] == []
 
 
 def _chunks():

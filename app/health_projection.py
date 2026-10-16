@@ -29,6 +29,10 @@ def project_health(
     }
     if len(pts) < MIN_POINTS:
         return out
+    if any(not math.isfinite(c) or not math.isfinite(v) for c, v in pts):
+        # A NaN/Inf reading must not leak into the fit or the JSON response
+        # (NaN is not valid JSON); treat it the same as "no trend".
+        return out
     n = len(pts)
     sx = sum(c for c, _ in pts)
     sy = sum(v for _, v in pts)
@@ -49,7 +53,10 @@ def project_health(
         out["cycles_to_threshold"], out["cross_cycle"] = 0, last_c
         out["projection"] = [(last_c, round(current, 4))]
         return out
-    ahead = min(ahead, max_ahead)
+    # A crossing beyond the display horizon is NOT a crossing at the horizon.
+    # Returning 250 for a true crossing at 400 cycles would mislead operators.
+    if not math.isfinite(ahead) or ahead > max_ahead:
+        return out
     cycles_ahead = math.ceil(ahead)
     out["cycles_to_threshold"] = cycles_ahead
     out["cross_cycle"] = last_c + cycles_ahead
