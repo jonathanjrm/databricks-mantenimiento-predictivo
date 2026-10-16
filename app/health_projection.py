@@ -49,7 +49,10 @@ def project_health(
         out["cycles_to_threshold"], out["cross_cycle"] = 0, last_c
         out["projection"] = [(last_c, round(current, 4))]
         return out
-    ahead = min(ahead, max_ahead)
+    # A crossing beyond the display horizon is NOT a crossing at the horizon.
+    # Returning 250 for a true crossing at 400 cycles would mislead operators.
+    if not math.isfinite(ahead) or ahead > max_ahead:
+        return out
     cycles_ahead = math.ceil(ahead)
     out["cycles_to_threshold"] = cycles_ahead
     out["cross_cycle"] = last_c + cycles_ahead
