@@ -122,6 +122,23 @@ def test_projection_without_trend():
     assert project_health([(1, 0.1)])["slope"] is None
 
 
+def test_projection_beyond_horizon_does_not_invent_a_crossing():
+    # A true crossing around cycle 400 must not be reported as cycle 250.
+    pts = [(c, 0.001 * c) for c in range(1, 31)]
+    result = project_health(pts, threshold=1.0, max_ahead=250)
+    assert result["slope"] == pytest.approx(0.001)
+    assert result["cycles_to_threshold"] is None
+    assert result["cross_cycle"] is None
+    assert result["projection"] == []
+
+
+def test_projection_at_horizon_remains_valid():
+    pts = [(c, 0.01 * c) for c in range(1, 31)]
+    result = project_health(pts, threshold=1.0, max_ahead=250)
+    assert result["cycles_to_threshold"] == 70
+    assert result["cross_cycle"] == 100
+
+
 def _chunks():
     return [
         {
