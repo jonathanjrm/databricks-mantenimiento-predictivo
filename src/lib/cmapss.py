@@ -1,52 +1,54 @@
-"""Utilidades puras para NASA C-MAPSS FD001 (pandas/numpy, sin Spark).
+"""Pure utilities for NASA C-MAPSS FD001 (pandas/numpy, no Spark).
 
-Esta lógica es la referencia: el pipeline de Spark (src/pipeline/) implementa las
-mismas definiciones con funciones de ventana nativas, y los tests comprueban las
-definiciones aquí. Cualquier cambio de definición debe hacerse en ambos sitios.
+This module is the reference implementation: the Spark pipeline (src/pipeline/) implements
+the same definitions with native window functions, and the tests check the definitions
+here. Any change of definition must be made in both places.
 
-Fuente de los datos: Saxena et al. (2008), NASA Ames Prognostics Data Repository.
+Data source: Saxena et al. (2008), NASA Ames Prognostics Data Repository.
 """
+
 from __future__ import annotations
 
 import math
-from typing import Iterable, Optional
+from collections.abc import Callable, Iterable
 
 import numpy as np
 import pandas as pd
 
 # --------------------------------------------------------------------------
-# Esquema
+# Schema
 # --------------------------------------------------------------------------
 SETTINGS = ["setting1", "setting2", "setting3"]
 SENSORS = [f"s{i}" for i in range(1, 22)]
-COLUMNS = ["unit", "cycle"] + SETTINGS + SENSORS  # 26 columnas
+COLUMNS = ["unit", "cycle", *SETTINGS, *SENSORS]  # 26 columns
 
-# FD001 tiene una sola condición de operación y un solo modo de fallo (HPC).
-# Columnas constantes en train y test (desviación tipica exactamente 0): setting3,
-# s1, s5, s10, s16, s18, s19. s6 toma solo dos valores (21.60 y 21.61, desviación
-# 0.0014): es ruido de cuantizacion sin información, se descarta también.
-# Los scripts de verificacion de los tests (test_cmapss.py) lo comprueban con los datos.
+# FD001 has a single operating condition and a single fault mode (HPC degradation).
+# Columns that are constant in train and test (standard deviation exactly 0): setting3,
+# s1, s5, s10, s16, s18, s19. s6 takes only two values (21.60 and 21.61, std 0.0014):
+# quantisation noise with no information, so it is dropped as well.
+# tests/test_cmapss.py checks this against the real data.
 CONSTANT_SENSORS = ["s1", "s5", "s6", "s10", "s16", "s18", "s19"]
 CONSTANT_SETTINGS = ["setting3"]
-ACTIVE_SENSORS = [s for s in SENSORS if s not in CONSTANT_SENSORS]  # 14 sensores
-# Los ajustes setting1 y setting2 varian solo por ruido (FD001 es un único regimen):
-# se conservan en silver pero no se usan como variables del modelo.
+ACTIVE_SENSORS = [s for s in SENSORS if s not in CONSTANT_SENSORS]  # 14 sensors
+# setting1 and setting2 vary only by noise (FD001 is a single regime): they are kept in
+# silver but are not model features.
 KEPT_SETTINGS = ["setting1", "setting2"]
 
-# Recorte de la RUL de entrenamiento. Practica estándar en la literatura de C-MAPSS:
-# la degradacion no es observable al inicio de la vida, así que se modela la RUL como
-# "piece-wise linear" con techo de 125 ciclos (p. ej. Heimes, 2008; Li, Ding y Sun, 2018,
-# "Remaining useful life estimation in prognostics using deep convolutional neural networks").
+# Training RUL clip. Standard practice in the C-MAPSS literature: degradation is not
+# observable early in life, so the RUL is modelled as piece-wise linear with a ceiling of
+# 125 cycles (e.g. Heimes, 2008; Li, Ding and Sun, 2018, "Remaining useful life estimation
+# in prognostics using deep convolutional neural networks").
 RUL_CLIP = 125
 
 WINDOWS = (5, 10)
 SLOPE_WINDOW = 10
-HEALTHY_CYCLES = 30  # primeros ciclos de cada motor = referencia "sano"
-END_CYCLES = 30      # últimos ciclos de cada motor de train = referencia "fallo"
+HEALTHY_CYCLES = 30  # first cycles of every engine = "healthy" reference
+END_CYCLES = 30  # last cycles of every train engine = "failure" reference
+SLOPE_EPS = 1e-12  # below this the least-squares denominator is treated as zero (slope 0)
 
 
 def feature_columns(sensors: Iterable[str] = ACTIVE_SENSORS, include_cycle: bool = True) -> list[str]:
-    """Nombres de las variables del modelo, en orden estable."""
+    """Model feature names, in a stable order."""
     cols = ["cycle"] if include_cycle else []
     cols += list(sensors)
     for s in sensors:
@@ -56,8 +58,8 @@ def feature_columns(sensors: Iterable[str] = ACTIVE_SENSORS, include_cycle: bool
     return cols
 
 
-def sensors_of_feature(name: str, sensors: Iterable[str] = ACTIVE_SENSORS) -> Optional[str]:
-    """Sensor al que pertenece una variable ('s9_mean5' -> 's9'); None para 'cycle'."""
+def sensors_of_feature(name: str, sensors: Iterable[str] = ACTIVE_SENSORS) -> str | None:
+    """Sensor a feature belongs to ('s9_mean5' -> 's9'); None for 'cycle'."""
     for s in sorted(sensors, key=len, reverse=True):
         if name == s or name.startswith(s + "_"):
             return s
@@ -65,20 +67,19 @@ def sensors_of_feature(name: str, sensors: Iterable[str] = ACTIVE_SENSORS) -> Op
 
 
 # --------------------------------------------------------------------------
-# Parseo
+# Parsing
 # --------------------------------------------------------------------------
-def parse_line(line: str) -> Optional[dict]:
-    """Parsea una linea de train/test de C-MAPSS.
+def parse_line(line: str) -> dict | None:
+    """Parses one line of a C-MAPSS train/test file.
 
-    Los ficheros usan espacio como separador y tienen espacios finales. Devuelve
-    None para lineas vacias; lanza ValueError si el número de campos no es 26 o
-    algún valor no es numerico.
+    The files are space separated with trailing spaces. Returns None for blank lines;
+    raises ValueError when the field count is not 26 or a value is not numeric.
     """
     parts = line.split()
     if not parts:
         return None
     if len(parts) != len(COLUMNS):
-        raise ValueError(f"se esperaban {len(COLUMNS)} campos y hay {len(parts)}: {line[:60]!r}")
+        raise ValueError(f"expected {len(COLUMNS)} fields, got {len(parts)}: {line[:60]!r}")
     row: dict = {}
     for name, raw in zip(COLUMNS, parts):
         row[name] = int(raw) if name in ("unit", "cycle") else float(raw)
@@ -86,36 +87,36 @@ def parse_line(line: str) -> Optional[dict]:
 
 
 def parse_text(text: str) -> pd.DataFrame:
-    rows = [r for r in (parse_line(l) for l in text.splitlines()) if r is not None]
+    rows = [r for r in (parse_line(line) for line in text.splitlines()) if r is not None]
     return pd.DataFrame(rows, columns=COLUMNS)
 
 
 def read_cmapss(path: str) -> pd.DataFrame:
-    with open(path, "r", encoding="ascii") as fh:
+    with open(path, encoding="ascii") as fh:
         return parse_text(fh.read())
 
 
 def parse_rul_text(text: str) -> pd.DataFrame:
-    """RUL_FD001.txt: un valor por linea; la linea i corresponde al motor i del test."""
+    """RUL_FD001.txt: one value per line; line i is the actual RUL of test engine i."""
     vals = [int(tok) for tok in text.split()]
     return pd.DataFrame({"unit": range(1, len(vals) + 1), "rul_real": vals})
 
 
 def read_rul(path: str) -> pd.DataFrame:
-    with open(path, "r", encoding="ascii") as fh:
+    with open(path, encoding="ascii") as fh:
         return parse_rul_text(fh.read())
 
 
 def find_constant_columns(df: pd.DataFrame, columns: Iterable[str], tol: float = 1e-9) -> list[str]:
-    """Columnas con desviación tipica <= tol."""
+    """Columns whose standard deviation is <= tol."""
     return [c for c in columns if float(df[c].std(ddof=0)) <= tol]
 
 
 # --------------------------------------------------------------------------
 # RUL
 # --------------------------------------------------------------------------
-def add_rul_train(df: pd.DataFrame, clip: Optional[int] = RUL_CLIP) -> pd.DataFrame:
-    """Anade rul_raw (= último ciclo del motor - ciclo) y rul (recortada a `clip`)."""
+def add_rul_train(df: pd.DataFrame, clip: int | None = RUL_CLIP) -> pd.DataFrame:
+    """Adds rul_raw (= last cycle of the engine - cycle) and rul (clipped at `clip`)."""
     out = df.copy()
     max_cycle = out.groupby("unit")["cycle"].transform("max")
     out["rul_raw"] = max_cycle - out["cycle"]
@@ -124,19 +125,19 @@ def add_rul_train(df: pd.DataFrame, clip: Optional[int] = RUL_CLIP) -> pd.DataFr
 
 
 def last_cycle(df: pd.DataFrame) -> pd.DataFrame:
-    """Fila del último ciclo de cada motor."""
+    """Row of the last cycle of every engine."""
     idx = df.groupby("unit")["cycle"].idxmax()
     return df.loc[idx].sort_values("unit").reset_index(drop=True)
 
 
 # --------------------------------------------------------------------------
-# Variables moviles
+# Rolling features
 # --------------------------------------------------------------------------
 def _rolling_slope(x: pd.Series, y: pd.Series, window: int) -> pd.Series:
-    """Pendiente de y frente a x en una ventana movil de `window` filas (minimos cuadrados).
+    """Least-squares slope of y against x over a rolling window of `window` rows.
 
-    Con una sola observacion la pendiente es 0. Se calcula con sumas moviles para que
-    coincida exactamente con la version de Spark.
+    With a single observation the slope is 0. Computed from rolling sums so that it
+    matches the Spark version exactly.
     """
     n = x.rolling(window, min_periods=1).count()
     sx = x.rolling(window, min_periods=1).sum()
@@ -145,17 +146,17 @@ def _rolling_slope(x: pd.Series, y: pd.Series, window: int) -> pd.Series:
     sxx = (x * x).rolling(window, min_periods=1).sum()
     den = n * sxx - sx * sx
     num = n * sxy - sx * sy
-    slope = num / den.where(den.abs() > 1e-12)
+    slope = num / den.where(den.abs() > SLOPE_EPS)
     return slope.fillna(0.0)
 
 
 def rolling_features(df: pd.DataFrame, sensors: Iterable[str] = ACTIVE_SENSORS) -> pd.DataFrame:
-    """Variables moviles por motor y ciclo.
+    """Rolling features per engine and cycle.
 
-    Para cada sensor: media y desviación tipica muestral (ddof=1) en ventanas de 5 y 10
-    ciclos, y pendiente en 10 ciclos. Ventanas hacia atras (solo pasado), incluyendo el
-    ciclo actual, con min_periods=1: sin fuga de información futura. La desviación con un
-    solo dato vale 0.
+    For every sensor: mean and sample standard deviation (ddof=1) over windows of 5 and
+    10 cycles, and the slope over 10 cycles. Windows look backwards only (past plus the
+    current cycle) with min_periods=1, so no future information leaks. The standard
+    deviation of a single value is 0.
     """
     sensors = list(sensors)
     d = df.sort_values(["unit", "cycle"]).reset_index(drop=True)
@@ -172,25 +173,26 @@ def rolling_features(df: pd.DataFrame, sensors: Iterable[str] = ACTIVE_SENSORS) 
             )
         slopes = []
         for _, idx in g.indices.items():
-            slopes.append(_rolling_slope(x.iloc[idx].reset_index(drop=True),
-                                         d[s].iloc[idx].reset_index(drop=True), SLOPE_WINDOW)
-                          .set_axis(idx))
+            slopes.append(
+                _rolling_slope(
+                    x.iloc[idx].reset_index(drop=True), d[s].iloc[idx].reset_index(drop=True), SLOPE_WINDOW
+                ).set_axis(idx)
+            )
         new_cols[f"{s}_slope{SLOPE_WINDOW}"] = pd.concat(slopes).sort_index()
     parts.append(pd.DataFrame(new_cols))
     return pd.concat(parts, axis=1)
 
 
 # --------------------------------------------------------------------------
-# Indicador de salud (para la curva de la app)
+# Health index (curve shown in the app)
 # --------------------------------------------------------------------------
 def fit_health_params(train: pd.DataFrame, sensors: Iterable[str] = ACTIVE_SENSORS) -> pd.DataFrame:
-    """Parametros del indicador de salud, ajustados solo con train.
+    """Health index parameters, fitted on train only.
 
-    Para cada sensor: media (mu) y desviación (sd) en los primeros HEALTHY_CYCLES ciclos
-    de cada motor ("sano"); m = media del z-score en los últimos END_CYCLES ciclos de
-    cada motor (desplazamiento hasta el fallo, con signo). El peso es w = m. Se devuelve
-    también `norm` = valor medio del indicador bruto al final de la vida (para que el
-    umbral de fallo valga 1.0).
+    For every sensor: mean (mu) and standard deviation (sd) over the first HEALTHY_CYCLES
+    cycles of every engine ("healthy"); m = mean z-score over the last END_CYCLES cycles of
+    every engine (signed shift towards failure). The weight is w = m. `norm` is the mean
+    raw index at end of life, so that the failure threshold equals 1.0.
     """
     sensors = list(sensors)
     t = train.sort_values(["unit", "cycle"])
@@ -213,12 +215,12 @@ def _raw_health(df: pd.DataFrame, params: pd.DataFrame) -> pd.Series:
 
 
 def health_index(df: pd.DataFrame, params: pd.DataFrame, smooth: int = 5) -> pd.Series:
-    """Indicador de salud: 0 = sano (inicio de vida), 1 = nivel medio al fallo.
+    """Health index: 0 = healthy (start of life), 1 = mean level at failure.
 
-    Combinacion lineal de z-scores respecto a la referencia sana, ponderada por el
-    desplazamiento de cada sensor hasta el fallo, normalizada y suavizada con media movil
-    de `smooth` ciclos por motor. No es una predicción: es una vista resumen de los
-    sensores para visualizar la tendencia.
+    Linear combination of z-scores against the healthy reference, weighted by each
+    sensor's shift towards failure, normalised and smoothed with a rolling mean of
+    `smooth` cycles per engine. It is not a prediction: it is a summary view of the
+    sensors to visualise the trend.
     """
     d = df.sort_values(["unit", "cycle"])
     hi = _raw_health(d, params) / float(params["norm"].iloc[0])
@@ -227,7 +229,7 @@ def health_index(df: pd.DataFrame, params: pd.DataFrame, smooth: int = 5) -> pd.
 
 
 # --------------------------------------------------------------------------
-# Metricas
+# Metrics
 # --------------------------------------------------------------------------
 def rmse(y_true, y_pred) -> float:
     a = np.asarray(y_true, dtype=float)
@@ -236,11 +238,11 @@ def rmse(y_true, y_pred) -> float:
 
 
 def phm08_score(y_true, y_pred) -> float:
-    """Score asimetrica de la competicion PHM08 (Saxena et al., 2008).
+    """Asymmetric score of the PHM08 challenge (Saxena et al., 2008).
 
-    d = predicción - real. Si d < 0 (predicción temprana): exp(-d/13) - 1.
-    Si d >= 0 (predicción tardia, mas peligrosa): exp(d/10) - 1. Se suma sobre los
-    motores; menor es mejor.
+    d = predicted - actual. If d < 0 (early prediction): exp(-d/13) - 1.
+    If d >= 0 (late prediction, the dangerous side): exp(d/10) - 1. Summed over the
+    engines; lower is better.
     """
     d = np.asarray(y_pred, dtype=float) - np.asarray(y_true, dtype=float)
     return float(np.sum(np.where(d < 0, np.exp(-d / 13.0) - 1.0, np.exp(d / 10.0) - 1.0)))
@@ -269,7 +271,9 @@ def validate_feature_frame(X: pd.DataFrame, columns: Iterable[str]) -> None:
 
 
 STATES = ("critical", "watch", "healthy")
-_LEGACY_STATES = {"critico": "critical", "vigilar": "watch", "sano": "healthy"}
+# State values written by the first deployment (Spanish schema), kept readable as a fallback.
+LEGACY_STATES = {"critico": "critical", "vigilar": "watch", "sano": "healthy"}
+ACTION_PREFIX = "Demo estimate; requires engineering review. "
 
 
 def classify_state(rul: float, critical: float = 20.0, watch: float = 35.0) -> str:
@@ -284,7 +288,7 @@ def classify_state(rul: float, critical: float = 20.0, watch: float = 35.0) -> s
 def normalize_state(state: str) -> str:
     """Maps legacy Spanish state values (critico, vigilar, sano) to the English ones."""
     s = (state or "").strip().lower()
-    return _LEGACY_STATES.get(s, s)
+    return LEGACY_STATES.get(s, s)
 
 
 def recommended_action(state: str, rul: float, sensors: Iterable[str] = ()) -> str:
@@ -295,30 +299,36 @@ def recommended_action(state: str, rul: float, sensors: Iterable[str] = ()) -> s
     shutdown or replacement. The model's uncertainty is not calibrated (no prediction
     intervals); the typical error is only the test RMSE shown in the app.
     """
-    n = int(round(max(float(rul), 0.0)))
+    n = round(max(float(rul), 0.0))
     sens = [s for s in sensors if s][:2]
     state = normalize_state(state)
-    head = "Demo estimate; requires engineering review. "
     if state == "critical":
-        txt = head + f"Estimated RUL is low (about {n} cycles): consider prioritising an inspection."
+        txt = ACTION_PREFIX + f"Estimated RUL is low (about {n} cycles): consider prioritising an inspection."
         if sens:
             txt += " Sensors to check first: " + " and ".join(sens) + "."
         return txt
     if state == "watch":
-        return head + f"Estimated RUL is moderate (about {n} cycles): consider closer monitoring and planning an inspection."
-    return head + "No degradation flagged by the model; keep the usual maintenance plan."
+        return ACTION_PREFIX + (
+            f"Estimated RUL is moderate (about {n} cycles): "
+            "consider closer monitoring and planning an inspection."
+        )
+    return ACTION_PREFIX + "No degradation flagged by the model; keep the usual maintenance plan."
 
 
-def occlusion_contributions(predict_fn, X: pd.DataFrame, baseline: pd.Series,
-                            sensors: Iterable[str] = ACTIVE_SENSORS) -> pd.DataFrame:
-    """Contribucion local de cada sensor por oclusión.
+def occlusion_contributions(
+    predict_fn: Callable[[pd.DataFrame], np.ndarray],
+    X: pd.DataFrame,
+    baseline: pd.Series,
+    sensors: Iterable[str] = ACTIVE_SENSORS,
+) -> pd.DataFrame:
+    """Local contribution of every sensor by occlusion.
 
-    Para cada fila y sensor se sustituyen TODAS las variables derivadas de ese sensor
-    (valor, medias, desviaciones, pendiente) por las de la referencia sana (`baseline`) y se
-    mide cuanto sube la RUL predicha: contrib = pred(sin el sensor) - pred(original).
-    Valor positivo = ese sensor esta empujando la RUL hacia abajo. No es SHAP: no
-    reparte la predicción de forma aditiva y la sustitución puede generar combinaciones
-    poco realistas; es una sensibilidad local, útil para ordenar.
+    For every row and sensor, ALL the features derived from that sensor (value, means,
+    standard deviations, slope) are replaced by the healthy reference (`baseline`) and the
+    increase of the predicted RUL is measured: contrib = pred(without the sensor) - pred(original).
+    Positive = that sensor is pushing the RUL down. This is not SHAP: contributions are not
+    additive and the substitution can create unrealistic combinations; it is a local
+    sensitivity, useful for ranking.
     """
     sensors = list(sensors)
     base_pred = np.asarray(predict_fn(X), dtype=float)
@@ -333,7 +343,7 @@ def occlusion_contributions(predict_fn, X: pd.DataFrame, baseline: pd.Series,
 
 
 def top_k_sensors(contrib: pd.DataFrame, k: int = 3) -> list[list[tuple[str, float]]]:
-    """Para cada fila, los k sensores con mayor contribución (descendente)."""
+    """For every row, the k sensors with the largest contribution (descending)."""
     res = []
     for _, row in contrib.iterrows():
         top = row.sort_values(ascending=False).head(k)

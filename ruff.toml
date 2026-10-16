@@ -1,0 +1,25 @@
+line-length = 110
+target-version = "py310"
+extend-exclude = ["audit/evidence", "portfolio"]
+
+[lint]
+select = ["E", "F", "W", "I", "B", "UP", "C4", "SIM", "RUF"]
+ignore = [
+    "E731",   # lambdas assigned to names are used on purpose for short predict() adapters
+    "RUF001", "RUF002", "RUF003",  # ambiguous unicode in multilingual regexes and prompts
+    "B905",   # zip(strict=) is not available on the serverless runtime's Python
+    "SIM108", # ternaries are not always clearer than if/else
+    "SIM905", # a split string literal is the compact way to write a word set
+]
+
+[lint.per-file-ignores]
+# Databricks notebooks: cell structure, late imports and the notebook globals (spark, dbutils, display).
+"src/0*.py" = ["E402", "F821", "I001"]
+"src/pipeline/*.py" = ["E402", "F821"]
+"tests/*.py" = ["E402"]
+"scripts/*.py" = ["E402"]
+# Prompts and multilingual regexes are easier to review as single long lines.
+"app/rag.py" = ["E501"]
+
+[lint.isort]
+known-first-party = ["lib", "rag", "health_projection"]
