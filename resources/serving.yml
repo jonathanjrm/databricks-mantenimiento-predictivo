@@ -6,6 +6,6 @@ resources:
         served_entities:
           - name: rul-model
             entity_name: ${var.catalog}.${var.schema}.rul_model
-            entity_version: ${var.model_version}   # el endpoint no sigue al alias: actualiza la variable tras promover
-            workload_size: Small                   # CPU, sin GPU (Free Edition)
+            entity_version: ${var.model_version}   # the endpoint does not follow the alias: update the variable after promoting
+            workload_size: Small                   # CPU, no GPU (Free Edition)
             scale_to_zero_enabled: true

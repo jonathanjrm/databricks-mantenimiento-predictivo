@@ -1,41 +1,41 @@
-# Declarative Automation Bundle (antes Databricks Asset Bundles).
-# Despliegue:  databricks bundle validate -t dev && databricks bundle deploy -t dev
-# El host del workspace NO se escribe aquí: usa un perfil de la CLI o DATABRICKS_HOST.
+# Declarative Automation Bundle (formerly Databricks Asset Bundles).
+# Deploy:  databricks bundle validate -t dev && databricks bundle deploy -t dev
+# The workspace host is NOT written here: use a CLI profile or DATABRICKS_HOST.
 bundle:
-  name: mantenimiento-predictivo
+  name: predictive-maintenance
 
 include:
   - resources/pipelines.yml
   - resources/jobs.yml
   - resources/app.yml
-  # El endpoint de serving necesita que exista una versión del modelo (la crea el job de
-  # entrenamiento). En el primer despliegue comenta la línea siguiente; ver README, "Orden de ejecución".
+  # The serving endpoint needs an existing model version (created by the training job).
+  # Comment out the next line on the first deployment; see README, "Run order".
   - resources/serving.yml
 
 variables:
   catalog:
-    description: Catálogo de Unity Catalog (en Free Edition ya existe `workspace`)
+    description: Unity Catalog catalog (Free Edition already has `workspace`)
     default: workspace
   schema:
-    description: Schema del proyecto
-    default: mantenimiento
+    description: Project schema
+    default: maintenance
   warehouse_id:
-    description: ID del SQL warehouse 2X-Small (Compute > SQL warehouses > Connection details)
+    description: ID of the 2X-Small SQL warehouse (Compute > SQL warehouses > Connection details)
     default: ""
   model_version:
-    description: Versión de rul_model que sirve el endpoint (entity_version no admite alias)
+    description: Version of rul_model served by the endpoint (entity_version does not accept an alias)
     default: "1"
   serverless_env_version:
-    description: Versión del entorno serverless de los jobs. verificar en docs la última disponible
+    description: Serverless environment version of the jobs (check the docs for the latest available)
     default: "6"
 
 targets:
   dev:
-    mode: development     # prefija recursos con [dev usuario] y pausa los schedules
+    mode: development     # prefixes resources with [dev user] and pauses schedules
     default: true
 
   prod:
-    mode: production      # exige rama main; en Free Edition no hay service principals de cuenta
+    mode: production      # requires the main branch; Free Edition has no account-level service principals
     git:
       branch: main
     workspace:

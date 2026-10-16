@@ -1,50 +1,51 @@
-"""Capa BRONZE: ingesta incremental de los ficheros C-MAPSS con Auto Loader.
+"""BRONZE layer: incremental ingestion of the C-MAPSS files with Auto Loader.
 
-Por que streaming tables: los ficheros llegan al volume y solo se anaden (append-only).
-Auto Loader recuerda que ficheros ya proceso (checkpoint gestionado por el pipeline), así
-que cada ejecución lee unicamente lo nuevo. Bronze conserva el dato tal cual llega, mas
-metadatos de linaje (ruta del fichero, momento de ingesta) y la particion train/test.
+Why streaming tables: the files land in the volume and are only ever appended. Auto Loader
+remembers which files it has processed (checkpoint managed by the pipeline), so every run
+reads only what is new. Bronze keeps the data as it arrives, plus lineage metadata (file
+path, ingestion time) and the train/test split.
 """
+
+import sys
+
 from pyspark import pipelines as dp
 from pyspark.sql import functions as F
 
-import sys  # noqa: E402
-
-# Hace importable el paquete `lib` (src/lib). El bundle pasa la ruta de src/ en la
-# configuración del pipeline (mantenimiento.src_root). verificar en docs: sys.path y
-# directorio de trabajo de los ficheros fuente de un pipeline.
-_SRC_ROOT = spark.conf.get("mantenimiento.src_root", "")  # noqa: F821
+# Makes the `lib` package importable (src/lib). The bundle passes the src/ path through the
+# pipeline configuration (maintenance.src_root).
+_SRC_ROOT = spark.conf.get("maintenance.src_root", "")
 if _SRC_ROOT and _SRC_ROOT not in sys.path:
     sys.path.insert(0, _SRC_ROOT)
-from lib.spark_schema import READINGS_SCHEMA  # noqa: E402
+from lib.spark_schema import READINGS_SCHEMA
 
-# Ruta del volume con los ficheros; la fija el bundle (resources/pipelines.yml).
-RAW_PATH = spark.conf.get("mantenimiento.raw_path")  # noqa: F821
+# Volume path holding the files; set by the bundle (resources/pipelines.yml).
+RAW_PATH = spark.conf.get("maintenance.raw_path")
 
 
 @dp.table(
-    name="bronze_cmapss_lecturas",
-    comment="Bronze: lecturas de sensores C-MAPSS FD001 (train y test), tal cual llegan.",
+    name="bronze_cmapss_readings",
+    comment="Bronze: C-MAPSS FD001 sensor readings (train and test), as they arrive.",
     table_properties={"quality": "bronze"},
 )
-def bronze_cmapss_lecturas():
-    # Esquema explicito (26 columnas): el formato es fijo y conocido, no hace falta inferir.
-    # Los ficheros acaban cada linea con espacios; con sep=" " aparecen campos vacios extra
-    # que se descartan porque el esquema es mas corto. No se activa rescuedDataColumn porque
-    # esos campos vacios llenarian _rescued_data en todas las filas; los fallos de tipo
-    # dejan nulos que la capa silver detecta con expectations.
+def bronze_cmapss_readings():
+    # Explicit 26-column schema: the format is fixed and known, nothing to infer.
+    # Every line ends with spaces; with sep=" " extra empty fields appear and are discarded
+    # because the schema is shorter. rescuedDataColumn stays off because those empty fields
+    # would fill _rescued_data on every row; type failures leave nulls that the silver
+    # expectations detect.
     return (
-        spark.readStream.format("cloudFiles")  # noqa: F821
+        spark.readStream.format("cloudFiles")
         .option("cloudFiles.format", "csv")
         .option("sep", " ")
         .option("header", "false")
-        .option("pathGlobFilter", "{train,test}_FD001.txt")  # excluye RUL_FD001.txt y el readme
+        .option("pathGlobFilter", "{train,test}_FD001.txt")  # excludes RUL_FD001.txt and the readme
         .schema(READINGS_SCHEMA)
         .load(RAW_PATH)
         .select(
             "*",
             F.when(F.col("_metadata.file_name").startswith("train"), F.lit("train"))
-             .otherwise(F.lit("test")).alias("split"),
+            .otherwise(F.lit("test"))
+            .alias("split"),
             F.col("_metadata.file_path").alias("_source_file"),
             F.current_timestamp().alias("_ingest_ts"),
         )
@@ -53,14 +54,14 @@ def bronze_cmapss_lecturas():
 
 @dp.table(
     name="bronze_cmapss_rul",
-    comment="Bronze: RUL real de los motores de test (RUL_FD001.txt completo en una fila).",
+    comment="Bronze: actual RUL of the test engines (the whole RUL_FD001.txt in one row).",
     table_properties={"quality": "bronze"},
 )
 def bronze_cmapss_rul():
-    # wholetext: una fila por fichero con todo el contenido. El número de motor es la
-    # posicion del valor, y así no depende del orden de lectura (ver silver_rul_test).
+    # wholetext: one row per file with the full content. The engine number is the position
+    # of the value, so it does not depend on read order (see silver_rul_test).
     return (
-        spark.readStream.format("cloudFiles")  # noqa: F821
+        spark.readStream.format("cloudFiles")
         .option("cloudFiles.format", "text")
         .option("wholetext", "true")
         .option("pathGlobFilter", "RUL_FD001.txt")

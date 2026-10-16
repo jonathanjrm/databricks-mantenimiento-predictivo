@@ -1,11 +1,11 @@
 resources:
   apps:
-    mantenimiento_app:
-      name: mantenimiento-predictivo-${bundle.target}
-      description: Sala de control de la flota de turbinas (RUL, estado y asistente de manuales)
+    maintenance_app:
+      name: predictive-maintenance-${bundle.target}
+      description: Turbine fleet control room (RUL, state and manuals assistant)
       source_code_path: ../app
       resources:
-        - name: sql_warehouse        # clave que app.yaml referencia con valueFrom
+        - name: sql_warehouse        # key referenced by app.yaml through valueFrom
           sql_warehouse:
             id: ${var.warehouse_id}
             permission: CAN_USE

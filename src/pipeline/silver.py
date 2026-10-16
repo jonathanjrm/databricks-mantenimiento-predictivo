@@ -1,59 +1,55 @@
-"""Capa SILVER: datos tipados, validados y sin columnas constantes.
+"""SILVER layer: typed, validated data without the constant columns.
 
-Sigue siendo streaming table: la limpieza es fila a fila, sin agregaciones, así que se
-procesa de forma incremental sobre lo que Bronze va anadiendo.
+Still a streaming table: the cleaning is row by row, with no aggregation, so it is
+processed incrementally on whatever Bronze appends.
 
-Columnas eliminadas (sin información en FD001, una sola condición de operación y un
-solo modo de fallo): setting3, s1, s5, s6, s10, s16, s18, s19.
-  - setting3, s1, s5, s10, s16, s18, s19: desviación tipica exactamente 0 en train y test.
-  - s6: solo toma dos valores (21.60 y 21.61), ruido de cuantizacion.
-Se comprueba con los datos reales en tests/test_cmapss.py. setting1 y setting2 se
-conservan (varian por ruido) pero no se usan como variables del modelo.
+Columns dropped (no information in FD001, a single operating condition and a single fault
+mode): setting3, s1, s5, s6, s10, s16, s18, s19.
+  - setting3, s1, s5, s10, s16, s18, s19: standard deviation exactly 0 in train and test.
+  - s6: only two values (21.60 and 21.61), quantisation noise.
+Checked against the real data in tests/test_cmapss.py. setting1 and setting2 are kept
+(they vary by noise) but are not model features.
 """
+
+import sys
+
 from pyspark import pipelines as dp
-from pyspark.sql import functions as F
 
-import sys  # noqa: E402
-
-# Hace importable el paquete `lib` (src/lib). El bundle pasa la ruta de src/ en la
-# configuración del pipeline (mantenimiento.src_root). verificar en docs: sys.path y
-# directorio de trabajo de los ficheros fuente de un pipeline.
-_SRC_ROOT = spark.conf.get("mantenimiento.src_root", "")  # noqa: F821
+# Makes the `lib` package importable (src/lib). The bundle passes the src/ path through the
+# pipeline configuration (maintenance.src_root).
+_SRC_ROOT = spark.conf.get("maintenance.src_root", "")
 if _SRC_ROOT and _SRC_ROOT not in sys.path:
     sys.path.insert(0, _SRC_ROOT)
-from lib.cmapss import CONSTANT_SENSORS, CONSTANT_SETTINGS  # noqa: E402
-from lib.spark_features import parse_rul_wholetext  # noqa: E402
-from lib.spark_schema import plausibility_rules  # noqa: E402
+from lib.cmapss import CONSTANT_SENSORS, CONSTANT_SETTINGS
+from lib.spark_features import parse_rul_wholetext
+from lib.spark_schema import plausibility_rules
 
-# Rangos de plausibilidad: aviso (expect), no descarte. Un valor fuera de rango suele
-# indicar un sensor averiado o un fallo de unidades, y es información útil para la
-# operación, no algo que borrar en silencio.
-RANGOS = plausibility_rules()
+# Plausibility ranges: warning (expect), not drop. An out-of-range value usually means a
+# faulty sensor or a unit error, which is useful information for operations, not
+# something to delete silently.
+RANGES = plausibility_rules()
 
 
 @dp.table(
-    name="silver_lecturas",
-    comment="Silver: lecturas validadas, sin sensores constantes. Clave: (split, unit, cycle).",
+    name="silver_readings",
+    comment="Silver: validated readings without the constant sensors. Key: (split, unit, cycle).",
     table_properties={"quality": "silver"},
     cluster_by=["unit", "cycle"],
 )
-@dp.expect_or_drop("unit_valido", "unit IS NOT NULL AND unit > 0")
-@dp.expect_or_drop("ciclo_valido", "cycle IS NOT NULL AND cycle > 0")
-@dp.expect_or_drop("split_valido", "split IN ('train', 'test')")
-@dp.expect_all(RANGOS)
-def silver_lecturas():
-    return (
-        spark.readStream.table("bronze_cmapss_lecturas")  # noqa: F821
-        .drop(*CONSTANT_SENSORS, *CONSTANT_SETTINGS)
-    )
+@dp.expect_or_drop("valid_unit", "unit IS NOT NULL AND unit > 0")
+@dp.expect_or_drop("valid_cycle", "cycle IS NOT NULL AND cycle > 0")
+@dp.expect_or_drop("valid_split", "split IN ('train', 'test')")
+@dp.expect_all(RANGES)
+def silver_readings():
+    return spark.readStream.table("bronze_cmapss_readings").drop(*CONSTANT_SENSORS, *CONSTANT_SETTINGS)
 
 
 @dp.table(
     name="silver_rul_test",
-    comment="Silver: RUL real por motor de test (unit = posicion en RUL_FD001.txt).",
+    comment="Silver: actual RUL per test engine (unit = position in RUL_FD001.txt).",
     table_properties={"quality": "silver"},
 )
-@dp.expect_or_drop("unit_valido", "unit > 0")
-@dp.expect_or_drop("rul_valida", "rul_real IS NOT NULL AND rul_real >= 0")
+@dp.expect_or_drop("valid_unit", "unit > 0")
+@dp.expect_or_drop("valid_rul", "rul_real IS NOT NULL AND rul_real >= 0")
 def silver_rul_test():
-    return parse_rul_wholetext(spark.readStream.table("bronze_cmapss_rul"))  # noqa: F821
+    return parse_rul_wholetext(spark.readStream.table("bronze_cmapss_rul"))

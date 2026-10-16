@@ -1,8 +1,8 @@
 resources:
   jobs:
-    mantenimiento_end_to_end:
-      name: mantenimiento_end_to_end_${bundle.target}
-      description: setup, pipeline bronze/silver/gold, entrenamiento y puntuación
+    maintenance_end_to_end:
+      name: maintenance_end_to_end_${bundle.target}
+      description: setup, bronze/silver/gold pipeline, training and scoring
       max_concurrent_runs: 1
       environments:
         - environment_key: serverless
@@ -25,7 +25,7 @@ resources:
           depends_on:
             - task_key: setup
           pipeline_task:
-            pipeline_id: ${resources.pipelines.mantenimiento_pipeline.id}
+            pipeline_id: ${resources.pipelines.maintenance_pipeline.id}
             full_refresh: false
         - task_key: train
           depends_on:
@@ -46,9 +46,9 @@ resources:
               catalog: "{{job.parameters.catalog}}"
               schema: "{{job.parameters.schema}}"
 
-    mantenimiento_rag:
-      name: mantenimiento_rag_${bundle.target}
-      description: indexa los PDF del volume manuales en AI Search y evalúa el retrieval
+    maintenance_rag:
+      name: maintenance_rag_${bundle.target}
+      description: indexes the PDFs of the manuals volume in AI Search and evaluates retrieval
       max_concurrent_runs: 1
       environments:
         - environment_key: serverless
@@ -77,9 +77,9 @@ resources:
               catalog: "{{job.parameters.catalog}}"
               schema: "{{job.parameters.schema}}"
 
-    mantenimiento_eval_assistant:
-      name: mantenimiento_eval_assistant_${bundle.target}
-      description: evaluación de recuperación y fundamentación de citas del asistente (antes/después)
+    maintenance_eval_assistant:
+      name: maintenance_eval_assistant_${bundle.target}
+      description: retrieval and citation grounding evaluation of the assistant (before/after)
       max_concurrent_runs: 1
       environments:
         - environment_key: serverless

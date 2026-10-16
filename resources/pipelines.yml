@@ -1,15 +1,15 @@
 resources:
   pipelines:
-    mantenimiento_pipeline:
-      name: mantenimiento_pipeline_${bundle.target}
+    maintenance_pipeline:
+      name: maintenance_pipeline_${bundle.target}
       catalog: ${var.catalog}
       schema: ${var.schema}
-      serverless: true          # Free Edition: solo serverless
-      continuous: false         # triggered: se lanza desde el job (un pipeline activo por tipo)
+      serverless: true          # Free Edition: serverless only
+      continuous: false         # triggered: started from the job (one active pipeline per type)
       channel: CURRENT
       libraries:
         - glob:
             include: ../src/pipeline/**
       configuration:
-        mantenimiento.raw_path: /Volumes/${var.catalog}/${var.schema}/raw/cmapss
-        mantenimiento.src_root: /Volumes/${var.catalog}/${var.schema}/codigo   # ver workaround de I/O en README
+        maintenance.raw_path: /Volumes/${var.catalog}/${var.schema}/raw/cmapss
+        maintenance.src_root: /Volumes/${var.catalog}/${var.schema}/code   # see the I/O workaround in the README
