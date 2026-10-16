@@ -4,7 +4,7 @@ Date: 13 and 14 October 2026. Branch `validation`, no commits. Index `workspace.
 
 > Names in this document are those of the deployment audited (Spanish schema `mantenimiento`, volume `codigo`, job `mantenimiento_eval_assistant`, report `eval/INFORME_RAG.md`). The current code uses English names (`maintenance`, `code`, `maintenance_eval_assistant`, `eval/RAG_REPORT.md`); the mapping is in the README, section "Deployed names".
 
-Every number in this report comes from the files `eval/resultados/results_*.json` produced by the job `mantenimiento_eval_assistant` (notebook `src/07_eval_assistant.py`) and copied as is from the `codigo` volume. The historical results (`results_before.json`, `results_final_run1.json`, `results_final_run2.json`) have not been modified; the new runs are added as new files.
+Every number in this report comes from the files `eval/results/results_*.json` produced by the job `mantenimiento_eval_assistant` (notebook `src/07_eval_assistant.py`) and copied as is from the `codigo` volume. The historical results (`results_before.json`, `results_final_run1.json`, `results_final_run2.json`) have not been modified; the new runs are added as new files.
 
 ## 1. Method
 
@@ -244,9 +244,9 @@ Manual verdict (checked against the text of pp. 413, 415, 375 and 462): in no `v
 
 ## 10. Files
 
-- New: `eval/rag_eval_set_holdout.json`, `eval/MANUAL_REVIEW.md`, `audit/03_RAG_VALIDATION.md`, `eval/resultados/results_holdout_run1.json` (v1 and v2 before), `results_holdout_run2_v2.json` and `results_holdout_run3_v2.json` (version A), `results_holdout_run4_v2final.json` and `results_holdout_run5_v2final.json` (version B), `results_holdout_run6_v2finalC.json` (final version C), `results_dev_after_finalC.json` (development set with the final version). Identical copies in `eval/resultados/` on the PC.
+- New: `eval/rag_eval_set_holdout.json`, `eval/MANUAL_REVIEW.md`, `audit/03_RAG_VALIDATION.md`, `eval/results/results_holdout_run1.json` (v1 and v2 before), `results_holdout_run2_v2.json` and `results_holdout_run3_v2.json` (version A), `results_holdout_run4_v2final.json` and `results_holdout_run5_v2final.json` (version B), `results_holdout_run6_v2finalC.json` (final version C), `results_dev_after_finalC.json` (development set with the final version). Identical copies in `eval/results/` on the PC.
 - Modified: `app/rag.py`, `src/07_eval_assistant.py`, `resources/jobs.yml` (parameters `dataset`, `eval_judge_endpoint`), `tests/test_rag.py`.
-- Commands (PC queue B): `fs cp eval/rag_eval_set_holdout.json dbfs:/Volumes/workspace/mantenimiento/codigo/eval/...`, `bundle deploy -t dev -p demo`, `bundle run mantenimiento_eval_assistant -t dev -p demo --params dataset=holdout,label=<label>[,configs=v2]`, `fs cp dbfs:/Volumes/.../eval/results_<label>.json eval/resultados/...`. Logs in `logs/C0*.log` and `logs/C1*.log` on the PC.
+- Commands (PC queue B): `fs cp eval/rag_eval_set_holdout.json dbfs:/Volumes/workspace/mantenimiento/codigo/eval/...`, `bundle deploy -t dev -p demo`, `bundle run mantenimiento_eval_assistant -t dev -p demo --params dataset=holdout,label=<label>[,configs=v2]`, `fs cp dbfs:/Volumes/.../eval/results_<label>.json eval/results/...`. Logs in `logs/C0*.log` and `logs/C1*.log` on the PC.
 
 ## 11. Revalidation 2026-10-15 (phase C, check; phase F, portfolio)
 

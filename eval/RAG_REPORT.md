@@ -90,7 +90,7 @@ The manufacturer and out-of-scope questions:
 6. **Numeric values:** if the question asks for limits, torques or intervals, the status is `requires_manufacturer_documentation` and the figures are withheld (verdict `WITHHELD`). The manual's figures are typical and the text of its figures is extracted garbled.
 7. **Traceability in the app:** queries, chunks with score and page kind, verdict per claim, removed claims, coverage check and automatic adjustments.
 
-Tests: `tests/test_rag.py` (26 tests with fake clients) and the Databricks harness `src/07_eval_assistant.py` (job `maintenance_eval_assistant`, formerly `mantenimiento_eval_assistant`). Full results, with every chunk and verdict, in `eval/resultados/`.
+Tests: `tests/test_rag.py` (26 tests with fake clients) and the Databricks harness `src/07_eval_assistant.py` (job `maintenance_eval_assistant`, formerly `mantenimiento_eval_assistant`). Full results, with every chunk and verdict, in `eval/results/`.
 
 ## 4. Limitations
 

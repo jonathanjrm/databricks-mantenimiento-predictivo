@@ -112,7 +112,7 @@ except `.gitignore` (adds `herramientas/`, `logs/`, `*.bat`; in this session `co
 | `src/02_train.py`, `src/lib/modeling.py` | modified (this session) | B2.4: champion promotion by train-only validation by engine |
 | `src/03_score.py`, `src/lib/cmapss.py` | modified | B4/B5: `validate_feature_frame`, advisory text |
 | `tests/test_app_api.py`, `tests/test_cmapss.py` | modified | tests of the above |
-| New | `tests/test_negative_api.py` (25), `tests/test_phase_e_api.py` (11), `tests/test_modeling_selection.py` (4), `eval/MANUAL_REVIEW.md`, `eval/rag_eval_set_holdout.json`, 7 files `eval/resultados/results_*.json` | B4, E, B2.4, phase C |
+| New | `tests/test_negative_api.py` (25), `tests/test_phase_e_api.py` (11), `tests/test_modeling_selection.py` (4), `eval/MANUAL_REVIEW.md`, `eval/rag_eval_set_holdout.json`, 7 files `eval/results/results_*.json` | B4, E, B2.4, phase C |
 
 None of these changes is on GitHub: the public repository is still at `cd81b7a`. **Publication requires a commit and push that
 only the user must do** after reviewing the diff (the `.bat`, `cola/`, `logs/`, `consultas/`, `herramientas/` are excluded by `.gitignore`).
