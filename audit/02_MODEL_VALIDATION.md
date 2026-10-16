@@ -1,414 +1,416 @@
-# 02. Validación del modelo de IA (Fase B)
+# 02. AI model validation (Phase B)
 
-Alcance: B1 integridad de datos, B2 entrenamiento y evaluación, B3 MLflow y serving, B4 pruebas negativas, B5 recomendaciones operativas.
-Evidencias reproducibles en `audit/evidence/` (scripts `.py`, resultados `.json`/`.csv`, consultas SQL guardadas en `workspace/`).
-Etiquetas: PASS / FAIL / NOT_VERIFIED. Nada de lo que sigue es una certificación industrial: es un prototipo de demostración sobre un conjunto de datos de simulación.
+Scope: B1 data integrity, B2 training and evaluation, B3 MLflow and serving, B4 negative tests, B5 operational recommendations.
+Reproducible evidence in `audit/evidence/` (`.py` scripts, `.json`/`.csv` results, SQL queries saved under `workspace/`).
+Labels: PASS / FAIL / NOT_VERIFIED. Nothing that follows is an industrial certification: it is a demonstration prototype on a simulation dataset.
 
-## Resumen
+> Names in this document are those of the deployment audited (Spanish schema `mantenimiento`, tables such as `gold_predicciones`, columns `estado`/`accion`, function `rmse_de_version`, script `entrenar_local.py`). The current code uses English names (`gold_predictions`, `state`/`action`, `validation_rmse_of_version`, `train_local.py`); the mapping is in the README, section "Deployed names". Test names quoted below are those of the audited tree; they were later translated to English.
 
-| Ítem | Estado | Resultado clave |
+## Summary
+
+| Item | Status | Key result |
 |---|---|---|
-| B1 Integridad de datos | PASS | 20.631 / 13.096 filas y 100 + 100 motores (coinciden con FD001 oficial); RUL correcta (0 discrepancias); 170 sumas de variables Spark frente a pandas con diferencia relativa máxima 2,4e-9; 40 pruebas de truncado sin fuga de futuro |
-| B1 Predicciones salen de datos reales | PASS | `gold_predicciones` = salida del modelo sobre `gold_features` (100 motores). Verificado con el endpoint: coincidencia exacta en los 100 |
-| B2 Reproducción | PASS con reservas | HGB reproducido **bit a bit** (RMSE 18,441849882005343) con scikit-learn 1.7.2 sobre `gold_features` del workspace; 19,10 local se explica por versión de scikit-learn y ruido numérico de features (ver más abajo) |
-| B2 Ausencia de fuga | PASS en características; **FAIL en protocolo histórico, corregido en el código** | Sin fuga en ventanas y etiquetas. El test de FD001 ya es un conjunto "visto": la regla de promoción del champion lo usaba (contaminación experimental, apartado B2.4). `02_train.py` promueve ahora por validación por motor solo con train; la cifra de test sigue sin ser independiente |
-| B3 MLflow y serving | PASS (revalidado el 15 de octubre) | v1, alias `champion`, firma de 85 entradas, endpoint invocado realmente; salida del endpoint = `gold_predicciones` en los 100 motores. El endpoint había desaparecido del workspace entre el 14 y el 15 de octubre y se recreó con `bundle deploy -t dev` (B3.5) |
-| B3 Correspondencia endpoint y app | PASS con aclaración | La app **no llama al endpoint**: lee `gold_predicciones`. Los valores coinciden (diferencia de redondeo a 2 decimales) |
-| B3 Sin fallback silencioso | PASS en la app tras corrección; hallazgos en el endpoint | La app original sustituía una RUL nula por 0 y mostraba métricas de otra versión; corregido. El endpoint acepta nulos sin error (D-02) |
-| B4 Pruebas negativas | PASS (tras corrección) | 25 pruebas; 10 fallaban contra la `app.py` original |
-| B5 Recomendaciones | PASS (tras corrección) | Textos orientativos; sin órdenes de parada o sustitución; incertidumbre declarada como no calibrada |
+| B1 Data integrity | PASS | 20,631 / 13,096 rows and 100 + 100 engines (match official FD001); correct RUL (0 discrepancies); 170 Spark versus pandas feature sums with a maximum relative difference of 2.4e-9; 40 truncation tests without future leakage |
+| B1 Predictions come from real data | PASS | `gold_predicciones` = model output on `gold_features` (100 engines). Verified with the endpoint: exact match on all 100 |
+| B2 Reproduction | PASS with reservations | HGB reproduced **bit for bit** (RMSE 18.441849882005343) with scikit-learn 1.7.2 on the workspace `gold_features`; the local 19.10 is explained by the scikit-learn version and numerical feature noise (see below) |
+| B2 Absence of leakage | PASS in features; **FAIL in the historical protocol, fixed in the code** | No leakage in windows and labels. The FD001 test set is already a "seen" set: the champion promotion rule used it (experimental contamination, section B2.4). `02_train.py` now promotes by train-only validation by engine; the test figure is still not independent |
+| B3 MLflow and serving | PASS (revalidated on 15 October) | v1, `champion` alias, 85-input signature, endpoint actually invoked; endpoint output = `gold_predicciones` on the 100 engines. The endpoint had disappeared from the workspace between 14 and 15 October and was recreated with `bundle deploy -t dev` (B3.5) |
+| B3 Endpoint and app correspondence | PASS with clarification | The app **does not call the endpoint**: it reads `gold_predicciones`. The values match (rounding difference at 2 decimals) |
+| B3 No silent fallback | PASS in the app after correction; findings in the endpoint | The original app replaced a null RUL with 0 and showed metrics of another version; fixed. The endpoint accepts nulls without error (D-02) |
+| B4 Negative tests | PASS (after correction) | 25 tests; 10 failed against the original `app.py` |
+| B5 Recommendations | PASS (after correction) | Advisory texts; no shutdown or replacement orders; uncertainty declared as not calibrated |
 
 ---
 
-## B1. Integridad de los datos
+## B1. Data integrity
 
-Script: `evidence/compare_workspace_vs_local.py`. Resultado: `evidence/b1_data_integrity.json`.
+Script: `evidence/compare_workspace_vs_local.py`. Result: `evidence/b1_data_integrity.json`.
 
-### Procedencia y conteos
+### Provenance and counts
 
-La procedencia declarada (`data/cmapss/FUENTE.md`) es un espejo de GitHub (`edwardzjl/CMAPSSData`) del repositorio de NASA Ames;
-no existe verificación criptográfica contra el origen de NASA (el entorno no tiene acceso). `NOT_VERIFIED` la identidad byte a byte
-con el fichero original de NASA; sí se verifican los recuentos oficiales y propiedades internas:
+The declared provenance (`data/cmapss/FUENTE.md`, now `SOURCE.md`) is a GitHub mirror (`edwardzjl/CMAPSSData`) of the NASA Ames repository;
+there is no cryptographic verification against the NASA origin (the environment has no access). `NOT_VERIFIED` the byte-for-byte identity
+with the original NASA file; the official counts and internal properties are verified:
 
-| Comprobación | Esperado (FD001 oficial) | Observado | Estado |
+| Check | Expected (official FD001) | Observed | Status |
 |---|---|---|---|
-| Filas de train | 20.631 | 20.631 (fichero y `silver_lecturas` split train) | PASS |
-| Filas de test | 13.096 | 13.096 | PASS |
-| Motores train / test | 100 / 100 | 100 / 100, identificadores 1 a 100 | PASS |
-| Valores de RUL | 100 | 100; `silver_rul_test` coincide con el fichero | PASS |
-| Ciclos contiguos desde 1 por motor | sí | sí (train y test) | PASS |
-| Valores nulos | 0 | 0 | PASS |
+| Train rows | 20,631 | 20,631 (file and `silver_lecturas` split train) | PASS |
+| Test rows | 13,096 | 13,096 | PASS |
+| Train / test engines | 100 / 100 | 100 / 100, identifiers 1 to 100 | PASS |
+| RUL values | 100 | 100; `silver_rul_test` matches the file | PASS |
+| Contiguous cycles from 1 per engine | yes | yes (train and test) | PASS |
+| Null values | 0 | 0 | PASS |
 
-### Separación train y test
+### Train and test separation
 
-- Ficheros de origen distintos por split (`silver_source_files.json`): train sale solo de `train_FD001.txt`, test solo de `test_FD001.txt`.
-- Los identificadores de motor 1 a 100 se repiten en ambos ficheros (son motores distintos; así es FD001): el modelo y las consultas siempre
-  usan la clave (`split`, `unit`). Se comprobó que **ninguna fila de sensores** es idéntica entre train y test (0 coincidencias).
-- La RUL solo existe en train: en `gold_features` las 13.096 filas de test tienen `rul` y `rul_raw` nulos (0 filas con valor).
+- Different source files per split (`silver_source_files.json`): train comes only from `train_FD001.txt`, test only from `test_FD001.txt`.
+- Engine identifiers 1 to 100 repeat in both files (they are different engines; that is how FD001 is): the model and the queries always
+  use the key (`split`, `unit`). It was checked that **no sensor row** is identical between train and test (0 matches).
+- The RUL exists only in train: in `gold_features` the 13,096 test rows have null `rul` and `rul_raw` (0 rows with a value).
 
-### Etiqueta RUL
+### RUL label
 
-- `rul_raw = ciclo_máximo_del_motor - ciclo` (SQL: 0 discrepancias en las 20.631 filas de train); `rul = min(rul_raw, 125)` (0 discrepancias).
-  El último ciclo de cada motor tiene RUL 0. El 38,9 % de las filas de train está recortado a 125 (práctica estándar en C-MAPSS).
-- Test: la RUL real es la de `RUL_FD001.txt`, evaluada en el último ciclo observado; `gold_test_verdad` y `silver_rul_test` coinciden con el fichero.
-  Ojo: la verdad de test no está recortada, el modelo sí se entrena con RUL recortada; la discrepancia penaliza a los motores con RUL larga (ver B2).
+- `rul_raw = max_cycle_of_engine - cycle` (SQL: 0 discrepancies in the 20,631 train rows); `rul = min(rul_raw, 125)` (0 discrepancies).
+  The last cycle of every engine has RUL 0. 38.9 % of the train rows are clipped at 125 (standard practice in C-MAPSS).
+- Test: the actual RUL is that of `RUL_FD001.txt`, evaluated at the last observed cycle; `gold_test_verdad` and `silver_rul_test` match the file.
+  Note: the test ground truth is not clipped while the model is trained with clipped RUL; the mismatch penalises engines with a long RUL (see B2).
 
-### Variables eliminadas
+### Removed features
 
-Comprobación con los datos (`constant_columns` en el JSON):
+Checked against the data (`constant_columns` in the JSON):
 
-| Variable | Evidencia | Justificación |
+| Feature | Evidence | Justification |
 |---|---|---|
-| `setting3`, `s1`, `s5`, `s10`, `s16`, `s18`, `s19` | Desviación típica exactamente 0 en train y en test | Sin información: correcto eliminarlas |
-| `s6` | 2 valores distintos (21,60 y 21,61), desviación 0,0015 | Ruido de cuantización: decisión razonable |
-| Sensores conservados (14) | Desviación mínima en train 0,0375 | Con variación real |
-| `setting1`, `setting2` | Desviaciones 0,0022 y 0,0003 | Se conservan en silver pero no entran al modelo (régimen único en FD001) |
+| `setting3`, `s1`, `s5`, `s10`, `s16`, `s18`, `s19` | Standard deviation exactly 0 in train and test | No information: correct to remove them |
+| `s6` | 2 distinct values (21.60 and 21.61), deviation 0.0015 | Quantisation noise: reasonable decision |
+| Kept sensors (14) | Minimum deviation in train 0.0375 | Real variation |
+| `setting1`, `setting2` | Deviations 0.0022 and 0.0003 | Kept in silver but not model inputs (single regime in FD001) |
 
-### Ventanas sin información futura
+### Windows without future information
 
-- Definición: medias, desviaciones y pendiente en ventanas hacia atrás (incluye el ciclo actual), por motor, `min_periods=1`.
-- Prueba (40 comprobaciones sobre 5 motores y 8 ciclos de corte cada uno): se recortan las series en el ciclo c, se recalculan las variables y se compara con
-  las del ciclo c calculadas con la serie completa. **0 discrepancias**, es decir, las variables de un ciclo no dependen de ciclos posteriores.
-- El indicador de salud y sus parámetros se ajustan solo con train (`fit_health_params`).
-- Observación (no es fuga): `cycle` es una variable del modelo. En test equivale a la edad observada del motor truncado; es legítimo, pero hace que la edad
-  contribuya a la predicción (el baseline lineal solo con `cycle` obtiene RMSE 33,3 frente a 43,1 de la media).
+- Definition: means, standard deviations and slope over backward windows (including the current cycle), per engine, `min_periods=1`.
+- Test (40 checks over 5 engines and 8 cut cycles each): the series are truncated at cycle c, the features recomputed and compared with
+  those of cycle c computed with the full series. **0 discrepancies**, that is, the features of a cycle do not depend on later cycles.
+- The health index and its parameters are fitted on train only (`fit_health_params`).
+- Observation (not leakage): `cycle` is a model feature. In test it equals the observed age of the truncated engine; it is legitimate, but it makes age
+  contribute to the prediction (the linear baseline with `cycle` alone obtains RMSE 33.3 against 43.1 for the mean).
 
-### Equivalencia pandas y Spark
+### pandas and Spark equivalence
 
-1. Prueba automática `tests/test_spark_equivalence.py` (6 motores reales, 6 pruebas): **6 superadas** en este entorno (Java 21, PySpark 4.2.0).
-2. Contra las tablas reales del workspace (todas las filas):
-   - 170 sumas de columna (85 variables x 2 splits) de `gold_features` frente al cálculo pandas: diferencia relativa máxima **2,37e-9**
-     (orden de acumulación de coma flotante), todas por debajo de 1e-8. `evidence/features_sums_pandas_vs_workspace.csv`.
-   - Las 85 variables del último ciclo de los 100 motores de test, fila a fila: diferencia absoluta máxima **3,7e-10**.
-   - Sumas de `rul` y `rul_raw` en train: idénticas (1.791.375 y 2.224.184).
-   - Sumas de sensores de `silver_lecturas` frente a los ficheros: diferencias del orden de 1e-8 (redondeo).
-   Estado: PASS. La igualdad es numérica, no bit a bit; esa diferencia de ~1e-9 tiene consecuencias en el entrenamiento (B2.3).
+1. Automatic test `tests/test_spark_equivalence.py` (6 real engines, 6 tests): **6 passed** in this environment (Java 21, PySpark 4.2.0).
+2. Against the real workspace tables (every row):
+   - 170 column sums (85 features x 2 splits) of `gold_features` against the pandas computation: maximum relative difference **2.37e-9**
+     (floating-point accumulation order), all below 1e-8. `evidence/features_sums_pandas_vs_workspace.csv`.
+   - The 85 features of the last cycle of the 100 test engines, row by row: maximum absolute difference **3.7e-10**.
+   - Sums of `rul` and `rul_raw` in train: identical (1,791,375 and 2,224,184).
+   - Sensor sums of `silver_lecturas` against the files: differences of the order of 1e-8 (rounding).
+   Status: PASS. The equality is numerical, not bit for bit; that ~1e-9 difference has consequences in training (B2.3).
 
-### Las predicciones de los 100 motores salen de datos reales
+### The predictions of the 100 engines come from real data
 
-Camino de código verificado de extremo a extremo:
+Code path verified end to end:
 
-`ficheros C-MAPSS en el volume raw` -> `bronze_cmapss_lecturas` (Auto Loader) -> `silver_lecturas` -> `gold_features` (ventanas Spark) ->
-`src/03_score.py`: carga `models:/workspace.mantenimiento.rul_model@champion`, puntúa el último ciclo de cada motor de test, calcula contribuciones
-por oclusión y escribe `gold_predicciones` -> `app/app.py` `q_engines()` ejecuta `SELECT ... FROM gold_predicciones` en el SQL warehouse -> `/api/engines` -> `index.html`.
+`C-MAPSS files in the raw volume` -> `bronze_cmapss_lecturas` (Auto Loader) -> `silver_lecturas` -> `gold_features` (Spark windows) ->
+`src/03_score.py`: loads `models:/workspace.mantenimiento.rul_model@champion`, scores the last cycle of every test engine, computes occlusion
+contributions and writes `gold_predicciones` -> `app/app.py` `q_engines()` runs `SELECT ... FROM gold_predicciones` on the SQL warehouse -> `/api/engines` -> `index.html`.
 
-Pruebas de que no hay valores estáticos ni simulados en el frontend o en la API:
-- `grep` de `app.py` sin `serving_endpoints`, `/invocations`, `.predict(` ni valores por defecto numéricos (test `test_app_no_llama_al_endpoint_de_serving_ni_tiene_fallback_numerico`).
-- Los 100 valores `rul_pred` de la tabla coinciden con la salida real del endpoint para las mismas 100 filas de entrada (B3); 99 valores distintos, rango 3,12 a 124,98.
-- `rul_real` de la tabla coincide con el fichero oficial; `error = rul_pred - rul_real`; `cycle` = último ciclo de cada motor de test.
-- La consulta de la app desplegada devolvió las mismas filas (motores 34, 60, 85, ver B3).
+Proof that there are no static or simulated values in the frontend or the API:
+- `grep` of `app.py` without `serving_endpoints`, `/invocations`, `.predict(` or numeric defaults (test `test_app_no_llama_al_endpoint_de_serving_ni_tiene_fallback_numerico`).
+- The 100 `rul_pred` values of the table match the real endpoint output for the same 100 input rows (B3); 99 distinct values, range 3.12 to 124.98.
+- `rul_real` of the table matches the official file; `error = rul_pred - rul_real`; `cycle` = last cycle of every test engine.
+- The query of the deployed app returned the same rows (engines 34, 60, 85, see B3).
 
-Alcance honesto: "predicción" en el dashboard significa estimación de RUL **al último ciclo observado de los 100 motores del conjunto de test**, calculada por lotes
-(`scored_at = 2026-10-13T20:26:50Z`), no inferencia en vivo sobre telemetría.
+Honest scope: "prediction" in the dashboard means a RUL estimate **at the last observed cycle of the 100 engines of the test set**, computed in batch
+(`scored_at = 2026-10-13T20:26:50Z`), not live inference on telemetry.
 
 ---
 
-## B2. Entrenamiento y evaluación
+## B2. Training and evaluation
 
-### B2.1 Configuración reproducida
+### B2.1 Reproduced configuration
 
 `src/lib/modeling.py`: `HistGradientBoostingRegressor(max_iter=300, learning_rate=0.05, max_leaf_nodes=31, min_samples_leaf=40, l2_regularization=1.0,
-early_stopping=False, random_state=42)`; RUL de entrenamiento recortada a 125; 85 variables (ciclo + 14 sensores x 6); 20.631 filas de entrenamiento.
-Evaluación: último ciclo de cada uno de los 100 motores de test frente a `RUL_FD001.txt`, predicciones acotadas a >= 0.
-Semilla: con `early_stopping=False` y menos de 200.000 filas, `random_state` no interviene: RMSE idéntico con semillas 0, 1, 42 y 123
-(`rmse_by_seed_hgb`). El modelo es determinista para unos datos y una versión de biblioteca dados.
+early_stopping=False, random_state=42)`; training RUL clipped at 125; 85 features (cycle + 14 sensors x 6); 20,631 training rows.
+Evaluation: last cycle of each of the 100 test engines against `RUL_FD001.txt`, predictions clipped at >= 0.
+Seed: with `early_stopping=False` and fewer than 200,000 rows, `random_state` plays no role: identical RMSE with seeds 0, 1, 42 and 123
+(`rmse_by_seed_hgb`). The model is deterministic for given data and library version.
 
-### B2.2 Métricas de referencia (modelo del workspace, v1)
+### B2.2 Reference metrics (workspace model, v1)
 
-Calculadas desde `gold_predicciones` (`evidence/champion_v1_metrics_from_gold_predicciones.json`, `champion_v1_per_engine.csv`) y coincidentes con MLflow:
+Computed from `gold_predicciones` (`evidence/champion_v1_metrics_from_gold_predicciones.json`, `champion_v1_per_engine.csv`) and matching MLflow:
 
-| Métrica (100 motores, último ciclo) | Valor |
+| Metric (100 engines, last cycle) | Value |
 |---|---|
-| RMSE | **18,44** ciclos (MLflow `rmse_test` 18,441849882005343) |
-| MAE | 13,48 |
-| R2 | 0,803 |
-| Score PHM08 | 655,0 (MLflow 655,0239) |
-| Sesgo medio (pred menos real) | -1,01; 54 % de las predicciones son tardías (pred > real) |
-| Error absoluto: mediana / p90 / máximo | 9,5 / 30,6 / 64,4 ciclos |
-| Motores con error absoluto <= 10 / <= 20 ciclos | 52 % / 77 % |
+| RMSE | **18.44** cycles (MLflow `rmse_test` 18.441849882005343) |
+| MAE | 13.48 |
+| R2 | 0.803 |
+| PHM08 score | 655.0 (MLflow 655.0239) |
+| Mean bias (pred minus actual) | -1.01; 54 % of the predictions are late (pred > actual) |
+| Absolute error: median / p90 / maximum | 9.5 / 30.6 / 64.4 cycles |
+| Engines with absolute error <= 10 / <= 20 cycles | 52 % / 77 % |
 
-Baselines en el mismo test (misma versión de biblioteca que el champion; ver B2.3):
+Baselines on the same test set (same library version as the champion; see B2.3):
 
-| Modelo | RMSE | MAE | R2 | PHM08 |
+| Model | RMSE | MAE | R2 | PHM08 |
 |---|---|---|---|---|
-| Media constante | 43,07 | 35,90 | -0,074 | 33.629 |
-| Solo `cycle`, regresión lineal (baseline añadido en la auditoría) | 33,34 | 27,59 | 0,356 | 5.319 |
-| Ridge (85 variables) | 21,80 | 16,81 | 0,725 | 1.073 |
-| **HGB (champion v1)** | **18,44** | 13,48 | 0,803 | 655 |
+| Constant mean | 43.07 | 35.90 | -0.074 | 33,629 |
+| `cycle` only, linear regression (baseline added in the audit) | 33.34 | 27.59 | 0.356 | 5,319 |
+| Ridge (85 features) | 21.80 | 16.81 | 0.725 | 1,073 |
+| **HGB (champion v1)** | **18.44** | 13.48 | 0.803 | 655 |
 
-HGB mejora a Ridge en 3,4 ciclos de RMSE (16 %). Dada la incertidumbre de B2.3 (±0,4 por variaciones numéricas) la ventaja es real pero moderada.
+HGB improves on Ridge by 3.4 RMSE cycles (16 %). Given the B2.3 uncertainty (±0.4 from numerical variations) the advantage is real but moderate.
 
-Errores por intervalos de RUL real (champion v1; `by_bin` en el JSON):
+Errors per actual RUL band (champion v1; `by_bin` in the JSON):
 
-| RUL real | n | RMSE | MAE | Sesgo (pred - real) |
+| Actual RUL | n | RMSE | MAE | Bias (pred - actual) |
 |---|---|---|---|---|
-| 0 a 30 | 25 | 14,31 | 8,53 | +5,5 |
-| 31 a 60 | 14 | 8,50 | 7,14 | +3,0 |
-| 61 a 90 | 15 | 18,95 | 16,26 | +5,7 |
-| 91 a 125 | 35 | 17,77 | 13,62 | -1,5 |
-| 126 o más | 11 | 32,25 | 28,55 | -28,6 |
+| 0 to 30 | 25 | 14.31 | 8.53 | +5.5 |
+| 31 to 60 | 14 | 8.50 | 7.14 | +3.0 |
+| 61 to 90 | 15 | 18.95 | 16.26 | +5.7 |
+| 91 to 125 | 35 | 17.77 | 13.62 | -1.5 |
+| 126 or more | 11 | 32.25 | 28.55 | -28.6 |
 
-Lectura: el error es máximo cuando la RUL real supera 125, por construcción (el modelo no puede predecir más de 125 al entrenarse con RUL recortada); no es un fallo
-del modelo sino de la diferencia entre etiqueta de entrenamiento y verdad de test.
+Reading: the error is largest when the actual RUL exceeds 125, by construction (the model cannot predict more than 125 after training with clipped RUL); it is not a model
+failure but the difference between the training label and the test ground truth.
 
-**Motores próximos al fallo (RUL real <= 30, n = 25):** RMSE 14,31, MAE 8,53, sesgo +5,5 (el modelo tiende a sobrestimar la vida restante, dirección peligrosa),
-PHM08 152,5. Clasificación de estado (umbrales demostrativos 20 y 35 ciclos) frente al estado según la RUL real:
+**Engines near failure (actual RUL <= 30, n = 25):** RMSE 14.31, MAE 8.53, bias +5.5 (the model tends to overestimate the remaining life, the dangerous direction),
+PHM08 152.5. State classification (demo thresholds 20 and 35 cycles) against the state by actual RUL:
 
-| Estado real (por RUL real) | Motores | Predicho critical | Predicho watch | Predicho healthy |
+| Actual state (by actual RUL) | Engines | Predicted critical | Predicted watch | Predicted healthy |
 |---|---|---|---|---|
-| critical (RUL real <= 20) | 16 | 14 | 1 | 1 |
-| watch (21 a 35) | 10 | 0 | 5 | 5 |
+| critical (actual RUL <= 20) | 16 | 14 | 1 | 1 |
+| watch (21 to 35) | 10 | 0 | 5 | 5 |
 | healthy (> 35) | 74 | 0 | 1 | 73 |
 
-Entre los 26 motores con RUL real <= 35, **6 aparecen como `healthy`** (motores 41, 18, 37, 61, 64, 77; el 41 tiene RUL real 18 y se predice 49,6) y 1 de los 16 críticos reales queda en `watch`. Con 100 motores
-no hay precisión para afinar estas tasas (intervalos amplios), pero ilustra por qué no puede tratarse el estado como decisión operativa.
-Peores motores por error absoluto: 74 (-66,9 con el modelo local), 45, 89, 18, 55, 37 (`worst_10`).
+Among the 26 engines with actual RUL <= 35, **6 appear as `healthy`** (engines 41, 18, 37, 61, 64, 77; engine 41 has actual RUL 18 and is predicted 49.6) and 1 of the 16 really critical ones stays in `watch`. With 100 engines
+there is no precision to refine these rates (wide intervals), but it illustrates why the state cannot be treated as an operational decision.
+Worst engines by absolute error: 74 (-66.9 with the local model), 45, 89, 18, 55, 37 (`worst_10`).
 
-### B2.3 Explicación de 19,10 frente a 18,44 de RMSE
+### B2.3 Explanation of 19.10 versus 18.44 RMSE
 
-Hechos medidos:
+Measured facts:
 
-| Experimento (HGB con los mismos hiperparámetros) | scikit-learn | Datos de entrenamiento | RMSE test |
+| Experiment (HGB with the same hyperparameters) | scikit-learn | Training data | Test RMSE |
 |---|---|---|---|
-| Documentado en README (`scripts/resultado_local.json`) | 1.9.1 | variables pandas locales | **19,102** |
-| Reproducción auditoría | 1.9.1 | pandas local | 19,102 (idéntico) |
-| Reproducción auditoría | 1.7.2 | pandas local | 18,597 |
-| Reproducción auditoría | 1.9.1 | `gold_features` de Spark (workspace) | 18,505 |
-| Reproducción auditoría | **1.7.2** | **`gold_features` de Spark (workspace)** | **18,441849882005343** (PHM08 655,0239471190539, MAE 13,478027648560577) |
-| Workspace (MLflow v1) | 1.7.2 | `gold_features` | 18,441849882005343 |
+| Documented in the README (`scripts/resultado_local.json`) | 1.9.1 | local pandas features | **19.102** |
+| Audit reproduction | 1.9.1 | local pandas | 19.102 (identical) |
+| Audit reproduction | 1.7.2 | local pandas | 18.597 |
+| Audit reproduction | 1.9.1 | Spark `gold_features` (workspace) | 18.505 |
+| Audit reproduction | **1.7.2** | **Spark `gold_features` (workspace)** | **18.441849882005343** (PHM08 655.0239471190539, MAE 13.478027648560577) |
+| Workspace (MLflow v1) | 1.7.2 | `gold_features` | 18.441849882005343 |
 
-Conclusión: la fila 5 reproduce **exactamente** (todos los decimales de RMSE, PHM08 y MAE) el modelo registrado en MLflow. Por tanto:
-- No hay diferencias de código, semilla, validación cruzada ni conjunto de variables entre local y workspace. Los baselines (media y Ridge) coinciden en ambos entornos hasta el noveno decimal (43,0670 y 21,7963), lo que descarta diferencias de datos o de etiquetas.
-- La diferencia 19,10 a 18,44 (0,66 ciclos) se debe a **la versión de scikit-learn** (1.9.1 frente a 1.7.2) **y al ruido numérico de ~1e-9** entre las variables calculadas con pandas y con Spark. Ambos factores reorganizan algunas divisiones del árbol.
-  Con datos de workspace y 1.9.1 el RMSE es 18,505; con datos pandas y 1.7.2, 18,597; con ambos cambios, 19,102.
-- Sensibilidad medida: perturbando las variables de entrenamiento con ruido relativo gaussiano de 1e-9 (del orden de la diferencia pandas/Spark) el RMSE de test va de **18,29 a 18,98** (10 reentrenamientos, dos versiones de scikit-learn). Es decir, la
-  incertidumbre de la métrica puntual por inestabilidad numérica es de aproximadamente ±0,4 ciclos, del mismo tamaño que la diferencia entre 18,44 y 19,10.
-- La cifra del workspace (18,44) no es "mejor" que la local (19,10): las dos son muestras de una misma distribución de ruido. Ninguna debería citarse con más de un decimal ni como prueba de que una versión del entorno sea superior.
+Conclusion: row 5 reproduces **exactly** (every decimal of RMSE, PHM08 and MAE) the model registered in MLflow. Therefore:
+- There are no differences of code, seed, cross-validation or feature set between local and workspace. The baselines (mean and Ridge) match in both environments to the ninth decimal (43.0670 and 21.7963), which rules out data or label differences.
+- The 19.10 to 18.44 difference (0.66 cycles) is due to **the scikit-learn version** (1.9.1 versus 1.7.2) **and to the ~1e-9 numerical noise** between the features computed with pandas and with Spark. Both factors rearrange some tree splits.
+  With workspace data and 1.9.1 the RMSE is 18.505; with pandas data and 1.7.2, 18.597; with both changes, 19.102.
+- Measured sensitivity: perturbing the training features with Gaussian relative noise of 1e-9 (the order of the pandas/Spark difference) the test RMSE goes from **18.29 to 18.98** (10 retrainings, two scikit-learn versions). That is, the
+  uncertainty of the point metric from numerical instability is about ±0.4 cycles, the same size as the difference between 18.44 and 19.10.
+- The workspace figure (18.44) is not "better" than the local one (19.10): both are samples of the same noise distribution. Neither should be quoted with more than one decimal nor as proof that one environment version is superior.
 
-Recomendación para el README: indicar "RMSE de 18,4 a 19,1 ciclos según versión de scikit-learn y precisión numérica de las variables" y registrar versiones en cada ejecución (`02_train.py` no registra la versión de scikit-learn como parámetro; el artefacto `MLmodel` sí).
+Recommendation for the README: state "RMSE of 18.4 to 19.1 cycles depending on the scikit-learn version and the numerical precision of the features" and record versions in every run (`02_train.py` did not log the scikit-learn version as a parameter; the `MLmodel` artifact does).
 
-### B2.4 Contaminación del conjunto de test y protocolo honesto
+### B2.4 Test set contamination and honest protocol
 
-Hechos sobre el uso del test, tal como están en el código:
+Facts about the use of the test set, as they were in the code:
 
-1. **`src/02_train.py` promueve el champion comparando el RMSE del test.** La función `rmse_de_version` lee `rmse_test` de `gold_model_metrics` y el alias `champion`
-   se mueve solo si `cand["rmse_test"] < rmse_champ`. Es selección de modelo sobre el test, aunque el propio notebook lo reconoce ("puerta de calidad, no una estimación independiente").
-   En la práctica solo hay una versión (v1), asignada porque no existía champion, así que la regla no se ha ejercido todavía; pero el diseño está contaminado desde la primera repetición.
-2. **Hiperparámetros:** según los comentarios, se eligieron con `GroupKFold` por motor solo sobre train (`scripts/entrenar_local.py --tune`). La auditoría repitió esa búsqueda (8 combinaciones, 5 pliegues por motor, solo train; `repro_sklearn172.json`, `cv_grid_train_only`).
-   La mejor combinación en esta repetición (`learning_rate 0.05, max_leaf_nodes 15, min_samples_leaf 100`, RMSE CV 15,76) **no es** la configuración desplegada (`max_leaf_nodes 31, min_samples_leaf 40`, CV 15,80). Las diferencias de CV son de 0,04, dentro del ruido; no hay evidencia de uso del test,
-   pero el parámetro fijado en `HGB_PARAMS` no es el óptimo de la búsqueda reproducida. No se puede probar qué se hizo antes del único commit del modelo: el historial de Git solo contiene un estado del código de entrenamiento (`NOT_VERIFIED` para decisiones anteriores).
-3. **Otras decisiones de diseño** (recorte a 125, ventanas 5 y 10, pendiente a 10, incluir `cycle`, eliminar `s6`, elegir HGB frente a Ridge): están justificadas con la literatura en los comentarios, pero no hay registro de si se miraron métricas de test al decidir.
-4. **El test de FD001 ya es un conjunto visto.** Su RMSE se ha publicado en el README, comparado con baselines y comparado entre entornos. Cualquier cifra nueva calculada sobre ese mismo test no es independiente y no se presenta aquí como tal. Las cifras de B2.2 son una **descripción del comportamiento del modelo congelado sobre un conjunto conocido**, no una estimación independiente del error futuro.
+1. **`src/02_train.py` promoted the champion by comparing the test RMSE.** The function `rmse_de_version` read `rmse_test` from `gold_model_metrics` and the `champion` alias
+   moved only if `cand["rmse_test"] < rmse_champ`. That is model selection on the test set, even if the notebook itself acknowledged it ("quality gate, not an independent estimate").
+   In practice there is only one version (v1), assigned because no champion existed, so the rule had not been exercised yet; but the design was contaminated from the first repetition.
+2. **Hyperparameters:** according to the comments, they were chosen with `GroupKFold` by engine on train only (`scripts/entrenar_local.py --tune`). The audit repeated that search (8 combinations, 5 folds by engine, train only; `repro_sklearn172.json`, `cv_grid_train_only`).
+   The best combination in this repetition (`learning_rate 0.05, max_leaf_nodes 15, min_samples_leaf 100`, CV RMSE 15.76) **is not** the deployed configuration (`max_leaf_nodes 31, min_samples_leaf 40`, CV 15.80). The CV differences are 0.04, within noise; there is no evidence of test use,
+   but the parameter set in `HGB_PARAMS` is not the optimum of the reproduced search. It cannot be proven what was done before the single commit of the model: the Git history only contains one state of the training code (`NOT_VERIFIED` for earlier decisions).
+3. **Other design decisions** (clip at 125, windows 5 and 10, slope over 10, including `cycle`, removing `s6`, choosing HGB over Ridge): they are justified with the literature in the comments, but there is no record of whether test metrics were looked at when deciding.
+4. **The FD001 test set is already a seen set.** Its RMSE has been published in the README, compared with baselines and compared across environments. Any new figure computed on that same test set is not independent and is not presented here as such. The B2.2 figures are a **description of the behaviour of the frozen model on a known set**, not an independent estimate of future error.
 
-Protocolo propuesto (los pasos 1, 2 y 6 están implementados en el código desde el 15 de octubre, ver B2.5; el paso 5 no se ha ejecutado):
+Proposed protocol (steps 1, 2 and 6 are implemented in the code since 15 October, see B2.5; step 5 has not been executed):
 
-| Paso | Qué hacer | Regla |
+| Step | What to do | Rule |
 |---|---|---|
-| 1. Selección | Elegir variables, recorte, hiperparámetros y champion solo con validación por motor dentro de train (`GroupKFold` 5 pliegues, o 20 motores de validación fijos con semilla registrada). Registrar versión de scikit-learn y semilla | Prohibido leer métricas de test para decidir |
-| 2. Puerta de promoción | Cambiar `02_train.py` para comparar el RMSE de validación por motor (no el de test) y exigir mejora mayor que la desviación entre pliegues | El test no participa |
-| 3. Congelar | Entrenar con todo train, registrar versión y fijar | |
-| 4. Informe de test | Evaluar **una sola vez** en FD001 test, etiquetándolo como "conjunto de referencia visto" | No iterar después |
-| 5. Evaluación fresca | Opción A: reservar 20 motores de train completamente fuera (entrenamiento, selección y ajuste) y cortarlos en ciclos aleatorios como el test. Opción B: FD003 (misma condición, dos modos de fallo) para medir generalización fuera de distribución; requiere reentrenar y declarar que es otro problema | Solo así se puede hablar de independencia |
-| 6. Incertidumbre | Reportar la variabilidad (desviación entre pliegues, intervalos bootstrap por motor) en lugar de un solo RMSE | |
+| 1. Selection | Choose features, clip, hyperparameters and champion only with validation by engine inside train (`GroupKFold` 5 folds, or 20 fixed validation engines with a recorded seed). Record scikit-learn version and seed | Reading test metrics to decide is forbidden |
+| 2. Promotion gate | Change `02_train.py` to compare the validation RMSE by engine (not the test one) and require an improvement larger than the fold-to-fold deviation | The test set does not take part |
+| 3. Freeze | Train with all of train, register the version and fix it | |
+| 4. Test report | Evaluate **once** on FD001 test, labelling it "seen reference set" | Do not iterate afterwards |
+| 5. Fresh evaluation | Option A: hold out 20 train engines completely (training, selection and tuning) and cut them at random cycles like the test set. Option B: FD003 (same condition, two fault modes) to measure out-of-distribution generalisation; requires retraining and declaring it is another problem | Only then can independence be claimed |
+| 6. Uncertainty | Report the variability (fold-to-fold deviation, bootstrap intervals by engine) instead of a single RMSE | |
 
-Estimación de desarrollo ejecutada (`evidence/dev_protocol_heldout_train.py`, `dev_protocol_heldout_train.json`): 5 pliegues por motor solo en train; cada motor retenido se corta en un ciclo con RUL real extraída
-de la distribución marginal de RUL del test (sin usar las etiquetas por motor ni el modelo del test); RUL real sin recorte; 200 repeticiones.
-RMSE medio **18,04**, desviación entre repeticiones **1,24**, percentiles 5 y 95: 15,9 y 19,8 (scikit-learn 1.9.1, variables pandas). RMSE OOF sobre todos los ciclos con etiqueta recortada: 16,12.
-Esta cifra **no es una evaluación independiente** (los hiperparámetros se eligieron con el mismo train) pero muestra que el error típico esperado es de unos 16 a 20 ciclos y que el rango por simples cortes distintos (±1,2) es mayor que la diferencia entre entornos.
+Development estimate executed (`evidence/dev_protocol_heldout_train.py`, `dev_protocol_heldout_train.json`): 5 folds by engine on train only; every held-out engine is cut at a cycle with the actual RUL drawn
+from the marginal RUL distribution of the test set (without using the per-engine labels nor the test model); unclipped actual RUL; 200 repetitions.
+Mean RMSE **18.04**, deviation across repetitions **1.24**, percentiles 5 and 95: 15.9 and 19.8 (scikit-learn 1.9.1, pandas features). OOF RMSE over every cycle with the clipped label: 16.12.
+This figure **is not an independent evaluation** (the hyperparameters were chosen with the same train set) but shows that the expected typical error is about 16 to 20 cycles and that the range from different cuts alone (±1.2) is larger than the difference between environments.
 
-### B2.5 Cambio aplicado en el código: promoción sin test (15 de octubre de 2026)
+### B2.5 Change applied in the code: promotion without the test set (15 October 2026)
 
-Ficheros: `src/lib/modeling.py` (`validation_rmse_by_engine`, `promotion_decision`), `src/02_train.py`, `tests/test_modeling_selection.py` (4 pruebas).
-Evidencia local: `evidence/validation_protocol_train_only.py` y `.json`.
+Files: `src/lib/modeling.py` (`validation_rmse_by_engine`, `promotion_decision`), `src/02_train.py`, `tests/test_modeling_selection.py` (4 tests).
+Local evidence: `evidence/validation_protocol_train_only.py` and `.json`.
 
-- `validation_rmse_by_engine`: `GroupKFold` de 5 pliegues por `unit` **solo con train**. Cada motor retenido se corta en un ciclo fijado por
-  una semilla (RUL real entre 0 y 145, sin usar la distribución del test) y se evalúa como en el test (último ciclo observado, RUL sin recortar):
-  `rmse_val_truncated`. También se calcula el RMSE out-of-fold sobre todos los ciclos (`rmse_val_all_cycles`) y la desviación entre pliegues (`std_folds`).
-- `promotion_decision`: sin champion se promueve la primera versión; si el champion no tiene `rmse_val_truncated` registrada (caso de la v1 actual),
-  la versión nueva queda como `challenger` y la decisión es manual; en otro caso se promueve solo si mejora en más de `std_folds / sqrt(k)`.
-  **El RMSE de test no interviene** (una prueba comprueba que `02_train.py` ya no contiene la comparación `cand["rmse_test"] <`).
-- `02_train.py` registra además `sklearn_version`, `selection_metric` y las métricas de validación en MLflow, en las etiquetas de la versión y en
-  `gold_model_metrics` (columnas nuevas `rmse_val_truncated`, `rmse_val_all_cycles`, `std_folds`, con `mergeSchema`).
+- `validation_rmse_by_engine`: 5-fold `GroupKFold` by `unit` **on train only**. Every held-out engine is cut at a cycle fixed by
+  a seed (actual RUL between 0 and 145, without using the test distribution) and evaluated as in the test set (last observed cycle, unclipped RUL):
+  `rmse_val_truncated`. The out-of-fold RMSE over every cycle (`rmse_val_all_cycles`) and the fold-to-fold deviation (`std_folds`) are also computed.
+- `promotion_decision`: without a champion the first version is promoted; if the champion has no recorded `rmse_val_truncated` (the case of the current v1),
+  the new version stays as `challenger` and the decision is manual; otherwise it is promoted only if it improves by more than `std_folds / sqrt(k)`.
+  **The test RMSE does not take part** (a test checks that `02_train.py` no longer contains the comparison `cand["rmse_test"] <`).
+- `02_train.py` also records `sklearn_version`, `selection_metric` and the validation metrics in MLflow, in the version tags and in
+  `gold_model_metrics` (new columns `rmse_val_truncated`, `rmse_val_all_cycles`, `std_folds`, with `mergeSchema`).
 
-Resultado local con los hiperparámetros del champion (scikit-learn 1.9.1, variables pandas, 20.631 filas, 100 motores):
+Local result with the champion's hyperparameters (scikit-learn 1.9.1, pandas features, 20,631 rows, 100 engines):
 
-| Modelo | `rmse_val_truncated` | `rmse_val_all_cycles` | `std_folds` |
+| Model | `rmse_val_truncated` | `rmse_val_all_cycles` | `std_folds` |
 |---|---|---|---|
-| Ridge (baseline) | 22,11 | 19,36 | 2,04 |
-| HGB (candidato) | 19,21 | 16,12 | 3,14 |
+| Ridge (baseline) | 22.11 | 19.36 | 2.04 |
+| HGB (candidate) | 19.21 | 16.12 | 3.14 |
 
-Con esta regla HGB se habría promovido frente a Ridge (mejora 2,9 > margen 1,4) sin mirar el test. La cifra 19,21 es **una estimación de
-desarrollo** (los hiperparámetros se eligieron con el mismo train) y coincide en orden de magnitud con el 18,4 a 19,1 del test.
+With this rule HGB would have been promoted over Ridge (improvement 2.9 > margin 1.4) without looking at the test set. The figure 19.21 is **a
+development estimate** (the hyperparameters were chosen with the same train set) and matches in order of magnitude the 18.4 to 19.1 of the test.
 
-**No se ha ejecutado el entrenamiento en el workspace** con el código nuevo: hacerlo crearía la versión 2 del modelo (que quedaría como
-`challenger` porque la v1 no tiene métrica de validación) sin aportar nada a esta auditoría. El código nuevo está desplegado en el bundle
-(`A_52`) y en el volume `codigo` (`A_50`); el champion y `gold_predicciones` siguen siendo los de la v1. Estado: **protocolo implementado,
-verificado con pruebas unitarias y evidencia local; no ejercitado en el workspace (NOT_VERIFIED en Databricks)**.
+**Training was not run in the workspace** with the new code during the audit: doing so would create version 2 of the model (which would stay as
+`challenger` because v1 has no validation metric) without adding anything to this audit. The new code was deployed in the bundle
+(`A_52`) and in the `codigo` volume (`A_50`); the champion and `gold_predicciones` remained those of v1. Status at the audit: **protocol implemented,
+verified with unit tests and local evidence; not exercised in the workspace (NOT_VERIFIED in Databricks)**.
 
 ---
 
-## B3. MLflow y serving
+## B3. MLflow and serving
 
-### Registro y artefactos (API de Unity Catalog, `evidence/workspace/uc_model_versions.json`)
+### Registry and artifacts (Unity Catalog API, `evidence/workspace/uc_model_versions.json`)
 
-| Elemento | Valor |
+| Element | Value |
 |---|---|
-| Modelo | `workspace.mantenimiento.rul_model`, versión **1**, estado READY (única versión) |
-| Alias | `champion` = v1 (consulta `.../aliases/champion` devuelve la versión 1) |
-| Ejecución | `rul_entrenamiento` (job 134653962208443, notebook `02_train`), FINISHED |
-| Parámetros registrados | `n_features 85`, `n_train_rows 20631`, `rul_clip 125` |
-| Métricas registradas | `rmse_test 18,441849882005343`, `mae_test 13,478027648560577`, `phm08_test 655,0239471190539`, `rmse_mejor_baseline 21,796289834949274` |
-| Etiquetas de la versión | `dataset=C-MAPSS FD001`, `rmse_test=18.4418` |
-| Firma | entradas: 85 columnas `double` obligatorias (`cycle`, 14 sensores, 5 estadísticos por sensor); salida: tensor `float64` de forma (-1) |
-| Artefactos | `MLmodel`, `conda.yaml`, `input_example.json`, `model.pkl` (1,2 MB, cloudpickle), `python_env.yaml`, `requirements.txt`, `serving_input_example.json` |
-| Entorno | Python 3.12.3, scikit-learn 1.7.2, MLflow 3.12.0, pandas 2.3.3 |
+| Model | `workspace.mantenimiento.rul_model`, version **1**, state READY (only version) |
+| Alias | `champion` = v1 (query `.../aliases/champion` returns version 1) |
+| Run | `rul_entrenamiento` (job 134653962208443, notebook `02_train`), FINISHED |
+| Logged parameters | `n_features 85`, `n_train_rows 20631`, `rul_clip 125` |
+| Logged metrics | `rmse_test 18.441849882005343`, `mae_test 13.478027648560577`, `phm08_test 655.0239471190539`, `rmse_mejor_baseline 21.796289834949274` |
+| Version tags | `dataset=C-MAPSS FD001`, `rmse_test=18.4418` |
+| Signature | inputs: 85 mandatory `double` columns (`cycle`, 14 sensors, 5 statistics per sensor); output: `float64` tensor of shape (-1) |
+| Artifacts | `MLmodel`, `conda.yaml`, `input_example.json`, `model.pkl` (1.2 MB, cloudpickle), `python_env.yaml`, `requirements.txt`, `serving_input_example.json` |
+| Environment | Python 3.12.3, scikit-learn 1.7.2, MLflow 3.12.0, pandas 2.3.3 |
 
-Observaciones: las métricas se llaman `*_test` y se registraron sobre el conjunto de test (ver B2.4). El modelo guarda la versión de scikit-learn en el artefacto pero no como parámetro MLflow.
+Observations: the metrics are called `*_test` and were logged on the test set (see B2.4). The model stores the scikit-learn version in the artifact but not as an MLflow parameter.
 
 ### Endpoint
 
-Endpoint real: `dev_jjrm199867_rul-model-dev` (id `f83f37b7...`), entidad `rul-model` -> `workspace.mantenimiento.rul_model` v1, CPU Small, scale to zero, `READY`.
-La versión servida es la **1 fijada por variable** (`model_version` en `databricks.yml`); el endpoint no sigue al alias. Si se promueve otra versión sin cambiar la variable, `champion` y el endpoint divergirán.
-Permisos: `CAN_MANAGE` solo propietario y `admins`.
+Real endpoint: `dev_jjrm199867_rul-model-dev` (id `f83f37b7...`), entity `rul-model` -> `workspace.mantenimiento.rul_model` v1, CPU Small, scale to zero, `READY`.
+The served version is **1, fixed by variable** (`model_version` in `databricks.yml`); the endpoint does not follow the alias. If another version is promoted without changing the variable, `champion` and the endpoint will diverge.
+Permissions: `CAN_MANAGE` only owner and `admins`.
 
-### Prueba de extremo a extremo (motor 34)
+### End-to-end test (engine 34)
 
-Datos de un motor -> variables -> modelo -> endpoint -> API -> dashboard, con los mismos valores en cada eslabón:
+Data of one engine -> features -> model -> endpoint -> API -> dashboard, with the same values at every link:
 
-| Eslabón | Evidencia | Valor para el motor 34 |
+| Link | Evidence | Value for engine 34 |
 |---|---|---|
-| Datos y variables | `gold_features` (split test, ciclo 203 = último), 85 variables | `cycle 203`, `s2 643,74`, `s4 1427,49`, `s11 48,13`, `s4_mean5 1427,362`, `s11_mean10 48,064`, `s11_slope10 0,023515` (fila completa en `workspace/sql_gold_features_test_last_cycle_85feats.json`) |
-| Modelo | `rul_model` v1 @champion | RUL real del test: 7 |
-| Endpoint | `POST /serving-endpoints/dev_jjrm199867_rul-model-dev/invocations` con `dataframe_split` de esa fila | **3,118922691130997** |
-| Tabla de scoring | `gold_predicciones` (`scored_at 2026-10-13T20:26:50Z`, `model_version 1`) | 3,12 |
-| API desplegada | `GET /api/engines` desde la sesión autenticada de la app | `rul_pred 3.12`, `estado critical`, `model_version 1` |
-| Dashboard | Misma respuesta que la API (renderizada por `index.html`) | 3 ciclos estimados, estado critical |
+| Data and features | `gold_features` (split test, cycle 203 = last), 85 features | `cycle 203`, `s2 643.74`, `s4 1427.49`, `s11 48.13`, `s4_mean5 1427.362`, `s11_mean10 48.064`, `s11_slope10 0.023515` (full row in `workspace/sql_gold_features_test_last_cycle_85feats.json`) |
+| Model | `rul_model` v1 @champion | Actual test RUL: 7 |
+| Endpoint | `POST /serving-endpoints/dev_jjrm199867_rul-model-dev/invocations` with `dataframe_split` of that row | **3.118922691130997** |
+| Scoring table | `gold_predicciones` (`scored_at 2026-10-13T20:26:50Z`, `model_version 1`) | 3.12 |
+| Deployed API | `GET /api/engines` from the authenticated app session | `rul_pred 3.12`, `estado critical`, `model_version 1` |
+| Dashboard | Same response as the API (rendered by `index.html`) | 3 estimated cycles, state critical |
 
-Otros dos motores: motor 60 (endpoint 82,26835521034641, tabla/API 82,27, real 100) y motor 85 (124,90846155881731; 124,91; real 118).
-Mismo ensayo para los **100 motores** en una sola llamada: diferencia máxima entre `round(endpoint, 2)` y `gold_predicciones.rul_pred` = **0,00**; 0 discrepancias; RMSE del endpoint contra la RUL real = 18,441849882005343, idéntico al `rmse_test` de MLflow
-(`evidence/b3_endpoint_vs_gold_all100.json`). La consulta por CLI (`serving-endpoints query`) devolvió el mismo valor que la llamada REST.
+Two other engines: engine 60 (endpoint 82.26835521034641, table/API 82.27, actual 100) and engine 85 (124.90846155881731; 124.91; actual 118).
+Same test for the **100 engines** in a single call: maximum difference between `round(endpoint, 2)` and `gold_predicciones.rul_pred` = **0.00**; 0 discrepancies; endpoint RMSE against the actual RUL = 18.441849882005343, identical to the MLflow `rmse_test`
+(`evidence/b3_endpoint_vs_gold_all100.json`). The CLI query (`serving-endpoints query`) returned the same value as the REST call.
 
-**Aclaración obligatoria:** la app **no** invoca al endpoint. Lee `gold_predicciones` por SQL, escrita por `03_score.py` con el mismo modelo. El service principal
-de la app no tiene permiso sobre el endpoint (ni lo necesita). Lo que se contrasta es que ambos caminos dan lo mismo. El endpoint existe como
-interfaz de inferencia independiente, pero el dashboard no depende de él; si el endpoint está caído, el dashboard sigue mostrando la última puntuación por lotes con su `scored_at`. La interfaz no muestra aún la fecha de
-puntuación (la API la devuelve; el campo `model.scored_at` se añade al overview).
+**Mandatory clarification:** the app does **not** invoke the endpoint. It reads `gold_predicciones` through SQL, written by `03_score.py` with the same model. The app
+service principal has no permission on the endpoint (nor needs it). What is checked is that both paths give the same. The endpoint exists as
+an independent inference interface, but the dashboard does not depend on it; if the endpoint is down, the dashboard keeps showing the last batch scoring with its `scored_at`. The interface did not yet show the scoring
+date (the API returns it; the field `model.scored_at` is added to the overview).
 
-### Fallback silencioso
+### Silent fallback
 
-Camino revisado (`app/app.py`): no existe ninguna llamada al modelo ni ninguna generación de valores. Defectos encontrados y corregidos:
-- Una fila con `rul_pred` nulo se transformaba en RUL 0 y recibía el texto de acción de un motor crítico (`e.get("rul_pred") or 0.0`). Ahora queda `rul_pred: null`, estado `unknown`, y el texto "No prediction available for this engine."; se excluye de los KPI.
-- Si no había métricas de la versión del modelo, la app mostraba las métricas del último entrenamiento de **otra** versión. Ahora muestra "--" (`rmse: null`).
-- Cualquier fallo SQL se devolvía como `ready: false` con HTTP 200, indistinguible de "todavía no hay datos". Ahora: 503 `data_unavailable` (B4).
-- La última actualización del pipeline usaba `DESCRIBE DETAIL` sobre una vista materializada y fallaba siempre (overview desplegado: `missing: ["gold_features"]`, `last_update: null`). Se sustituye por `MAX(_ingest_ts)`.
+Path reviewed (`app/app.py`): there is no call to the model and no generation of values. Defects found and fixed:
+- A row with a null `rul_pred` was turned into RUL 0 and received the action text of a critical engine (`e.get("rul_pred") or 0.0`). Now it stays `rul_pred: null`, state `unknown`, and the text "No prediction available for this engine."; it is excluded from the KPIs.
+- If there were no metrics for the model version, the app showed the metrics of the last training of **another** version. Now it shows "--" (`rmse: null`).
+- Any SQL failure was returned as `ready: false` with HTTP 200, indistinguishable from "no data yet". Now: 503 `data_unavailable` (B4).
+- The last pipeline update used `DESCRIBE DETAIL` on a materialized view and always failed (deployed overview: `missing: ["gold_features"]`, `last_update: null`). Replaced by `MAX(_ingest_ts)`.
 
-### B3.5 Revalidación del 15 de octubre de 2026 (`evidence/revalidation_2026-10-15/`)
+### B3.5 Revalidation of 15 October 2026 (`evidence/revalidation_2026-10-15/`)
 
-- A las 22:16 UTC el endpoint `dev_jjrm199867_rul-model-dev` **no existía** (`A_13`, `A_25`, `A_29`, `A_36`): la invocación devolvía
-  "The given endpoint does not exist". El 14 de octubre a las 00:5x respondía. No hay registro accesible de quién o qué lo eliminó (`NOT_VERIFIED`).
-  Se recreó con `bundle deploy -t dev` (`A_52`, "Created model_serving_endpoints.rul_endpoint", nuevo id `dd2a3f66...`), `READY` a las 22:27 (`A_53`).
-- Invocaciones reales tras la recreación (`A_54`..`A_62`), mismas filas de `gold_features` que el 14 de octubre:
+- At 22:16 UTC the endpoint `dev_jjrm199867_rul-model-dev` **did not exist** (`A_13`, `A_25`, `A_29`, `A_36`): the invocation returned
+  "The given endpoint does not exist". On 14 October at 00:5x it answered. There is no accessible record of who or what deleted it (`NOT_VERIFIED`).
+  It was recreated with `bundle deploy -t dev` (`A_52`, "Created model_serving_endpoints.rul_endpoint", new id `dd2a3f66...`), `READY` at 22:27 (`A_53`).
+- Real invocations after the recreation (`A_54`..`A_62`), same `gold_features` rows as on 14 October:
 
-| Entrada | Respuesta | Igual que el 14 de octubre |
+| Input | Response | Same as 14 October |
 |---|---|---|
-| Motor 34 (`api post .../invocations`) | 3,118922691130997 | sí |
-| Motor 34 (`serving-endpoints query`) | 3,118922691130997 | sí |
-| Motor 60 | 82,26835521034641 | sí |
-| Motor 85 | 124,90846155881731 | sí |
-| 100 motores en un lote | 100 valores; `round(., 2)` = `gold_predicciones.rul_pred` en los 100 (diferencia máxima 0,00); RMSE frente a RUL real 18,441849882005343 (`b3_endpoint_vs_gold_all100_2026-10-15.json`) | sí |
-| `s11` ausente | error de esquema explícito | sí |
-| cadena en `s7` | "Failed to convert column s7 to type float64" | sí |
-| 85 variables `null` | **120,6590326691026** (predicción sin datos) | sí: D-02 sigue abierto en el endpoint |
+| Engine 34 (`api post .../invocations`) | 3.118922691130997 | yes |
+| Engine 34 (`serving-endpoints query`) | 3.118922691130997 | yes |
+| Engine 60 | 82.26835521034641 | yes |
+| Engine 85 | 124.90846155881731 | yes |
+| 100 engines in one batch | 100 values; `round(., 2)` = `gold_predicciones.rul_pred` on all 100 (maximum difference 0.00); RMSE against the actual RUL 18.441849882005343 (`b3_endpoint_vs_gold_all100_2026-10-15.json`) | yes |
+| `s11` missing | explicit schema error | yes |
+| string in `s7` | "Failed to convert column s7 to type float64" | yes |
+| 85 `null` features | **120.6590326691026** (prediction without data) | yes: D-02 is still open on the endpoint |
 
-- Tabla `gold_predicciones` (`A_44`, `A_45`): 100 filas, 99 valores distintos, 3,12 a 124,98, RMSE 18,4417 (sobre valores redondeados a 2 decimales),
-  `scored_at 2026-10-14T00:52:37Z`, `model_version 1`; **100 filas con el texto orientativo nuevo y 0 con el antiguo** (la nota de B5 queda cerrada).
-- App desplegada (`app_api_capture_2026-10-15.json`): `/api/engines` motor 34 = 3,12 critical, 60 = 82,27, 85 = 124,91; `/api/overview` muestra
+- Table `gold_predicciones` (`A_44`, `A_45`): 100 rows, 99 distinct values, 3.12 to 124.98, RMSE 18.4417 (on values rounded to 2 decimals),
+  `scored_at 2026-10-14T00:52:37Z`, `model_version 1`; **100 rows with the new advisory text and 0 with the old one** (the B5 note is closed).
+- Deployed app (`app_api_capture_2026-10-15.json`): `/api/engines` engine 34 = 3.12 critical, 60 = 82.27, 85 = 124.91; `/api/overview` shows
   `model.version 1`, `scored_at`, `source: batch scoring table gold_predicciones (no live inference)`, `uncertainty.calibrated false`;
-  `/api/health` ok en warehouse, índice y LLM; `/api/overview` sin credenciales: 401. El `index.html` servido tiene el mismo SHA-256 que el del PC.
-- Cadena completa verificada hoy: `gold_features` (fila del motor 34) -> endpoint recreado (3,1189) -> `gold_predicciones` (3,12) -> `/api/engines` (3,12) -> dashboard (3 ciclos, critical).
-- Permisos del endpoint recreado (`A_64`): `CAN_MANAGE` propietario y `admins`; el SP de la app no tiene `CAN_QUERY` (no lo necesita).
+  `/api/health` ok on warehouse, index and LLM; `/api/overview` without credentials: 401. The served `index.html` has the same SHA-256 as the one on the PC.
+- Full chain verified that day: `gold_features` (row of engine 34) -> recreated endpoint (3.1189) -> `gold_predicciones` (3.12) -> `/api/engines` (3.12) -> dashboard (3 cycles, critical).
+- Permissions of the recreated endpoint (`A_64`): `CAN_MANAGE` owner and `admins`; the app SP has no `CAN_QUERY` (it does not need it).
 
 ---
 
-## B4. Pruebas negativas
+## B4. Negative tests
 
-### En la app (`tests/test_negative_api.py`, 25 pruebas)
+### In the app (`tests/test_negative_api.py`, 25 tests)
 
-Ejecutadas contra la `app.py` original (copia del commit base): **10 fallan** (`evidence/b4_negative_tests_against_original_app.txt`); contra la versión corregida: **25 superadas**.
+Run against the original `app.py` (copy of the base commit): **10 fail** (`evidence/b4_negative_tests_against_original_app.txt`); against the corrected version: **25 passed**.
 
-| Caso | Comportamiento original | Comportamiento corregido |
+| Case | Original behaviour | Corrected behaviour |
 |---|---|---|
-| Error SQL, timeout, warehouse inalcanzable (3 casos) | 200 con `ready:false` | 503 `{"error":"data_unavailable"}`, sin `engines`, `kpis` ni `history` |
-| Tabla inexistente | estado vacío | estado vacío explícito con `missing:["gold_predicciones"]` |
-| Warehouse sin configurar | estado vacío | igual |
-| Timeout del conector | sin límite | `_socket_timeout` 90 s configurable |
-| Fila sin RUL (`null`/NaN) | `500` o RUL 0 inventado | `rul_pred:null`, `estado:"unknown"`, sin acción, excluida de KPI |
-| Métricas de otra versión | se mostraban | `null` |
-| Fallo parcial de consultas auxiliares | marcadas como "tabla ausente" | lista `errors`, KPI parciales con `--` |
-| Motor 0, negativo, 10001 | 422 | 422 |
-| Motor no numérico (`abc`, `1.5`) | 422 | 422 |
-| Motor inexistente (999) | 200 vacío | 404 |
-| Pregunta ausente, vacía, en blanco (`"   "`), 2 caracteres, 501 caracteres, `null`, número, campo equivocado, JSON inválido | en blanco pasaba al asistente | 422 sin llamar al LLM |
-| LLM caído / índice caído | 502 / 503 (ya cubierto en `test_app_api.py`) | igual |
+| SQL error, timeout, unreachable warehouse (3 cases) | 200 with `ready:false` | 503 `{"error":"data_unavailable"}`, without `engines`, `kpis` or `history` |
+| Missing table | empty state | explicit empty state with `missing:["gold_predicciones"]` |
+| Unconfigured warehouse | empty state | same |
+| Connector timeout | no limit | `_socket_timeout` 90 s configurable |
+| Row without RUL (`null`/NaN) | `500` or an invented RUL 0 | `rul_pred:null`, `estado:"unknown"`, no action, excluded from KPIs |
+| Metrics of another version | shown | `null` |
+| Partial failure of auxiliary queries | marked as "missing table" | `errors` list, partial KPIs with `--` |
+| Engine 0, negative, 10001 | 422 | 422 |
+| Non-numeric engine (`abc`, `1.5`) | 422 | 422 |
+| Unknown engine (999) | empty 200 | 404 |
+| Question missing, empty, blank (`"   "`), 2 characters, 501 characters, `null`, number, wrong field, invalid JSON | a blank question reached the assistant | 422 without calling the LLM |
+| LLM down / index down | 502 / 503 (already covered in `test_app_api.py`) | same |
 
-"Sensores ausentes" y "datos incompletos" no son entradas de la app (no acepta telemetría): se prueban en el endpoint y en el scoring. "Modelo no disponible": la app no depende del modelo; en `03_score.py` `get_model_version_by_alias` falla con error claro si no hay champion.
+"Missing sensors" and "incomplete data" are not app inputs (it accepts no telemetry): they are tested on the endpoint and in the scoring. "Model unavailable": the app does not depend on the model; in `03_score.py` `get_model_version_by_alias` fails with a clear error if there is no champion.
 
-### En el endpoint (invocaciones reales, `evidence/b3_trace_engine34_and_endpoint_negatives.json`)
+### On the endpoint (real invocations, `evidence/b3_trace_engine34_and_endpoint_negatives.json`)
 
-| Entrada | Respuesta | Evaluación |
+| Input | Response | Assessment |
 |---|---|---|
-| Columna `s11` ausente | Error de esquema (explícito) | PASS |
-| Cadena en `s7` | "Failed to convert column s7 to float64" | PASS |
-| Lote vacío | Error del modelo (0 muestras) | PASS |
-| `null` en `s7` | 3,118922691130997 (idéntico al valor con dato) | FAIL (aceptado sin aviso) |
-| `null` en 11 variables relevantes (`s4`, `s11`, sus medias, `cycle`...) | 67,24 en lugar de 3,12 | FAIL (predicción distinta sin error) |
-| 85 variables `null` | **120,66** | FAIL (predicción inventada a partir de nada) |
-| `s4` y `s11` = -1e9 | 3,82 | FAIL (sin comprobación de rango) |
-| `cycle = 0` | 5,04 | FAIL (valor imposible aceptado) |
-| Columna extra desconocida | Se ignora y devuelve 3,1189 | Débil (contrato permisivo) |
+| Column `s11` missing | Schema error (explicit) | PASS |
+| String in `s7` | "Failed to convert column s7 to float64" | PASS |
+| Empty batch | Model error (0 samples) | PASS |
+| `null` in `s7` | 3.118922691130997 (identical to the value with data) | FAIL (accepted without warning) |
+| `null` in 11 relevant features (`s4`, `s11`, their means, `cycle`...) | 67.24 instead of 3.12 | FAIL (different prediction without error) |
+| 85 `null` features | **120.66** | FAIL (prediction invented from nothing) |
+| `s4` and `s11` = -1e9 | 3.82 | FAIL (no range check) |
+| `cycle = 0` | 5.04 | FAIL (impossible value accepted) |
+| Unknown extra column | Ignored, returns 3.1189 | Weak (permissive contract) |
 
-Causa: `HistGradientBoostingRegressor` trata los `NaN` de forma nativa y MLflow convierte `null` a `NaN`, de modo que la firma "required" no impide nulos. Impacto: solo
-afecta a quien llame directamente al endpoint (la app no lo hace). Mitigación implementada en el árbol: `validate_feature_frame` (`src/lib/cmapss.py`) rechaza vacíos, columnas ausentes, `NaN`/`inf` y `cycle < 1`, y `src/03_score.py` la ejecuta antes de predecir.
-Pendiente (requiere decisión): hacer lo mismo dentro del propio modelo servido (envoltorio `pyfunc` y nueva versión), o poner siempre un validador delante.
-**NOT_VERIFIED:** comportamiento ante cold start prolongado o timeout del endpoint (el endpoint respondió en menos de 90 s desde "Scaled to zero"); no se pudo forzar una caída.
+Cause: `HistGradientBoostingRegressor` handles `NaN` natively and MLflow converts `null` to `NaN`, so the "required" signature does not prevent nulls. Impact: it only
+affects whoever calls the endpoint directly (the app does not). Mitigation implemented in the tree: `validate_feature_frame` (`src/lib/cmapss.py`) rejects empty frames, missing columns, `NaN`/`inf` and `cycle < 1`, and `src/03_score.py` runs it before predicting.
+Pending (requires a decision): do the same inside the served model itself (`pyfunc` wrapper and new version), or always put a validator in front.
+**NOT_VERIFIED:** behaviour under a long cold start or endpoint timeout (the endpoint answered in under 90 s from "Scaled to zero"); an outage could not be forced.
 
 ---
 
-## B5. Recomendaciones operativas
+## B5. Operational recommendations
 
-Textos revisados: `src/lib/cmapss.py` (`recommended_action`), `src/03_score.py` (columna `accion`), `app/app.py` (duplicado del anterior) y el respaldo de `index.html`.
+Texts reviewed: `src/lib/cmapss.py` (`recommended_action`), `src/03_score.py` (column `accion`), `app/app.py` (duplicate of the former) and the fallback in `index.html`.
 
-Antes (órdenes categóricas basadas en un modelo experimental):
+Before (categorical orders based on an experimental model):
 - critical: "Schedule shutdown and replacement within N cycles. Inspect s4 and s11 now."
 - watch: "Increase inspection frequency and plan the intervention within the N-cycle window."
 - healthy: "Normal operation. Keep the usual maintenance plan."
 
-Problemas: ordena parada y sustitución con una cuenta atrás en ciclos sin base; "now" y "within N cycles" sugieren una precisión que el modelo no tiene (error típico del orden de 18 ciclos, con un 23 % de motores con error > 20); no aparece la incertidumbre; "Normal operation" afirma un estado operativo que el modelo no puede garantizar (en B2.2, 6 de 26 motores con RUL real <= 35 se predijeron `healthy`).
+Problems: it orders shutdown and replacement with a countdown in cycles without basis; "now" and "within N cycles" suggest a precision the model does not have (typical error of the order of 18 cycles, with 23 % of engines with error > 20); the uncertainty does not appear; "Normal operation" asserts an operational state the model cannot guarantee (in B2.2, 6 of 26 engines with actual RUL <= 35 were predicted `healthy`).
 
-Después (idéntico en lib, app y respaldo del frontend; una prueba comprueba que `lib` y `app` generan exactamente el mismo texto):
+After (identical in lib, app and frontend fallback; a test checks that `lib` and `app` generate exactly the same text):
 - critical: "Demo estimate; requires engineering review. Estimated RUL is low (about N cycles): consider prioritising an inspection. Sensors to check first: s4 and s11."
 - watch: "Demo estimate; requires engineering review. Estimated RUL is moderate (about N cycles): consider closer monitoring and planning an inspection."
 - healthy: "Demo estimate; requires engineering review. No degradation flagged by the model; keep the usual maintenance plan."
 
-Distinciones que ahora se reflejan:
+Distinctions now reflected:
 
-| Concepto | Dónde |
+| Concept | Where |
 |---|---|
-| Predicción estadística | `rul_pred` (estimación del modelo al último ciclo observado) |
-| Incertidumbre | `uncertainty` en `/api/overview`: `calibrated: false`, `typical_error_cycles` = RMSE del test (18,44), con la nota de que el test también influyó en la selección y de que no hay intervalos de predicción |
-| Estado demostrativo | `estado` (umbrales 20 y 35 ciclos, parametrizables) |
-| Recomendación orientativa | `action`, siempre con "Demo estimate; requires engineering review" |
-| Decisión operativa | No la toma el sistema; los textos no ordenan parada ni sustitución |
+| Statistical prediction | `rul_pred` (model estimate at the last observed cycle) |
+| Uncertainty | `uncertainty` in `/api/overview`: `calibrated: false`, `typical_error_cycles` = test RMSE (18.44), with the note that the test set also influenced the selection and that there are no prediction intervals |
+| Demo state | `estado` (thresholds 20 and 35 cycles, parameterisable) |
+| Advisory recommendation | `action`, always with "Demo estimate; requires engineering review" |
+| Operational decision | Not taken by the system; the texts order neither shutdown nor replacement |
 
-No se ha inventado ningún intervalo de confianza. El RMSE se cita como error típico medido en un conjunto concreto, no como intervalo. No se calibró la incertidumbre (por ejemplo con regresión cuantílica o conformal prediction sobre validación por motor): queda como trabajo futuro.
-Pruebas actualizadas/añadidas: `test_normalize_state_y_accion`, `test_acciones_son_orientativas_y_sin_ordenes_categoricas` (prohíbe `shutdown`, `replace`, `now.`, `must`, `immediately`...), `test_texto_de_accion_identico_en_app_y_lib`, `test_estados_antiguos_y_acciones_en_ingles`.
-Nota: tras volver a ejecutar la tarea `score` (E04, 14 de octubre 00:52 UTC) la columna `accion` de `gold_predicciones` contiene el texto nuevo en las 100 filas (`A_45`: 0 filas con "shutdown" o "replacement").
+No confidence interval was invented. The RMSE is quoted as a typical error measured on a specific set, not as an interval. The uncertainty was not calibrated (for example with quantile regression or conformal prediction on validation by engine): it remains future work.
+Tests updated/added: `test_normalize_state_y_accion`, `test_acciones_son_orientativas_y_sin_ordenes_categoricas` (forbids `shutdown`, `replace`, `now.`, `must`, `immediately`...), `test_texto_de_accion_identico_en_app_y_lib`, `test_estados_antiguos_y_acciones_en_ingles`.
+Note: after running the `score` task again (E04, 14 October 00:52 UTC) the `accion` column of `gold_predicciones` contains the new text in all 100 rows (`A_45`: 0 rows with "shutdown" or "replacement").
 
 ---
 
-## Archivos de código modificados por esta fase (para despliegue)
+## Code files modified by this phase (for deployment)
 
-- `app/app.py`, `app/static/index.html` (solo estados de error, respaldo del texto de acción y manejo de RUL nula)
-- `src/lib/cmapss.py` (texto orientativo, `validate_feature_frame`), `src/03_score.py` (validación previa, texto de cabecera)
-- `tests/test_negative_api.py` (nuevo), `tests/test_app_api.py`, `tests/test_cmapss.py`
-- `src/lib/modeling.py`, `src/02_train.py`, `tests/test_modeling_selection.py` (B2.5, 15 de octubre)
-- Hecho: `src/lib` copiado al volume `codigo` (E01 y A_50), bundle desplegado a dev (E03, E05, A_52), tarea `score` ejecutada (E04), app reiniciada (E06, A_12).
+- `app/app.py`, `app/static/index.html` (only error states, action text fallback and null RUL handling)
+- `src/lib/cmapss.py` (advisory text, `validate_feature_frame`), `src/03_score.py` (prior validation, header text)
+- `tests/test_negative_api.py` (new), `tests/test_app_api.py`, `tests/test_cmapss.py`
+- `src/lib/modeling.py`, `src/02_train.py`, `tests/test_modeling_selection.py` (B2.5, 15 October)
+- Done: `src/lib` copied to the `codigo` volume (E01 and A_50), bundle deployed to dev (E03, E05, A_52), `score` task executed (E04), app restarted (E06, A_12).

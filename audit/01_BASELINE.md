@@ -1,144 +1,146 @@
-# 01. Línea base del proyecto (Fase A)
+# 01. Project baseline (Phase A)
 
-Auditoría del 13 al 15 de octubre de 2026. Rama de trabajo local `validacion` en el clon de GitHub (antes `validation`), sin commits ni push; despliegues solo al target `dev`. Todos los comandos
-y resultados de este documento se ejecutaron realmente; lo que no pudo ejecutarse figura como `NOT_VERIFIED`.
+Audit of 13 to 15 October 2026. Local working branch `validacion` in the GitHub clone (formerly `validation`), no commits or push; deployments only to the `dev` target. Every command
+and result in this document was actually executed; whatever could not be executed is marked `NOT_VERIFIED`.
 
-## 1. Versión y entorno
+> Names in this document are those of the deployment audited (Spanish schema `mantenimiento`, tables such as `gold_predicciones`, app `mantenimiento-predictivo-dev`). The current code uses English names; the mapping is in the README, section "Deployed names".
 
-| Elemento | Valor | Cómo se obtuvo |
+## 1. Version and environment
+
+| Element | Value | How it was obtained |
 |---|---|---|
-| Commit base | `cd81b7a358a3bbebe3d468c98265616c25e64231` ("Informe de evaluación del asistente RAG...") | `git rev-parse HEAD` |
-| Rama | `validacion` (cambios sin commit en el árbol de trabajo; la copia del PC no es un repositorio Git) | `git rev-parse --abbrev-ref HEAD` |
-| Historial | 6 commits, un autor (Jonathan Rincon) | `git log --oneline` |
-| Python local de auditoría | 3.13.16 | `python3 --version` |
-| Bibliotecas locales | scikit-learn 1.9.1, pandas 3.0.5, numpy 2.5.3, pyspark 4.2.0, pyarrow 25.0.1, fastapi 0.143.0, httpx 0.28.1, pytest 9.1.1, mlflow 3.17.1 | `pip list` |
-| Java | OpenJDK 21.0.12.1 (necesario para el test de Spark) | `java -version` |
-| Databricks CLI | v1.20.0 | `databricks --version` (cola A, `B01_version`) |
-| Entorno serverless donde se entrenó el modelo | `databricks_runtime: client.6`, Python 3.12.3, scikit-learn **1.7.2**, pandas 2.3.3, pyarrow 21.0.0, MLflow 3.12.0, cloudpickle 3.1.1 | Artefactos `MLmodel` y `requirements.txt` del modelo registrado |
-| Workspace | Databricks Free Edition (solo serverless), catálogo `workspace`, schema `mantenimiento` | Brief + consultas |
+| Base commit | `cd81b7a358a3bbebe3d468c98265616c25e64231` ("Informe de evaluación del asistente RAG...") | `git rev-parse HEAD` |
+| Branch | `validacion` (uncommitted changes in the working tree; the PC copy is not a Git repository) | `git rev-parse --abbrev-ref HEAD` |
+| History | 6 commits, one author (Jonathan Rincon) | `git log --oneline` |
+| Local audit Python | 3.13.16 | `python3 --version` |
+| Local libraries | scikit-learn 1.9.1, pandas 3.0.5, numpy 2.5.3, pyspark 4.2.0, pyarrow 25.0.1, fastapi 0.143.0, httpx 0.28.1, pytest 9.1.1, mlflow 3.17.1 | `pip list` |
+| Java | OpenJDK 21.0.12.1 (needed by the Spark test) | `java -version` |
+| Databricks CLI | v1.20.0 | `databricks --version` (queue A, `B01_version`) |
+| Serverless environment where the model was trained | `databricks_runtime: client.6`, Python 3.12.3, scikit-learn **1.7.2**, pandas 2.3.3, pyarrow 21.0.0, MLflow 3.12.0, cloudpickle 3.1.1 | `MLmodel` and `requirements.txt` artifacts of the registered model |
+| Workspace | Databricks Free Edition (serverless only), catalog `workspace`, schema `mantenimiento` | Brief + queries |
 
-Diferencia relevante: el entorno local (scikit-learn 1.9.1, pandas 3.0.5) no es el del workspace (1.7.2, 2.3.3). Es la causa
-parcial de la diferencia 19,10 frente a 18,44 de RMSE (ver `02_MODEL_VALIDATION.md`, apartado B2).
+Relevant difference: the local environment (scikit-learn 1.9.1, pandas 3.0.5) is not the workspace one (1.7.2, 2.3.3). It is a partial cause
+of the 19.10 versus 18.44 RMSE difference (see `02_MODEL_VALIDATION.md`, section B2).
 
-## 2. Recursos realmente desplegados (listados con la CLI)
+## 2. Resources actually deployed (listed with the CLI)
 
-| Recurso | Estado verificado | Comando |
+| Resource | Verified state | Command |
 |---|---|---|
-| Pipeline `[dev ...] mantenimiento_pipeline_dev` (id `f0ca97c9-...`) | Existe en el bundle summary | `bundle summary -t dev` |
-| Jobs: `mantenimiento_end_to_end_dev` (134653962208443), `mantenimiento_rag_dev` (394502178342467), `mantenimiento_eval_assistant_dev` (616581869043888) | Listados | `jobs list` |
-| Modelo UC `workspace.mantenimiento.rul_model` | 1 versión (v1, estado READY), alias `champion` apunta a v1 | API UC `models/.../versions` y `.../aliases/champion` |
-| Endpoint de serving | **Nombre real: `dev_jjrm199867_rul-model-dev`** (no `rul-model-dev`: el modo `development` del bundle antepone `dev_<usuario>_`). Entidad `workspace.mantenimiento.rul_model` v1, CPU Small, scale to zero, estado READY, "Scaled to zero" al inicio de la auditoría | `serving-endpoints get`, `list` |
-| App `mantenimiento-predictivo-dev` | `RUNNING`, despliegue `SUCCEEDED` (SNAPSHOT), único recurso declarado: SQL warehouse `CAN_USE` | `apps get` |
-| Tablas | `bronze_cmapss_lecturas` 33.727, `bronze_cmapss_rul` 1, `silver_lecturas` 33.727, `silver_rul_test` 100, `gold_features` 33.727, `gold_test_verdad` 100, `gold_salud_curva` 33.727, `gold_predicciones` 100, `gold_model_metrics` 3, `gold_control_calidad` 2 | SQL (`audit/evidence/workspace/sql_counts.json`) |
+| Pipeline `[dev ...] mantenimiento_pipeline_dev` (id `f0ca97c9-...`) | Exists in the bundle summary | `bundle summary -t dev` |
+| Jobs: `mantenimiento_end_to_end_dev` (134653962208443), `mantenimiento_rag_dev` (394502178342467), `mantenimiento_eval_assistant_dev` (616581869043888) | Listed | `jobs list` |
+| UC model `workspace.mantenimiento.rul_model` | 1 version (v1, state READY), alias `champion` points to v1 | UC API `models/.../versions` and `.../aliases/champion` |
+| Serving endpoint | **Real name: `dev_jjrm199867_rul-model-dev`** (not `rul-model-dev`: the bundle's `development` mode prepends `dev_<user>_`). Entity `workspace.mantenimiento.rul_model` v1, CPU Small, scale to zero, state READY, "Scaled to zero" at the start of the audit | `serving-endpoints get`, `list` |
+| App `mantenimiento-predictivo-dev` | `RUNNING`, deployment `SUCCEEDED` (SNAPSHOT), single declared resource: SQL warehouse `CAN_USE` | `apps get` |
+| Tables | `bronze_cmapss_lecturas` 33,727, `bronze_cmapss_rul` 1, `silver_lecturas` 33,727, `silver_rul_test` 100, `gold_features` 33,727, `gold_test_verdad` 100, `gold_salud_curva` 33,727, `gold_predicciones` 100, `gold_model_metrics` 3, `gold_control_calidad` 2 | SQL (`audit/evidence/workspace/sql_counts.json`) |
 
-Observaciones:
-- `bundle summary` muestra la app como "(not deployed)" aunque `apps get` la devuelve RUNNING (el summary no refleja el despliegue por SNAPSHOT). No es un defecto del proyecto.
-- El nombre del endpoint con prefijo de usuario debe tenerse en cuenta en cualquier documentación o script que use `rul-model-dev` literal.
-- `bronze_cmapss_rul` guarda el fichero `RUL_FD001.txt` como una única fila de texto (100 valores en un campo `value`); `silver_rul_test` lo desglosa en 100 filas.
+Observations:
+- `bundle summary` shows the app as "(not deployed)" although `apps get` returns it RUNNING (the summary does not reflect the SNAPSHOT deployment). Not a defect of the project.
+- The endpoint name with the user prefix must be taken into account in any documentation or script that uses the literal `rul-model-dev`.
+- `bronze_cmapss_rul` stores the file `RUL_FD001.txt` as a single text row (100 values in a `value` field); `silver_rul_test` splits it into 100 rows.
 
-## 3. Inventario de archivos revisados
+## 3. Inventory of reviewed files
 
-Leídos y analizados: `README.md`, `databricks.yml`, `resources/{app,jobs,pipelines,serving}.yml`, `src/pipeline/`, `src/lib/*`,
+Read and analysed: `README.md`, `databricks.yml`, `resources/{app,jobs,pipelines,serving}.yml`, `src/pipeline/`, `src/lib/*`,
 `src/02_train.py`, `src/03_score.py`, `src/04_rag_index.py`, `src/05_eval_rag.py`, `src/07_eval_assistant.py`, `app/app.py`, `app/rag.py`,
-`app/health_projection.py`, `app/static/index.html`, `eval/`, `tests/`, `.github/workflows/deploy.yml`. La auditoría RAG
-detallada es responsabilidad de la fase C (`03_RAG_VALIDATION.md`).
+`app/health_projection.py`, `app/static/index.html`, `eval/`, `tests/`, `.github/workflows/deploy.yml`. The detailed RAG audit
+belongs to phase C (`03_RAG_VALIDATION.md`).
 
-## 4. Suite de pruebas y la discrepancia 61 + 1 omitida frente a 67
+## 4. Test suite and the "61 + 1 skipped" versus 67 discrepancy
 
-Estado inicial (commit `cd81b7a`, antes de cualquier cambio de esta auditoría):
+Initial state (commit `cd81b7a`, before any change of this audit):
 
 ```
 python3 -m pytest -q          ->  67 passed, 187 warnings in 52.06 s
 ```
 
-Recuento por archivo (`pytest --collect-only`): `test_app_api` 10, `test_chunking` 7, `test_cmapss` 15, `test_rag` 26,
+Count per file (`pytest --collect-only`): `test_app_api` 10, `test_chunking` 7, `test_cmapss` 15, `test_rag` 26,
 `test_retrieval` 3, `test_spark_equivalence` 6. Total 67.
 
-**Explicación de "61 superadas y una omitida":** `tests/test_spark_equivalence.py` (6 pruebas) tiene un
-`pytest.importorskip("pyspark")` y un `pytest.skip("Java no disponible", allow_module_level=True)` al inicio del módulo.
-Si falta PySpark **o** Java, **todo el módulo** se omite y pytest lo cuenta como **una** omisión, no como seis. 67 - 6 = 61
-superadas + 1 omitida. Es el patrón exacto de "61 + 1 omitida"; es coherente con una copia sin Java o sin PySpark (el entorno de esa copia no se pudo inspeccionar: `NOT_VERIFIED`).
+**Explanation of "61 passed and one skipped":** `tests/test_spark_equivalence.py` (6 tests) has a
+`pytest.importorskip("pyspark")` and a module-level `pytest.skip(..., allow_module_level=True)` at the start of the module.
+If PySpark **or** Java is missing, **the whole module** is skipped and pytest counts it as **one** skip, not six. 67 - 6 = 61
+passed + 1 skipped. It is exactly the "61 + 1 skipped" pattern; it is consistent with a copy without Java or without PySpark (the environment of that copy could not be inspected: `NOT_VERIFIED`).
 
-Reproducción controlada: se ocultó Java del `PATH` (solo `python3` y `git`) y se ejecutó la suite del árbol de trabajo actual
-(ampliada con pruebas nuevas, ver abajo). Resultado: `SKIPPED [1] tests/test_spark_equivalence.py:15: Java no disponible`, 61 pruebas superadas más las
-del módulo omitido (`101 passed, 1 skipped` en la suite actual ampliada; el módulo de Spark se cuenta como una omisión). Conclusión: **no hay pruebas fallidas ni
-eliminadas**; la diferencia es la prueba de equivalencia pandas/Spark, que sólo corre con Java. Ese es el test que
-respalda la afirmación "pandas y Spark dan lo mismo", por lo que la copia sin Java **no la verifica**; aquí sí se ejecutó
-(6 superadas) y además se contrastó contra las tablas reales del workspace (ver `02_MODEL_VALIDATION.md`, B1).
+Controlled reproduction: Java was hidden from `PATH` (only `python3` and `git`) and the suite of the current working tree
+(extended with new tests, see below) was run. Result: `SKIPPED [1] tests/test_spark_equivalence.py:15: Java not available`, 61 tests passed plus
+those of the skipped module (`101 passed, 1 skipped` in the current extended suite; the Spark module counts as one skip). Conclusion: **there are no failed or
+removed tests**; the difference is the pandas/Spark equivalence test, which only runs with Java. That is the test that
+backs the statement "pandas and Spark give the same", so the copy without Java **does not verify it**; here it did run
+(6 passed) and it was also checked against the real workspace tables (see `02_MODEL_VALIDATION.md`, B1).
 
-Estado final de la suite tras los cambios de la fase A, B y D (ejecución completa en este entorno, con Java):
+Final state of the suite after the changes of phases A, B and D (full run in this environment, with Java):
 
 ```
 python3 -m pytest -q          ->  107 passed, 187 warnings in 74.66 s
 ```
 
-(La cifra incluye las pruebas nuevas de B4/B5 y las ampliaciones de la fase RAG, fase C.)
-Con Java oculto la suite da `101 passed, 1 skipped`.
+(The figure includes the new B4/B5 tests and the extensions of the RAG phase, phase C.)
+With Java hidden the suite gives `101 passed, 1 skipped`.
 
-Salvedades:
-- Las pruebas de la app (`test_app_api.py`, `test_negative_api.py`) usan `TestClient` con consultas SQL simuladas; no tocan
-  Databricks. Verifican el contrato de la API, no la conexión real.
-- `tests/test_spark_equivalence.py` usa 6 motores, no los 100. La comparación de los 100 motores se hace por separado con las
-  tablas del workspace (B1).
+Caveats:
+- The app tests (`test_app_api.py`, `test_negative_api.py`) use `TestClient` with simulated SQL queries; they do not touch
+  Databricks. They verify the API contract, not the real connection.
+- `tests/test_spark_equivalence.py` uses 6 engines, not the 100. The comparison of the 100 engines is done separately with the
+  workspace tables (B1).
 
-## 5. Estado del workspace al empezar
+## 5. Workspace state at the start
 
-- Alias `champion` en v1. `gold_predicciones` con 100 filas, `model_version = 1`, `scored_at = 2026-10-13T20:26:50Z`.
-- `gold_model_metrics`: 3 filas (baseline media, baseline Ridge, HGB v1), una sola ejecución de entrenamiento (`trained_at 2026-10-13T18:46Z`).
-- La tabla `gold_predicciones` desplegada conserva todavía la columna `accion` con el texto antiguo ("Schedule shutdown and replacement..."),
-  que la app recalcula; se corregirá al volver a ejecutar `03_score` tras el despliegue del texto nuevo (ver B5).
-- Permisos Unity Catalog del service principal de la app (`d19896a0-...`): `USE CATALOG`, `USE SCHEMA`, `SELECT` sobre el schema. Nada más.
+- `champion` alias on v1. `gold_predicciones` with 100 rows, `model_version = 1`, `scored_at = 2026-10-13T20:26:50Z`.
+- `gold_model_metrics`: 3 rows (mean baseline, Ridge baseline, HGB v1), a single training run (`trained_at 2026-10-13T18:46Z`).
+- The deployed `gold_predicciones` table still keeps the `accion` column with the old text ("Schedule shutdown and replacement..."),
+  which the app recomputes; it will be corrected when `03_score` runs again after deploying the new text (see B5).
+- Unity Catalog permissions of the app service principal (`d19896a0-...`): `USE CATALOG`, `USE SCHEMA`, `SELECT` on the schema. Nothing else.
 
-## 6. Revalidación del 15 de octubre de 2026 (sesión final)
+## 6. Revalidation of 15 October 2026 (final session)
 
-Evidencias: `audit/evidence/revalidation_2026-10-15/A_*.log` y `audit/evidence/A_worklog.md`.
+Evidence: `audit/evidence/revalidation_2026-10-15/A_*.log` and `audit/evidence/A_worklog.md`.
 
-### 6.1 Copia del PC frente a GitHub `main`
+### 6.1 PC copy versus GitHub `main`
 
-La copia de trabajo del usuario (`C:\Users\...\databricks-mantenimiento-predictivo`, fuente de verdad) se comparó por md5 con el
-clon de GitHub (`main` = `cd81b7a`). Resultado: **12 ficheros de código difieren de `main`** y **13 ficheros o carpetas son nuevos**
-(sin contar `audit/` y `portfolio/`). La copia del PC coincide fichero a fichero con el árbol de trabajo auditado en el contenedor
-salvo `.gitignore` (añade `herramientas/`, `logs/`, `*.bat`; en esta sesión se añaden `cola/`, `cola2/`, `consultas/`) y
-`databricks.yml` (idéntico salvo comentarios; mismo `warehouse_id`, `model_version 1`, `serverless_env_version 6`).
+The user's working copy (`C:\Users\...\databricks-mantenimiento-predictivo`, source of truth) was compared by md5 with the
+GitHub clone (`main` = `cd81b7a`). Result: **12 code files differ from `main`** and **13 files or folders are new**
+(not counting `audit/` and `portfolio/`). The PC copy matches file by file the working tree audited in the container
+except `.gitignore` (adds `herramientas/`, `logs/`, `*.bat`; in this session `cola/`, `cola2/`, `consultas/` are added) and
+`databricks.yml` (identical except comments; same `warehouse_id`, `model_version 1`, `serverless_env_version 6`).
 
-| Fichero | Estado frente a `main` | Origen del cambio |
+| File | State versus `main` | Origin of the change |
 |---|---|---|
-| `.github/workflows/deploy.yml` | modificado (+26/-x) | D-01: secretos solo en los jobs que despliegan; `pytest -rs` |
-| `app/app.py` | modificado (+279) | B3/B4/D16: 503 explícito, RUL nula, timeout SQL, `/api/health`, umbrales, trazabilidad |
-| `app/rag.py`, `src/07_eval_assistant.py`, `tests/test_rag.py`, `resources/jobs.yml` | modificados | Fase C |
-| `app/static/index.html` | modificado (+192) | Fase E: estados de carga y error, etiquetas predicción/dato real/indicador, filtros, chips de servicios |
-| `src/02_train.py`, `src/lib/modeling.py` | modificados (esta sesión) | B2.4: promoción del champion por validación por motor solo con train |
-| `src/03_score.py`, `src/lib/cmapss.py` | modificados | B4/B5: `validate_feature_frame`, texto orientativo |
-| `tests/test_app_api.py`, `tests/test_cmapss.py` | modificados | pruebas de lo anterior |
-| Nuevos | `tests/test_negative_api.py` (25), `tests/test_phase_e_api.py` (11), `tests/test_modeling_selection.py` (4), `eval/MANUAL_REVIEW.md`, `eval/rag_eval_set_holdout.json`, 7 ficheros `eval/resultados/results_*.json` | B4, E, B2.4, fase C |
+| `.github/workflows/deploy.yml` | modified (+26/-x) | D-01: secrets only in the jobs that deploy; `pytest -rs` |
+| `app/app.py` | modified (+279) | B3/B4/D16: explicit 503, null RUL, SQL timeout, `/api/health`, thresholds, traceability |
+| `app/rag.py`, `src/07_eval_assistant.py`, `tests/test_rag.py`, `resources/jobs.yml` | modified | Phase C |
+| `app/static/index.html` | modified (+192) | Phase E: loading and error states, prediction/actual/indicator labels, filters, service chips |
+| `src/02_train.py`, `src/lib/modeling.py` | modified (this session) | B2.4: champion promotion by train-only validation by engine |
+| `src/03_score.py`, `src/lib/cmapss.py` | modified | B4/B5: `validate_feature_frame`, advisory text |
+| `tests/test_app_api.py`, `tests/test_cmapss.py` | modified | tests of the above |
+| New | `tests/test_negative_api.py` (25), `tests/test_phase_e_api.py` (11), `tests/test_modeling_selection.py` (4), `eval/MANUAL_REVIEW.md`, `eval/rag_eval_set_holdout.json`, 7 files `eval/resultados/results_*.json` | B4, E, B2.4, phase C |
 
-Ninguno de estos cambios está en GitHub: el repositorio público sigue en `cd81b7a`. **La publicación requiere un commit y push que
-sólo el usuario debe hacer** tras revisar el diff (los `.bat`, `cola/`, `logs/`, `consultas/`, `herramientas/` quedan excluidos por `.gitignore`).
+None of these changes is on GitHub: the public repository is still at `cd81b7a`. **Publication requires a commit and push that
+only the user must do** after reviewing the diff (the `.bat`, `cola/`, `logs/`, `consultas/`, `herramientas/` are excluded by `.gitignore`).
 
-### 6.2 Suite de pruebas (árbol del PC, contenedor con Java 21)
+### 6.2 Test suite (PC tree, container with Java 21)
 
 ```
-python3 -m pytest -q -rs   ->  138 passed, 0 skipped, 187 warnings in 78.74 s   (antes de añadir tests/test_modeling_selection.py)
-python3 -m pytest -q -rs   ->  142 passed, 0 skipped, 187 warnings in 49.59 s   (estado final del árbol del PC)
+python3 -m pytest -q -rs   ->  138 passed, 0 skipped, 187 warnings in 78.74 s   (before adding tests/test_modeling_selection.py)
+python3 -m pytest -q -rs   ->  142 passed, 0 skipped, 187 warnings in 49.59 s   (final state of the PC tree)
 ```
 
-Recuento por archivo: `test_app_api` 11, `test_chunking` 7, `test_cmapss` 17, `test_modeling_selection` 4, `test_negative_api` 25,
-`test_phase_e_api` 11, `test_rag` 58, `test_retrieval` 3, `test_spark_equivalence` 6. En `main` (`cd81b7a`) la colección es de 67
-(10+7+15+26+3+6), que confirma la explicación del apartado 4: 61 + 1 omitida = 67 sin el módulo de Spark. Las 187 advertencias son
-`FutureWarning`/`Pandas4Warning` de PySpark 4.2 con pandas 3.0; no afectan al resultado.
+Count per file: `test_app_api` 11, `test_chunking` 7, `test_cmapss` 17, `test_modeling_selection` 4, `test_negative_api` 25,
+`test_phase_e_api` 11, `test_rag` 58, `test_retrieval` 3, `test_spark_equivalence` 6. On `main` (`cd81b7a`) the collection is 67
+(10+7+15+26+3+6), which confirms the explanation of section 4: 61 + 1 skipped = 67 without the Spark module. The 187 warnings are
+`FutureWarning`/`Pandas4Warning` of PySpark 4.2 with pandas 3.0; they do not affect the result.
 
-### 6.3 Estado real del workspace el 15 de octubre (CLI, cola `A_`)
+### 6.3 Real state of the workspace on 15 October (CLI, queue `A_`)
 
-| Recurso | Estado a las 22:1x UTC | Acción | Estado posterior |
+| Resource | State at 22:1x UTC | Action | State afterwards |
 |---|---|---|---|
-| App `mantenimiento-predictivo-dev` | `STOPPED`: "App compute was stopped due to workspace or account status" (parada automática de Free Edition tras ~24 h) | `apps start` (`A_12`) | `RUNNING`, despliegue `SUCCEEDED` a las 22:16:04Z (`A_32`) |
-| SQL warehouse `<warehouse-id>` | `STOPPED`; `warehouses start` y las consultas SQL fallaban con "Cannot start warehouse ... Serverless Compute ... disabled in global warehouse config" (`A_20`..`A_24`, `A_34`) | Ninguna: la app lo arrancó al servir `/api/overview` | `RUNNING` a las 22:22 (`A_40`); todas las consultas posteriores correctas (`A_41`..`A_46`). El error inicial fue transitorio, pero muestra que la disponibilidad en Free Edition no está garantizada |
-| Endpoint `dev_jjrm199867_rul-model-dev` | **No existe** (`A_13`, `A_25`, `A_29`, `A_36`; `A_30/A_33` solo listan endpoints Foundation Model). El 14 de octubre a las 00:5x respondía (B3). Causa `NOT_VERIFIED`: no hay registro de auditoría accesible; lo más probable es una limpieza de Free Edition de endpoints con scale-to-zero inactivos, o un borrado manual | `bundle deploy -t dev` (`A_52`) recrea el recurso declarado en `resources/serving.yml` | ver `02_MODEL_VALIDATION.md`, B3 (revalidación) |
-| Jobs | 3 jobs listados; últimas dos ejecuciones de `mantenimiento_end_to_end_dev` `SUCCESS` (`A_38`) | | |
-| Pipeline | `IDLE`, última actualización `COMPLETED` 2026-10-13T18:43Z (`A_11`) | | |
-| Modelo `rul_model` | v1 `READY`, `run_id 4688ee42...`, creado 2026-10-13T18:46Z (`A_06`, `A_08`). `registered-models get-by-alias` no existe en la CLI v1.20.0; el alias se verificó por API en la sesión anterior (`workspace/uc_model_versions.json`) | | |
-| Tablas | `bronze_cmapss_lecturas` 33.727, `silver_lecturas` 20.631 train + 13.096 test (100 + 100 motores), `silver_rul_test` 100, `gold_features` 33.727, `gold_test_verdad` 100, `gold_predicciones` 100, `gold_model_metrics` 3 (`A_41`) | | |
-| Permisos de la app | `CAN_MANAGE` propietario y `admins` (`A_10`); grants UC del SP: `USE SCHEMA`, `SELECT` sobre el schema (`A_46`) | | |
+| App `mantenimiento-predictivo-dev` | `STOPPED`: "App compute was stopped due to workspace or account status" (automatic stop of Free Edition after ~24 h) | `apps start` (`A_12`) | `RUNNING`, deployment `SUCCEEDED` at 22:16:04Z (`A_32`) |
+| SQL warehouse `<warehouse-id>` | `STOPPED`; `warehouses start` and the SQL queries failed with "Cannot start warehouse ... Serverless Compute ... disabled in global warehouse config" (`A_20`..`A_24`, `A_34`) | None: the app started it when serving `/api/overview` | `RUNNING` at 22:22 (`A_40`); every later query correct (`A_41`..`A_46`). The initial error was transient, but it shows that availability in Free Edition is not guaranteed |
+| Endpoint `dev_jjrm199867_rul-model-dev` | **Does not exist** (`A_13`, `A_25`, `A_29`, `A_36`; `A_30/A_33` only list Foundation Model endpoints). On 14 October at 00:5x it answered (B3). Cause `NOT_VERIFIED`: there is no accessible audit record; most likely a Free Edition clean-up of inactive scale-to-zero endpoints, or a manual deletion | `bundle deploy -t dev` (`A_52`) recreates the resource declared in `resources/serving.yml` | see `02_MODEL_VALIDATION.md`, B3 (revalidation) |
+| Jobs | 3 jobs listed; last two runs of `mantenimiento_end_to_end_dev` `SUCCESS` (`A_38`) | | |
+| Pipeline | `IDLE`, last update `COMPLETED` 2026-10-13T18:43Z (`A_11`) | | |
+| Model `rul_model` | v1 `READY`, `run_id 4688ee42...`, created 2026-10-13T18:46Z (`A_06`, `A_08`). `registered-models get-by-alias` does not exist in CLI v1.20.0; the alias was verified by API in the previous session (`workspace/uc_model_versions.json`) | | |
+| Tables | `bronze_cmapss_lecturas` 33,727, `silver_lecturas` 20,631 train + 13,096 test (100 + 100 engines), `silver_rul_test` 100, `gold_features` 33,727, `gold_test_verdad` 100, `gold_predicciones` 100, `gold_model_metrics` 3 (`A_41`) | | |
+| App permissions | `CAN_MANAGE` owner and `admins` (`A_10`); UC grants of the SP: `USE SCHEMA`, `SELECT` on the schema (`A_46`) | | |
 
-Conclusión de la línea base: el pipeline, las tablas, el modelo y la app siguen siendo los auditados; el único recurso que había
-desaparecido es el endpoint de serving, que el bundle vuelve a crear. La disponibilidad continua **no** forma parte de lo que se certifica.
+Baseline conclusion: the pipeline, the tables, the model and the app are still the audited ones; the only resource that had
+disappeared is the serving endpoint, which the bundle creates again. Continuous availability is **not** part of what is certified.

@@ -1,97 +1,99 @@
-# 04. Seguridad y calidad (Fase D)
+# 04. Security and quality (Phase D)
 
-Alcance: árbol Git, historial, configuración de la app y del workspace, dependencias, linters y flujo de CI. La revisión del
-tratamiento de prompt injection en `app/rag.py` es de solo lectura (el código RAG se audita en `03_RAG_VALIDATION.md`).
-No se han impreso ni almacenado secretos; los identificadores del service principal aparecen truncados.
+Scope: Git tree, history, app and workspace configuration, dependencies, linters and CI flow. The review of the
+prompt injection handling in `app/rag.py` is read-only (the RAG code is audited in `03_RAG_VALIDATION.md`).
+No secrets were printed or stored; the service principal identifiers appear truncated.
 
-Resumen: **sin secretos en el árbol ni en el historial; 0 hallazgos críticos.** Revalidación del 15 de octubre de 2026 en el apartado 5:
-aparece una advertencia nueva en una dependencia transitiva (`oauthlib`, no explotable en esta app) y se cierran D-01, D-03 y D-09.
-Hallazgos de severidad media y baja en el apartado 4.
+> Names in this document are those of the deployment audited (Spanish schema `mantenimiento`, tables such as `gold_predicciones`). The current code uses English names; the mapping is in the README, section "Deployed names".
 
-## 1. Evidencia por control
+Summary: **no secrets in the tree or in the history; 0 critical findings.** Revalidation of 15 October 2026 in section 5:
+a new warning appears in a transitive dependency (`oauthlib`, not exploitable in this app) and D-01, D-03 and D-09 are closed.
+Medium and low severity findings in section 4.
 
-| # | Control | Comando / método | Resultado | Estado |
+## 1. Evidence per control
+
+| # | Control | Command / method | Result | Status |
 |---|---|---|---|---|
-| D1 | Secretos en el árbol Git | `grep -rnEi "(dapi[0-9a-f]{20,}\|client_secret\|secret\|token\|password\|api[_-]?key)"` sobre el árbol rastreado (excluidos `audit/`, datos y `.git`) | Solo coincidencias de la palabra "tokens" (troceo de texto) y de `max_tokens`; ningún valor de credencial. `git ls-files` no contiene `.env`, `.pem` ni `.key` | PASS |
-| D2 | Secretos en el historial | `git log --all -p` y `grep -E` con patrones `dapi[0-9a-f]{20,}`, `client_secret = <valor>`, `password = "..."`, `BEGIN (RSA\|PRIVATE)`, `ghp_`, `AKIA`, JWT `eyJ...`, `Bearer <token>`, `xox[bp]-` | 0 coincidencias en los 6 commits. Autores: 2 (sin correos de terceros) | PASS |
-| D3 | Variables de entorno de la app | Lectura de `app/app.yaml` | Solo `DATABRICKS_WAREHOUSE_ID` (valueFrom del recurso), `CATALOG`, `SCHEMA`, `AI_SEARCH_INDEX`, `LLM_ENDPOINT`, `RAG_K`. Ninguna credencial; la identidad llega por el entorno de Databricks Apps (`Config()` del SDK). Añadida `SQL_TIMEOUT_SECONDS` (opcional, por defecto 90) en el código | PASS |
-| D4 | Autenticación de la app | Desde la sesión del navegador integrado, `fetch` con `credentials: "omit"` a la URL de la app | `/api/engines` 401, `/api/overview` 401. `/healthz` responde 200 sin credenciales (devuelve solo `{"status":"ok"}`) | PASS (con nota D-10) |
-| D5 | Autorización en la app | Lectura de `app/app.py` | La app no implementa roles propios: todo usuario autenticado en el workspace con permiso `CAN_USE` ve toda la flota y puede usar el asistente (consume LLM). No hay datos personales ni escrituras. | PASS para demo; ver D-04 |
-| D6 | Permisos de la app | `apps get-permissions` / API `permissions/apps` | `CAN_MANAGE` solo para el propietario y el grupo `admins` (heredado). Sin acceso público ni a todo el workspace | PASS |
-| D7 | Service principal | `apps get`, `SHOW GRANTS` | Un único recurso: SQL warehouse `CAN_USE`. `effective_user_api_scopes`: `iam.access-control:read`, `iam.current-user:read` | PASS |
-| D8 | Grants de Unity Catalog | `SHOW GRANTS ON CATALOG workspace`, `ON SCHEMA workspace.mantenimiento`, `ON TABLE ...gold_predicciones`, `ON FUNCTION ...rul_model` | Principal `d19896a0-...` (app): `USE CATALOG`, `USE SCHEMA`, `SELECT` sobre el schema. Sin `EXECUTE` sobre el modelo (la app no llama al modelo), sin `MODIFY`, sin `CREATE`. Sin grants directos sobre el modelo. Mínimo privilegio cumplido | PASS |
-| D9 | Permisos del endpoint de serving | API `permissions/serving-endpoints/<id>` | `CAN_MANAGE` solo propietario y `admins`. El service principal de la app **no** tiene `CAN_QUERY` (coherente: no lo usa) | PASS |
-| D10 | Endpoint sin validación de entrada | 6 invocaciones directas (ver `02_MODEL_VALIDATION.md`, B3/B4) | El endpoint acepta `null` en cualquier variable y también una fila entera de nulos (devuelve 120,66), valores absurdos (-1e9) y columnas extra. Solo rechaza columnas ausentes, cadenas no numéricas y lote vacío | FAIL (media, ver D-02) |
-| D11 | Dependencias de la app | `pip-audit -r app/requirements.txt --no-deps` (pip-audit 2.10.1, base OSV/PyPI) | "No known vulnerabilities found" (fastapi 0.143.0, uvicorn 0.53.0, databricks-sql-connector 4.6.0, databricks-sdk 0.152.0). Evidencia: `evidence/pip_audit_app.txt` | PASS |
-| D12 | Dependencias de desarrollo | `pip-audit` sobre las versiones resueltas del entorno (`evidence/requirements-dev.resolved.txt`) | "No known vulnerabilities found". `requirements-dev.txt` declara rangos (`>=`), así que el resultado depende del entorno | PASS (nota D-07) |
-| D13 | Linter | `ruff 0.16.8 check app src tests scripts --select E9,F,B --ignore F821` | 13 avisos: 6 importaciones sin usar, 7 `zip()` sin `strict=`. Sin errores de sintaxis ni nombres indefinidos. Los 114 `F821` son `dbutils`, `spark` y `display` de los notebooks de Databricks (esperados). Evidencia: `evidence/ruff.txt` | PASS (calidad menor) |
-| D14 | Análisis estático de seguridad | `bandit 1.9.4 -r app src scripts` | 0 hallazgos con confianza alta de riesgo real. 9 `B608` (SQL por cadenas, confianza baja): son falsos positivos, los nombres de catálogo/schema se validan con regex al arrancar, `q_count` valida el nombre de tabla y los valores van como parámetros (`:u`, `:v`). 1 `B324` SHA1 en `chunking.py` para identificadores de fragmento (uso no criptográfico). 1 `B110` (`except: pass`) en `rag.py:419`, reintento acotado. 5 `B101` `assert` en notebooks. Evidencia: `evidence/bandit.txt` | PASS |
-| D15 | Inyección SQL | Revisión de `app/app.py` y prueba de rango | Parámetros enlazados para `unit` y `version`; `unit` validado como entero 1 a 10.000; tablas limitadas por regex | PASS |
-| D16 | Manejo de errores | Código + 25 pruebas negativas (`tests/test_negative_api.py`) | Antes: cualquier fallo SQL se convertía en `ready:false` con 200 (indistinguible de "aún no hay datos"). Ahora: 503 `data_unavailable` explícito; tabla ausente = estado vacío explícito. Las respuestas de error no incluyen trazas ni cadenas del servidor | PASS (tras corrección) |
-| D17 | Logs | Lectura de `log.*` en `app.py` | Se registran estado, número de afirmaciones y `fuente:página`. No se registra la pregunta del usuario, ni tokens, ni filas de datos. Se cambió el log de fallo SQL para registrar solo el tipo de excepción (antes 300 caracteres del mensaje, que podría incluir fragmentos de la consulta). Quedan dos `log.warning` con 200/300 caracteres del mensaje del LLM/AI Search | PASS (nota D-08) |
-| D18 | Prompt injection (revisión de `rag.py`, lectura) | Lectura de `V2_SYSTEM_PROMPT` y filtros | Mitigaciones presentes: el prompt declara que los pasajes son datos y que no se siguen sus instrucciones; un filtro por expresiones regulares elimina frases con apariencia de instrucción (EN/ES/FR) antes de pasar el contexto; la salida es JSON estructurado con verificación de afirmaciones y retirada de las no respaldadas. Limitación: las expresiones regulares no cubren todas las variantes y el LLM actúa como verificador de sí mismo; se evalúa en `03_RAG_VALIDATION.md` | PASS parcial (la eficacia se mide en la fase C) |
-| D19 | XSS en la interfaz | `grep` de `innerHTML`, `insertAdjacentHTML`, `eval`, `document.write` en `index.html` | 0 usos. El DOM se construye con `createElement`/`textContent`, así que la salida del LLM y los datos se muestran como texto | PASS |
-| D20 | Exposición pública de información técnica | `fetch` sin credenciales (D4) y revisión del contenido | Datos y asistente no son accesibles sin autenticación. La página carga CSS de Google Fonts (petición a un tercero, sin datos del usuario). Sin cabeceras CSP/`X-Frame-Options` propias | PASS con nota (D-06) |
-| D21 | Acceso externo sin autenticación desde fuera del navegador | `curl` desde el entorno de auditoría y desde el PC | Bloqueado por el proxy de salida (403 `blocked-by-allowlist`): no concluyente. La comprobación válida es la de D4 | NOT_VERIFIED por curl; cubierto por D4 |
-| D22 | GitHub Actions (`deploy.yml`) | Lectura | Ver apartado 3 | PASS con recomendaciones |
+| D1 | Secrets in the Git tree | `grep -rnEi "(dapi[0-9a-f]{20,}\|client_secret\|secret\|token\|password\|api[_-]?key)"` over the tracked tree (excluding `audit/`, data and `.git`) | Only matches of the word "tokens" (text chunking) and of `max_tokens`; no credential value. `git ls-files` contains no `.env`, `.pem` or `.key` | PASS |
+| D2 | Secrets in the history | `git log --all -p` and `grep -E` with patterns `dapi[0-9a-f]{20,}`, `client_secret = <value>`, `password = "..."`, `BEGIN (RSA\|PRIVATE)`, `ghp_`, `AKIA`, JWT `eyJ...`, `Bearer <token>`, `xox[bp]-` | 0 matches in the 6 commits. Authors: 2 (no third-party emails) | PASS |
+| D3 | App environment variables | Reading of `app/app.yaml` | Only `DATABRICKS_WAREHOUSE_ID` (valueFrom of the resource), `CATALOG`, `SCHEMA`, `AI_SEARCH_INDEX`, `LLM_ENDPOINT`, `RAG_K`. No credential; the identity comes from the Databricks Apps environment (SDK `Config()`). `SQL_TIMEOUT_SECONDS` added in the code (optional, default 90) | PASS |
+| D4 | App authentication | From the built-in browser session, `fetch` with `credentials: "omit"` to the app URL | `/api/engines` 401, `/api/overview` 401. `/healthz` answers 200 without credentials (returns only `{"status":"ok"}`) | PASS (with note D-10) |
+| D5 | Authorisation in the app | Reading of `app/app.py` | The app implements no roles of its own: every user authenticated in the workspace with `CAN_USE` sees the whole fleet and can use the assistant (consumes LLM). There is no personal data and no writes. | PASS for a demo; see D-04 |
+| D6 | App permissions | `apps get-permissions` / API `permissions/apps` | `CAN_MANAGE` only for the owner and the `admins` group (inherited). No public access nor whole-workspace access | PASS |
+| D7 | Service principal | `apps get`, `SHOW GRANTS` | A single resource: SQL warehouse `CAN_USE`. `effective_user_api_scopes`: `iam.access-control:read`, `iam.current-user:read` | PASS |
+| D8 | Unity Catalog grants | `SHOW GRANTS ON CATALOG workspace`, `ON SCHEMA workspace.mantenimiento`, `ON TABLE ...gold_predicciones`, `ON FUNCTION ...rul_model` | Principal `d19896a0-...` (app): `USE CATALOG`, `USE SCHEMA`, `SELECT` on the schema. No `EXECUTE` on the model (the app does not call the model), no `MODIFY`, no `CREATE`. No direct grants on the model. Least privilege met | PASS |
+| D9 | Serving endpoint permissions | API `permissions/serving-endpoints/<id>` | `CAN_MANAGE` only owner and `admins`. The app service principal does **not** have `CAN_QUERY` (consistent: it does not use it) | PASS |
+| D10 | Endpoint without input validation | 6 direct invocations (see `02_MODEL_VALIDATION.md`, B3/B4) | The endpoint accepts `null` in any feature and also a whole row of nulls (returns 120.66), absurd values (-1e9) and extra columns. It only rejects missing columns, non-numeric strings and an empty batch | FAIL (medium, see D-02) |
+| D11 | App dependencies | `pip-audit -r app/requirements.txt --no-deps` (pip-audit 2.10.1, OSV/PyPI database) | "No known vulnerabilities found" (fastapi 0.143.0, uvicorn 0.53.0, databricks-sql-connector 4.6.0, databricks-sdk 0.152.0). Evidence: `evidence/pip_audit_app.txt` | PASS |
+| D12 | Development dependencies | `pip-audit` over the resolved versions of the environment (`evidence/requirements-dev.resolved.txt`) | "No known vulnerabilities found". `requirements-dev.txt` declares ranges (`>=`), so the result depends on the environment | PASS (note D-07) |
+| D13 | Linter | `ruff 0.16.8 check app src tests scripts --select E9,F,B --ignore F821` | 13 warnings: 6 unused imports, 7 `zip()` without `strict=`. No syntax errors or undefined names. The 114 `F821` are `dbutils`, `spark` and `display` of the Databricks notebooks (expected). Evidence: `evidence/ruff.txt` | PASS (minor quality) |
+| D14 | Static security analysis | `bandit 1.9.4 -r app src scripts` | 0 high-confidence findings of real risk. 9 `B608` (SQL by strings, low confidence): false positives, catalog/schema names are validated with a regex at start-up, `q_count` validates the table name and values go as parameters (`:u`, `:v`). 1 `B324` SHA1 in `chunking.py` for chunk identifiers (non-cryptographic use). 1 `B110` (`except: pass`) in `rag.py:419`, bounded retry. 5 `B101` `assert` in notebooks. Evidence: `evidence/bandit.txt` | PASS |
+| D15 | SQL injection | Review of `app/app.py` and range test | Bound parameters for `unit` and `version`; `unit` validated as an integer 1 to 10,000; tables limited by regex | PASS |
+| D16 | Error handling | Code + 25 negative tests (`tests/test_negative_api.py`) | Before: any SQL failure became `ready:false` with 200 (indistinguishable from "no data yet"). Now: explicit 503 `data_unavailable`; missing table = explicit empty state. Error responses include no traces or server strings | PASS (after correction) |
+| D17 | Logs | Reading of `log.*` in `app.py` | Status, number of claims and `source:page` are logged. The user question, tokens and data rows are not logged. The SQL failure log was changed to record only the exception type (before, 300 characters of the message, which could include query fragments). Two `log.warning` remain with 200/300 characters of the LLM/AI Search message | PASS (note D-08) |
+| D18 | Prompt injection (review of `rag.py`, reading) | Reading of `V2_SYSTEM_PROMPT` and filters | Mitigations present: the prompt declares that passages are data and that their instructions are not followed; a regular-expression filter removes instruction-like sentences (EN/ES/FR) before passing the context; the output is structured JSON with claim verification and removal of unsupported ones. Limitation: the regular expressions do not cover every variant and the LLM acts as its own verifier; evaluated in `03_RAG_VALIDATION.md` | Partial PASS (effectiveness measured in phase C) |
+| D19 | XSS in the interface | `grep` of `innerHTML`, `insertAdjacentHTML`, `eval`, `document.write` in `index.html` | 0 uses. The DOM is built with `createElement`/`textContent`, so the LLM output and the data are shown as text | PASS |
+| D20 | Public exposure of technical information | `fetch` without credentials (D4) and content review | Data and assistant are not reachable without authentication. The page loads CSS from Google Fonts (request to a third party, without user data). No CSP/`X-Frame-Options` headers of its own | PASS with note (D-06) |
+| D21 | External access without authentication from outside the browser | `curl` from the audit environment and from the PC | Blocked by the egress proxy (403 `blocked-by-allowlist`): inconclusive. The valid check is D4 | NOT_VERIFIED by curl; covered by D4 |
+| D22 | GitHub Actions (`deploy.yml`) | Reading | See section 3 | PASS with recommendations |
 
-## 2. Cambios de código derivados de esta fase
+## 2. Code changes derived from this phase
 
-- `app/app.py`: fallo de datos distinto de "tabla ausente" devuelve 503 explícito (D16), `_socket_timeout` en el conector SQL (90 s,
-  configurable con `SQL_TIMEOUT_SECONDS`), log sin fragmentos de mensaje SQL (D17), validación de pregunta en blanco.
-- Detalle y pruebas en `02_MODEL_VALIDATION.md`, B4.
+- `app/app.py`: a data failure other than "missing table" returns an explicit 503 (D16), `_socket_timeout` in the SQL connector (90 s,
+  configurable with `SQL_TIMEOUT_SECONDS`), log without SQL message fragments (D17), blank question validation.
+- Details and tests in `02_MODEL_VALIDATION.md`, B4.
 
-## 3. Revisión de `.github/workflows/deploy.yml`
+## 3. Review of `.github/workflows/deploy.yml`
 
-Aspectos correctos: `permissions: contents: read`; autenticación OAuth M2M con un service principal (no tokens personales);
-secretos solo a través de `secrets.*`, no hay valores en el repositorio; la CLI se fija a una versión (`setup-cli@v0.280.0`);
-`concurrency` evita despliegues simultáneos; `deploy-dev` solo en `push` a `main` y depende de `test`.
+Correct aspects: `permissions: contents: read`; OAuth M2M authentication with a service principal (no personal tokens);
+secrets only through `secrets.*`, no values in the repository; the CLI is pinned to a version (`setup-cli@v0.280.0`);
+`concurrency` avoids simultaneous deployments; `deploy-dev` only on `push` to `main` and depends on `test`.
 
-Riesgos y recomendaciones:
-- **Media.** `DATABRICKS_CLIENT_SECRET` y el resto se exponen como variables de entorno a nivel de workflow, es decir, también
-  al job `test`, que ejecuta `pip install -r requirements-dev.txt` y `pytest` (código y dependencias del PR). Un PR del mismo repositorio
-  que modifique las pruebas podría leer el secreto. Mover `env:` a los jobs `validate` y `deploy-dev` y proteger el entorno con aprobación.
-- **Baja.** Las acciones se referencian por etiqueta (`@v4`, `@v5`, `@v0.280.0`), no por SHA de commit. Fijar por SHA.
-- **Baja.** El comentario del propio workflow indica "verificar en docs la etiqueta vigente de databricks/setup-cli": la existencia de
-  `v0.280.0` no se ha podido comprobar (sin acceso a GitHub). `NOT_VERIFIED`. La CLI local usada en la auditoría es la v1.20.0; conviene alinear ambas.
-- **Baja.** El CI instala `pyspark` pero el runner `ubuntu-latest` incluye Java, por lo que el test de equivalencia sí corre en CI (a diferencia
-  de la copia local del usuario). No hay verificación de que lo haga: añadir `-rs` en pytest para que las omisiones sean visibles.
-- **Baja.** El flujo despliega a `dev` con la identidad del service principal; los recursos creados se prefijan con `[dev <usuario>]`, no con la identidad del SP.
-  Revisar antes de usarlo en producción.
-- No se ha ejecutado el workflow (no se hace push): `NOT_VERIFIED`.
+Risks and recommendations:
+- **Medium.** `DATABRICKS_CLIENT_SECRET` and the rest are exposed as workflow-level environment variables, that is, also
+  to the `test` job, which runs `pip install -r requirements-dev.txt` and `pytest` (code and dependencies of the PR). A PR from the same repository
+  that modifies the tests could read the secret. Move `env:` to the `validate` and `deploy-dev` jobs and protect the environment with approval.
+- **Low.** Actions are referenced by tag (`@v4`, `@v5`, `@v0.280.0`), not by commit SHA. Pin by SHA.
+- **Low.** The workflow's own comment says to check the current tag of databricks/setup-cli: the existence of
+  `v0.280.0` could not be checked (no GitHub access). `NOT_VERIFIED`. The local CLI used in the audit is v1.20.0; both should be aligned.
+- **Low.** The CI installs `pyspark` but the `ubuntu-latest` runner includes Java, so the equivalence test does run in CI (unlike
+  the user's local copy). There is no check that it does: add `-rs` to pytest so that skips are visible.
+- **Low.** The flow deploys to `dev` with the service principal identity; the created resources are prefixed with `[dev <user>]`, not with the SP identity.
+  Review before using it in production.
+- The workflow was not executed (no push): `NOT_VERIFIED`.
 
-## 4. Hallazgos abiertos
+## 4. Open findings
 
-| ID | Severidad | Hallazgo | Recomendación |
+| ID | Severity | Finding | Recommendation |
 |---|---|---|---|
-| D-01 | Media (**corregido en el árbol**) | `deploy.yml` exponía secretos de despliegue al job de pruebas (apartado 3) | Hecho: `env` solo en `validate` y `deploy-dev`; `pytest -rs`. Pendiente de push y de una ejecución real del workflow (`NOT_VERIFIED`) |
-| D-02 | Media | El endpoint `dev_jjrm199867_rul-model-dev` no valida entradas: una fila de nulos devuelve una RUL (120,66) y un `null` en variables importantes cambia el resultado (3,12 a 67,24) sin error | Envolver el modelo en una función `pyfunc` que rechace nulos, infinitos y fuera de rango, o validar siempre antes de llamar. `src/03_score.py` ya valida con `validate_feature_frame` (nuevo). La app no llama al endpoint, así que hoy solo afecta a consumidores directos |
-| D-03 | Media (**cerrado**) | Errores SQL se presentaban como estado vacío 200 | `app/app.py` corregido y desplegado a dev (E05, A_52); verificado por `tests/test_negative_api.py` y por el SHA-256 del `index.html` servido |
-| D-04 | Baja | Cualquier usuario del workspace con `CAN_USE` puede consumir el LLM sin límite de tasa | Límite de tasa o cuota si la app se comparte; en Free Edition hay cuotas de plataforma |
-| D-05 | Baja | `/healthz` accesible sin autenticación | Aceptable (no revela datos); documentarlo |
-| D-06 | Baja | Sin cabeceras de seguridad (CSP, `X-Content-Type-Options`, `X-Frame-Options`) en las respuestas de la app; fuente externa de Google Fonts | Añadir middleware con cabeceras y alojar la fuente localmente |
-| D-07 | Baja | `requirements-dev.txt` con rangos abiertos; los resultados de pip-audit dependen del entorno | Fijar versiones o generar un `requirements-dev.lock` |
-| D-08 | Baja | `log.warning` con 200 a 300 caracteres de mensajes del LLM/AI Search | Registrar solo el tipo de excepción, como ya se hace con SQL |
-| D-09 | Baja | Carpetas locales del PC (`logs/`, `cola/`, `cola2/`, `consultas/`, `herramientas/`) no figuran en `.gitignore`; contienen identificadores del workspace | Añadirlas a `.gitignore` antes de cualquier commit desde la copia del PC |
-| D-10 | Informativa | `/healthz` responde 200 sin sesión: no está claro si lo atiende la plataforma o la app (ambas devuelven lo mismo) | Sin acción |
-| D-11 | Baja | `oauthlib 3.3.1` (dependencia transitiva de `databricks-sql-connector`, que fija `oauthlib<4.0.0`): PYSEC-2026-4114, comparación no constante en `code_challenge_method_plain` del **servidor** OAuth PKCE. La app solo usa `oauthlib` como cliente; no hay servidor OAuth propio | Sin acción posible hasta que el conector permita `oauthlib>=4`; vigilar en el siguiente `pip-audit` |
-| D-12 | Media | El endpoint de serving desapareció del workspace entre el 14 y el 15 de octubre sin registro accesible (ver `02_MODEL_VALIDATION.md`, B3.5). No afecta al dashboard (lee la tabla por lotes) pero sí a cualquier integración directa | Recreado con el bundle; comprobar su existencia antes de una demo; considerar documentar que Free Edition no garantiza persistencia de endpoints |
+| D-01 | Medium (**fixed in the tree**) | `deploy.yml` exposed deployment secrets to the test job (section 3) | Done: `env` only in `validate` and `deploy-dev`; `pytest -rs`. Pending push and a real run of the workflow (`NOT_VERIFIED`) |
+| D-02 | Medium | The endpoint `dev_jjrm199867_rul-model-dev` does not validate inputs: a row of nulls returns a RUL (120.66) and a `null` in important features changes the result (3.12 to 67.24) without error | Wrap the model in a `pyfunc` function that rejects nulls, infinities and out-of-range values, or always validate before calling. `src/03_score.py` already validates with `validate_feature_frame` (new). The app does not call the endpoint, so today it only affects direct consumers |
+| D-03 | Medium (**closed**) | SQL errors were presented as an empty 200 state | `app/app.py` fixed and deployed to dev (E05, A_52); verified by `tests/test_negative_api.py` and by the SHA-256 of the served `index.html` |
+| D-04 | Low | Any workspace user with `CAN_USE` can consume the LLM without a rate limit | Rate limit or quota if the app is shared; Free Edition has platform quotas |
+| D-05 | Low | `/healthz` reachable without authentication | Acceptable (it reveals no data); document it |
+| D-06 | Low | No security headers (CSP, `X-Content-Type-Options`, `X-Frame-Options`) in the app responses; external font from Google Fonts | Add a middleware with headers and host the font locally |
+| D-07 | Low | `requirements-dev.txt` with open ranges; pip-audit results depend on the environment | Pin versions or generate a `requirements-dev.lock` |
+| D-08 | Low | `log.warning` with 200 to 300 characters of LLM/AI Search messages | Log only the exception type, as already done with SQL |
+| D-09 | Low | Local PC folders (`logs/`, `cola/`, `cola2/`, `consultas/`, `herramientas/`) are not in `.gitignore`; they contain workspace identifiers | Add them to `.gitignore` before any commit from the PC copy |
+| D-10 | Informative | `/healthz` answers 200 without a session: it is unclear whether the platform or the app serves it (both return the same) | No action |
+| D-11 | Low | `oauthlib 3.3.1` (transitive dependency of `databricks-sql-connector`, which pins `oauthlib<4.0.0`): PYSEC-2026-4114, non-constant comparison in `code_challenge_method_plain` of the OAuth PKCE **server**. The app only uses `oauthlib` as a client; there is no OAuth server of its own | No action possible until the connector allows `oauthlib>=4`; watch it in the next `pip-audit` |
+| D-12 | Medium | The serving endpoint disappeared from the workspace between 14 and 15 October without an accessible record (see `02_MODEL_VALIDATION.md`, B3.5). It does not affect the dashboard (it reads the batch table) but it does affect any direct integration | Recreated with the bundle; check its existence before a demo; consider documenting that Free Edition does not guarantee endpoint persistence |
 
-## 5. Revalidación del 15 de octubre de 2026
+## 5. Revalidation of 15 October 2026
 
-Mismo entorno de auditoría (Python 3.13.16). Evidencias en `audit/evidence/*_2026-10-15.txt` y `evidence/revalidation_2026-10-15/`.
+Same audit environment (Python 3.13.16). Evidence in `audit/evidence/*_2026-10-15.txt` and `evidence/revalidation_2026-10-15/`.
 
-| Control | Comando | Versión | Resultado |
+| Control | Command | Version | Result |
 |---|---|---|---|
-| Secretos en el árbol del PC y en el historial | `grep -rnEIi` con patrones `dapi...`, `ghp_`, `AKIA`, `xox[bp]-`, claves privadas, JWT, `client_secret=`, `password=`, `Bearer`; `git log --all -p` | grep 3.x | 0 coincidencias en ambos (`secrets_scan_2026-10-15.txt`); `git ls-files` sin `.env`, `.pem`, `.key` |
-| Dependencias de la app | `pip-audit -r app/requirements.txt` | pip-audit 2.10.1 | 1 paquete transitivo con 1 aviso: `oauthlib 3.3.1` PYSEC-2026-4114 (D-11). `fastapi 0.143.0`, `uvicorn 0.53.0`, `databricks-sql-connector 4.6.0`, `databricks-sdk 0.152.0` sin avisos (`pip_audit_app_2026-10-15.txt`) |
-| Dependencias de desarrollo resueltas | `pip-audit -r requirements-dev.resolved_2026-10-15.txt` | 2.10.1 | Mismo aviso de `oauthlib` (`pip_audit_dev_2026-10-15.txt`) |
-| Linter | `ruff check app src tests scripts --select E9,F,B --ignore F821` | ruff 0.16.8 | 15 avisos: 7 `F401` importaciones sin usar, 8 `B905` `zip()` sin `strict`; 0 errores de sintaxis (`ruff_2026-10-15.txt`) |
-| Análisis estático | `bandit -r app src scripts` | bandit 1.9.4 | 1 High (`B324` SHA1 no criptográfico en `chunking.py`), 9 Medium (`B608` SQL por cadenas con nombres validados por regex y parámetros enlazados), 6 Low; sin cambios respecto al 14 de octubre (`bandit_2026-10-15.txt`) |
-| Autenticación de la app | `fetch("/api/overview", {credentials: "omit"})` desde el navegador integrado | | 401 (`app_api_capture_2026-10-15.json`) |
-| Permisos de la app | `apps get-permissions` (`A_10`) | CLI 1.20.0 | `CAN_MANAGE` propietario y `admins` |
-| Grants UC del service principal | `SHOW GRANTS ON SCHEMA workspace.mantenimiento` (`A_46`) | | `d19896a0-...`: `USE SCHEMA`, `SELECT` (sin `MODIFY`, `CREATE` ni `EXECUTE`) |
-| Permisos del endpoint recreado | `GET /api/2.0/permissions/serving-endpoints/dd2a3f66...` (`A_64`) | | `CAN_MANAGE` propietario y `admins`; el SP de la app no aparece |
-| Pruebas automatizadas | `python3 -m pytest -q -rs` | pytest 9.1.1 | 142 passed, 0 skipped (incluye 25 negativas, 11 de fase E, 4 del protocolo de selección) |
-| GitHub Actions | Lectura de `deploy.yml` corregido | | Secretos solo en `validate` y `deploy-dev`; no ejecutado (sin push): `NOT_VERIFIED` |
-| Prompt injection en el RAG | Solo lectura (fase C) | | Sin cambios en esta fase; resultado en `03_RAG_VALIDATION.md` |
+| Secrets in the PC tree and in the history | `grep -rnEIi` with patterns `dapi...`, `ghp_`, `AKIA`, `xox[bp]-`, private keys, JWT, `client_secret=`, `password=`, `Bearer`; `git log --all -p` | grep 3.x | 0 matches in both (`secrets_scan_2026-10-15.txt`); `git ls-files` without `.env`, `.pem`, `.key` |
+| App dependencies | `pip-audit -r app/requirements.txt` | pip-audit 2.10.1 | 1 transitive package with 1 warning: `oauthlib 3.3.1` PYSEC-2026-4114 (D-11). `fastapi 0.143.0`, `uvicorn 0.53.0`, `databricks-sql-connector 4.6.0`, `databricks-sdk 0.152.0` without warnings (`pip_audit_app_2026-10-15.txt`) |
+| Resolved development dependencies | `pip-audit -r requirements-dev.resolved_2026-10-15.txt` | 2.10.1 | Same `oauthlib` warning (`pip_audit_dev_2026-10-15.txt`) |
+| Linter | `ruff check app src tests scripts --select E9,F,B --ignore F821` | ruff 0.16.8 | 15 warnings: 7 `F401` unused imports, 8 `B905` `zip()` without `strict`; 0 syntax errors (`ruff_2026-10-15.txt`) |
+| Static analysis | `bandit -r app src scripts` | bandit 1.9.4 | 1 High (`B324` non-cryptographic SHA1 in `chunking.py`), 9 Medium (`B608` SQL by strings with regex-validated names and bound parameters), 6 Low; no change since 14 October (`bandit_2026-10-15.txt`) |
+| App authentication | `fetch("/api/overview", {credentials: "omit"})` from the built-in browser | | 401 (`app_api_capture_2026-10-15.json`) |
+| App permissions | `apps get-permissions` (`A_10`) | CLI 1.20.0 | `CAN_MANAGE` owner and `admins` |
+| UC grants of the service principal | `SHOW GRANTS ON SCHEMA workspace.mantenimiento` (`A_46`) | | `d19896a0-...`: `USE SCHEMA`, `SELECT` (no `MODIFY`, `CREATE` or `EXECUTE`) |
+| Permissions of the recreated endpoint | `GET /api/2.0/permissions/serving-endpoints/dd2a3f66...` (`A_64`) | | `CAN_MANAGE` owner and `admins`; the app SP does not appear |
+| Automated tests | `python3 -m pytest -q -rs` | pytest 9.1.1 | 142 passed, 0 skipped (includes 25 negative, 11 of phase E, 4 of the selection protocol) |
+| GitHub Actions | Reading of the corrected `deploy.yml` | | Secrets only in `validate` and `deploy-dev`; not executed (no push): `NOT_VERIFIED` |
+| Prompt injection in the RAG | Read-only (phase C) | | No changes in this phase; result in `03_RAG_VALIDATION.md` |

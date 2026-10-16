@@ -1,13 +1,13 @@
 name: bundle-ci
 
-# PR: valida el bundle y pasa los tests. Push a main: despliega a dev.
-# Autenticación OAuth M2M con un service principal. Secretos del repositorio:
+# PR: validates the bundle and runs the tests. Push to main: deploys to dev.
+# OAuth M2M authentication with a service principal. Repository secrets:
 #   DATABRICKS_HOST, DATABRICKS_CLIENT_ID, DATABRICKS_CLIENT_SECRET
-# Nunca se guardan tokens en el repositorio.
+# No token is ever stored in the repository.
 #
-# Los secretos de Databricks se inyectan SOLO en los jobs que hablan con el workspace
-# (validate, deploy-dev). El job `test` instala dependencias y ejecuta código del PR, por lo
-# que no debe recibir credenciales (hallazgo D-01 de audit/04_SECURITY_QA.md).
+# Databricks secrets are injected ONLY into the jobs that talk to the workspace
+# (validate, deploy-dev). The `test` job installs dependencies and runs code from the PR,
+# so it must not receive credentials (finding D-01 in audit/04_SECURITY_QA.md).
 on:
   pull_request:
     branches: [main]
@@ -23,7 +23,7 @@ concurrency:
 
 jobs:
   test:
-    # Sin acceso a secretos: solo pruebas unitarias con datos locales.
+    # No access to secrets: unit tests with local data only.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -31,7 +31,8 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r requirements-dev.txt
-      # -rs hace visibles las omisiones (p. ej. la prueba de equivalencia Spark si faltara Java).
+      - run: ruff check .
+      # -rs makes skips visible (e.g. the Spark equivalence test when Java is missing).
       - run: python -m pytest -q -rs
 
   validate:
@@ -45,7 +46,7 @@ jobs:
       DATABRICKS_AUTH_TYPE: oauth-m2m
     steps:
       - uses: actions/checkout@v4
-      # Fija una versión publicada de la CLI. verificar en docs la etiqueta vigente de databricks/setup-cli.
+      # Pins a published CLI version; check the current tag of databricks/setup-cli in the docs.
       - uses: databricks/setup-cli@v0.280.0
       - run: databricks bundle validate -t dev
 
@@ -53,7 +54,7 @@ jobs:
     needs: test
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    # Entorno protegido: configura en GitHub una regla de aprobación manual para "dev".
+    # Protected environment: configure a manual approval rule for "dev" in GitHub.
     environment: dev
     env:
       DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}

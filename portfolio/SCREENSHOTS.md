@@ -1,7 +1,7 @@
 # Screenshot inventory and provenance
 
 All files in `portfolio/screenshots/` are real captures of the deployed dev app
-`mantenimiento-predictivo-dev` (Databricks Apps, Free Edition) taken from the authenticated built-in browser of the
+`mantenimiento-predictivo-dev` (Databricks Apps, Free Edition; the current bundle deploys it as `predictive-maintenance-dev`) taken from the authenticated built-in browser of the
 audit session. None of them was edited, composited or retouched; the carousel only crops them (CSS overflow) and labels
 them "Real screenshot". No capture contains credentials, tokens or workspace identifiers beyond the app URL host.
 

@@ -1,266 +1,323 @@
-# Mantenimiento predictivo de turbinas con Databricks
+# Predictive turbine maintenance with Databricks
 
-Proyecto de demostración para portafolio de ingeniería industrial: de los datos de sensores de turbofanes
-(NASA C-MAPSS FD001) a una sala de control web en inglés que muestra la vida útil restante (RUL) de cada motor,
-su estado, una recomendación orientativa y un asistente que responde con citas verificadas a partir de manuales técnicos en PDF.
+Industrial engineering portfolio project: from turbofan sensor data (NASA C-MAPSS FD001) to a web control
+room that shows the remaining useful life (RUL) of every engine, its state, an advisory recommendation and an
+assistant that answers with verified citations from technical manuals in PDF.
 
-Pensado para **Databricks Free Edition** (octubre de 2026): todo es serverless, no hay clústeres clásicos y
-no se descarga nada de internet en tiempo de ejecución salvo `pip`. Uso no comercial, datos públicos, coste cero.
+Built for **Databricks Free Edition** (October 2026): everything is serverless, there are no classic clusters
+and nothing is downloaded from the internet at run time except through `pip`. Non-commercial use, public data,
+zero cost.
 
-> **Aviso.** Es un prototipo sobre datos de simulación. No está certificado para mantenimiento aeronáutico real ni
-> para ninguna decisión operativa. Las recomendaciones de la app llevan siempre el texto "Demo estimate; requires engineering review".
+> **Disclaimer.** This is a prototype on simulation data. It is not certified for real aircraft maintenance nor
+> for any operational decision. Every recommendation in the app carries the text "Demo estimate; requires
+> engineering review".
 
-## Resultados (tal como figuran en la auditoría)
+## Results (as stated in the audit)
 
-Las cifras salen de `audit/` y cada una tiene su evidencia en `audit/evidence/`. No hay ninguna cifra en este README que no esté allí.
+The figures come from `audit/` and each one has its evidence in `audit/evidence/`. There is no figure in this
+README that is not there.
 
-**Modelo de RUL** (`HistGradientBoostingRegressor`, 85 variables, versión 1 con alias `champion` en Unity Catalog):
+**RUL model** (`HistGradientBoostingRegressor`, 85 features, version 1 with the `champion` alias in Unity Catalog):
 
-| Medida | Valor | Fuente |
+| Measure | Value | Source |
 |---|---|---|
-| RMSE en el último ciclo de los 100 motores de test de FD001 (workspace, scikit-learn 1.7.2) | **18,4 ciclos** (MAE 13,5; PHM08 655; R2 0,80) | `audit/02_MODEL_VALIDATION.md` B2.2, `evidence/champion_v1_metrics_from_gold_predicciones.json` |
-| Misma medida en local (scikit-learn 1.9.1, variables pandas) | 19,10 ciclos (PHM08 727) | `scripts/resultado_local.json`, reproducible con `python scripts/entrenar_local.py` |
-| Baselines en el mismo test | media constante 43,07; Ridge 21,80 | `audit/02_MODEL_VALIDATION.md` B2.2 |
-| Motores cercanos al fallo (RUL real <= 30, n = 25) | RMSE 14,3; sesgo +5,5 ciclos (tiende a sobrestimar) | `audit/02_MODEL_VALIDATION.md` B2.2 |
-| Validación por motor solo con train (GroupKFold 5, corte aleatorio por motor) | RMSE 19,21 (desviación entre pliegues 3,14); Ridge 22,11 | `audit/02_MODEL_VALIDATION.md` B2.5, `evidence/validation_protocol_train_only.json` |
+| RMSE on the last cycle of the 100 FD001 test engines (workspace, scikit-learn 1.7.2) | **18.4 cycles** (MAE 13.5; PHM08 655; R2 0.80) | `audit/02_MODEL_VALIDATION.md` B2.2, `evidence/champion_v1_metrics_from_gold_predicciones.json` |
+| Same measure locally (scikit-learn 1.9.1, pandas features) | 19.10 cycles (PHM08 727) | `scripts/results_local.json`, reproducible with `python scripts/train_local.py` |
+| Baselines on the same test set | constant mean 43.07; Ridge 21.80 | `audit/02_MODEL_VALIDATION.md` B2.2 |
+| Engines near failure (actual RUL <= 30, n = 25) | RMSE 14.3; bias +5.5 cycles (tends to overestimate) | `audit/02_MODEL_VALIDATION.md` B2.2 |
+| Validation by engine on train only (GroupKFold 5, random cut per engine) | RMSE 19.21 (fold-to-fold deviation 3.14); Ridge 22.11 | `audit/02_MODEL_VALIDATION.md` B2.5, `evidence/validation_protocol_train_only.json` |
 
-Dos matices que la auditoría obliga a declarar:
+Two caveats the audit requires to be stated:
 
-- **El test de FD001 es un conjunto visto, no independiente.** La regla histórica de promoción del champion comparaba el RMSE de test, y
-  esa cifra se publicó y se comparó entre entornos. Por eso el 18,4 describe el comportamiento del modelo congelado sobre un conjunto
-  conocido y no es una estimación independiente del error futuro. La app lo dice en pantalla (`uncertainty.note` en `/api/overview`) y
-  declara la incertidumbre como no calibrada.
-- **18,4 frente a 19,10.** El modelo del workspace se reprodujo bit a bit (RMSE 18,441849882005343) con scikit-learn 1.7.2 sobre `gold_features`.
-  La diferencia con la medida local se debe a la versión de scikit-learn (1.9.1) y al ruido numérico de ~1e-9 entre las variables calculadas con pandas
-  y con Spark; perturbando las variables con ese ruido el RMSE oscila entre 18,29 y 18,98. Ninguna de las dos cifras es "mejor": citar "18,4 a 19,1 ciclos" es lo honesto.
+- **The FD001 test set is a seen set, not an independent one.** The historical champion promotion rule compared
+  the test RMSE, and that figure was published and compared across environments. The 18.4 therefore describes the
+  behaviour of the frozen model on a known set and is not an independent estimate of future error. The app says so
+  on screen (`uncertainty.note` in `/api/overview`) and declares the uncertainty as not calibrated.
+- **18.4 versus 19.10.** The workspace model was reproduced bit for bit (RMSE 18.441849882005343) with scikit-learn
+  1.7.2 on `gold_features`. The difference with the local measure is due to the scikit-learn version (1.9.1) and the
+  ~1e-9 numerical noise between the features computed with pandas and with Spark; perturbing the features with that
+  noise, the RMSE moves between 18.29 and 18.98. Neither figure is "better": quoting "18.4 to 19.1 cycles" is the
+  honest statement.
 
-**Protocolo de promoción actual (solo con train).** Desde el 15 de octubre `src/02_train.py` ya no compara el RMSE de test para mover el alias:
-calcula `rmse_val_truncated` con `GroupKFold` por motor sobre train (cada motor retenido se corta en un ciclo fijado por semilla y se evalúa
-como el test) y promueve solo si mejora en más de `std_folds / sqrt(k)`. Si el champion no tiene esa métrica (caso de la v1), la versión nueva queda
-como `challenger` y la decisión es manual. Está implementado y probado (`tests/test_modeling_selection.py`), pero **no se ha ejecutado todavía en el workspace**.
+**Current promotion protocol (train only).** Since 15 October `src/02_train.py` no longer compares the test RMSE to
+move the alias: it computes `rmse_val_truncated` with `GroupKFold` by engine on train (every held-out engine is cut at
+a seeded cycle and evaluated like the test set) and promotes only if it improves by more than `std_folds / sqrt(k)`.
+If the champion has no such metric (the case of v1), the new version stays as `challenger` and the decision is manual.
+It is implemented and tested (`tests/test_modeling_selection.py`); the first version registered in the English schema
+(see "Deployed names") was promoted by the "no champion yet" rule.
 
-**Asistente RAG v2** (`app/rag.py`), medido sobre un conjunto held-out de 85 preguntas en español, inglés y francés que no se usó para decidir ningún cambio
-(`eval/rag_eval_set_holdout.json`), con juez independiente de otra familia de modelos (`databricks-meta-llama-3-3-70b-instruct`):
+**RAG assistant v2** (`app/rag.py`), measured on a held-out set of 85 questions in Spanish, English and French that
+was never used to decide any change (`eval/rag_eval_set_holdout.json`), with an independent judge from another model
+family (`databricks-meta-llama-3-3-70b-instruct`):
 
-| Métrica (held-out, versión final C, ejecución 6) | v1 | v2 final |
+| Metric (held-out, final version C, run 6) | v1 | v2 final |
 |---|---|---|
-| Estado correcto (responde o se abstiene cuando toca) | 0,788 | 0,976 |
-| hit@6 / MRR / Recall@6 de páginas | 0,826 / 0,653 / 0,741 | 0,971 / 0,842 / 0,888 |
-| Afirmaciones mostradas respaldadas (juez independiente) | 0,358 | 0,940 (parciales 0,060; no respaldadas 0,000) |
-| Página citada existe en el índice | 1,000 | 1,000 |
-| Precisión de citas | 0,685 | 0,989 |
-| Violaciones `must_not` afirmativas (cifras de fabricante, procedimientos inventados, texto inyectado) | n/d | 0 |
+| Correct status (answers or abstains when it should) | 0.788 | 0.976 |
+| hit@6 / MRR / page recall@6 | 0.826 / 0.653 / 0.741 | 0.971 / 0.842 / 0.888 |
+| Shown claims supported (independent judge) | 0.358 | 0.940 (partial 0.060; not supported 0.000) |
+| Cited page exists in the index | 1.000 | 1.000 |
+| Citation precision | 0.685 | 0.989 |
+| Affirmative `must_not` violations (manufacturer figures, invented procedures, injected text) | n/a | 0 |
 
-Detalle, limitaciones y cronología honesta de los cambios en `audit/03_RAG_VALIDATION.md`; revisión manual del caso obligatorio
-(inspección del compresor de alta presión) en `eval/MANUAL_REVIEW.md`. La versión final C solo tiene una ejecución sobre el held-out; con
-temperatura 0,1 algunas preguntas cambian de estado entre ejecuciones, así que las tasas tienen una resolución de 1/85.
+Details, limitations and the honest chronology of the changes are in `audit/03_RAG_VALIDATION.md`; the manual
+review of the mandatory case (high-pressure compressor inspection) is in `eval/MANUAL_REVIEW.md`. The final version C
+has a single run on the held-out set; at temperature 0.1 some questions change status between runs, so the rates
+have a resolution of 1/85.
 
-## Qué demuestra (mapa a la especialización)
+## What it demonstrates (map to the specialisation)
 
-Especialización "Enterprise AI and Data Engineering with Databricks", cinco cursos:
+"Enterprise AI and Data Engineering with Databricks" specialisation, five courses:
 
-| Curso | Dónde se ve en el proyecto |
+| Course | Where it shows in the project |
 |---|---|
-| 1. Fundamentos del lakehouse | Arquitectura medallion, Unity Catalog (`catálogo.schema.tabla`, volumes `raw`, `manuales` y `codigo`), cómputo serverless, Free Edition |
-| 2. Ingeniería de datos con Delta Lake | Lakeflow Spark Declarative Pipelines (`pyspark.pipelines`), Auto Loader, expectations, streaming tables y materialized views (`src/pipeline/`) |
-| 3. ML con MLflow | Entrenamiento con baseline, MLflow 3, firma e input example, modelo en Unity Catalog con alias `champion`, promoción por validación solo con train (`src/02_train.py`, `src/03_score.py`) |
-| 4. IA generativa y LLM | RAG con AI Search (índice Delta Sync, embeddings gestionados), LLM de Foundation Model APIs, verificación de afirmaciones y citas, evaluación con held-out y juez independiente (`src/04_rag_index.py`, `src/05_eval_rag.py`, `src/07_eval_assistant.py`) |
-| 5. Gobierno y MLOps | Declarative Automation Bundles (`databricks.yml`), CI/CD con GitHub Actions y OAuth M2M, permisos de mínimo privilegio para la app, 142 pruebas, auditoría con evidencia |
+| 1. Lakehouse fundamentals | Medallion architecture, Unity Catalog (`catalog.schema.table`, volumes `raw`, `manuals` and `code`), serverless compute, Free Edition |
+| 2. Data engineering with Delta Lake | Lakeflow Spark Declarative Pipelines (`pyspark.pipelines`), Auto Loader, expectations, streaming tables and materialized views (`src/pipeline/`) |
+| 3. ML with MLflow | Training with baselines, MLflow 3, signature and input example, model in Unity Catalog with the `champion` alias, promotion by train-only validation (`src/02_train.py`, `src/03_score.py`) |
+| 4. Generative AI and LLMs | RAG with AI Search (Delta Sync index, managed embeddings), Foundation Model APIs LLM, claim and citation verification, held-out evaluation with an independent judge (`src/04_rag_index.py`, `src/05_eval_rag.py`, `src/07_eval_assistant.py`) |
+| 5. Governance and MLOps | Declarative Automation Bundles (`databricks.yml`), CI/CD with GitHub Actions and OAuth M2M, least-privilege permissions for the app, 142 tests, audit with evidence |
 
-## Arquitectura
+## Architecture
 
 ```mermaid
 flowchart LR
   subgraph Volumes
     RAW[(raw/cmapss<br/>train, test, RUL)]
-    MAN[(manuales<br/>PDF)]
-    COD[(codigo<br/>copia de src/lib)]
+    MAN[(manuals<br/>PDF)]
+    COD[(code<br/>copy of src/lib)]
   end
-  RAW -->|Auto Loader| B[bronze_cmapss_lecturas<br/>bronze_cmapss_rul]
-  B --> S[silver_lecturas<br/>silver_rul_test]
-  S --> G[gold_features<br/>gold_test_verdad<br/>gold_salud_curva]
+  RAW -->|Auto Loader| B[bronze_cmapss_readings<br/>bronze_cmapss_rul]
+  B --> S[silver_readings<br/>silver_rul_test]
+  S --> G[gold_features<br/>gold_test_truth<br/>gold_health_curve]
   G --> T[02_train<br/>MLflow 3]
   T --> M[(rul_model@champion<br/>Unity Catalog)]
-  M --> P[03_score<br/>gold_predicciones]
-  M --> E[Endpoint de serving<br/>CPU Small, scale to zero]
+  M --> P[03_score<br/>gold_predictions]
+  M --> E[Serving endpoint<br/>CPU Small, scale to zero]
   T --> GM[gold_model_metrics]
-  MAN -->|pypdf, troceo| C[manual_chunks<br/>Delta + CDF]
-  C --> I[AI Search<br/>índice Delta Sync]
+  MAN -->|pypdf, chunking| C[manual_chunks<br/>Delta + CDF]
+  C --> I[AI Search<br/>Delta Sync index]
   P --> APP[Databricks App<br/>FastAPI + SQL warehouse]
   GM --> APP
   G --> APP
   I --> APP
   APP --> LLM[Foundation Model APIs<br/>gpt-oss-120b]
-  I --> EV[07_eval_assistant<br/>held-out + juez]
+  I --> EV[07_eval_assistant<br/>held-out + judge]
 ```
 
-La app **no llama al endpoint de serving**: lee `gold_predicciones` (scoring por lotes) y lo declara en `/api/overview` (`model.source`).
-El endpoint existe para integraciones directas y se verificó que devuelve exactamente los mismos valores que la tabla en los 100 motores.
+The app **does not call the serving endpoint**: it reads `gold_predictions` (batch scoring) and says so in
+`/api/overview` (`model.source`). The endpoint exists for direct integrations and was verified to return exactly the
+same values as the table for the 100 engines.
 
-Decisiones de diseño:
+Design decisions:
 
-- **Bronze y silver son streaming tables**: los ficheros llegan al volume y solo se añaden; Auto Loader procesa
-  únicamente lo nuevo. La limpieza de silver es fila a fila, así que no necesita estado.
-- **Gold son materialized views**: las ventanas móviles, las estadísticas de referencia y la unión con la verdad de test
-  necesitan el historial completo de cada motor.
-- **Etiqueta RUL**: `RUL = min(ciclos restantes, 125)` en train. El recorte a 125 es práctica estándar en la literatura de
-  C-MAPSS (Heimes, 2008; Li, Ding y Sun, 2018). La evaluación usa la RUL real de test, sin recorte.
-- **Sensores descartados en silver**: `setting3`, `s1`, `s5`, `s10`, `s16`, `s18`, `s19` tienen desviación típica exactamente 0 en
-  train y test; `s6` solo toma dos valores. Lo comprueba `tests/test_cmapss.py` con los datos reales. Quedan 14 sensores.
-- **Variables**: valor, media y desviación móvil en ventanas de 5 y 10 ciclos y pendiente en 10 ciclos por sensor, más el ciclo (85 variables).
-  Ventanas solo hacia atrás; la auditoría comprobó la ausencia de fuga de futuro con 40 pruebas de truncado.
-- **Una definición, dos implementaciones**: `src/lib/cmapss.py` (pandas) es la referencia testeable sin Spark y
-  `src/lib/spark_features.py` la implementa con funciones de ventana de Spark. `tests/test_spark_equivalence.py` comprueba que dan los mismos
-  números (diferencia relativa máxima 2,4e-9 en 170 sumas de columnas); se omite si no hay Java.
-- **Sensores principales por motor**: sensibilidad local por oclusión. No son valores SHAP.
-- **Indicador de salud** (curva de la app): combinación lineal de z-scores respecto a los primeros 30 ciclos. Es una vista resumen, no una predicción.
-- **Recomendaciones orientativas**: los textos de `critical`, `watch` y `healthy` no ordenan paradas ni sustituciones y empiezan siempre por
-  "Demo estimate; requires engineering review". Una prueba comprueba que `lib` y `app` generan exactamente el mismo texto y otra prohíbe
-  palabras como `shutdown`, `replace`, `immediately`.
-- **Convención de nombres**: en Free Edition hay un único schema de trabajo, así que las capas se identifican por prefijo (`bronze_`, `silver_`, `gold_`).
+- **Bronze and silver are streaming tables**: the files land in the volume and are only appended; Auto Loader
+  processes only what is new. The silver cleaning is row by row, so it needs no state.
+- **Gold tables are materialized views**: the rolling windows, the reference statistics and the join with the test
+  ground truth need the full history of every engine.
+- **RUL label**: `RUL = min(remaining cycles, 125)` in train. The clip at 125 is standard practice in the C-MAPSS
+  literature (Heimes, 2008; Li, Ding and Sun, 2018). The evaluation uses the actual test RUL, without clipping.
+- **Sensors dropped in silver**: `setting3`, `s1`, `s5`, `s10`, `s16`, `s18`, `s19` have a standard deviation of
+  exactly 0 in train and test; `s6` takes only two values. `tests/test_cmapss.py` checks it against the real data.
+  14 sensors remain.
+- **Features**: value, rolling mean and standard deviation over windows of 5 and 10 cycles and slope over 10 cycles
+  per sensor, plus the cycle (85 features). Backward-looking windows only; the audit checked the absence of future
+  leakage with 40 truncation tests.
+- **One definition, two implementations**: `src/lib/cmapss.py` (pandas) is the reference testable without Spark and
+  `src/lib/spark_features.py` implements it with Spark window functions. `tests/test_spark_equivalence.py` checks
+  that both give the same numbers (maximum relative difference 2.4e-9 over 170 column sums); skipped without Java.
+- **Top sensors per engine**: local occlusion sensitivity. They are not SHAP values.
+- **Health index** (curve in the app): linear combination of z-scores against the first 30 cycles. It is a summary
+  view, not a prediction.
+- **Advisory recommendations**: the `critical`, `watch` and `healthy` texts never order shutdowns or replacements and
+  always start with "Demo estimate; requires engineering review". One test checks that `lib` and `app` generate
+  exactly the same text and another forbids words such as `shutdown`, `replace`, `immediately`.
+- **Naming convention**: Free Edition has a single working schema, so the layers are identified by prefix
+  (`bronze_`, `silver_`, `gold_`).
 
-### Asistente RAG v2: cómo responde
+### RAG assistant v2: how it answers
 
-1. La pregunta (ES, EN o FR) se reescribe a una consulta técnica en inglés y se expande en varias consultas; la recuperación es híbrida con fusión RRF y k = 6.
-2. Las frases con forma de instrucción se eliminan de los pasajes y de la pregunta antes de llegar al modelo: los documentos son datos, no órdenes.
-3. El LLM devuelve JSON estructurado con resumen, afirmaciones citadas (documento y página), huecos y una nota de fabricante.
-4. **Verificación de citas**: cada afirmación se contrasta con el fragmento citado (veredicto `SUPPORTED`, `PARTIAL` o `NOT_SUPPORTED`, más apoyo léxico);
-   las no respaldadas se retiran y se listan en `removed_claims`. Si el fragmento limita el enunciado a un tipo de motor ("On centrifugal flow engines")
-   y la afirmación lo omite, pasa a parcial con la condición anotada.
-5. **Estados**: `answered`, `insufficient_evidence`, `requires_manufacturer_documentation` (la pregunta pide cifras o nombra un modelo de motor:
-   los valores con unidades se retienen, también en el resumen) y `not_found`.
-6. La interfaz muestra el estado, las fuentes con página, las afirmaciones retiradas y la traza de recuperación. Todo llega por `/api/assistant`.
+1. The question (ES, EN or FR) is rewritten into an English technical query and expanded into several queries;
+   retrieval is hybrid with RRF fusion and k = 6.
+2. Instruction-like sentences are removed from the passages and from the question before they reach the model:
+   documents are data, not orders.
+3. The LLM returns structured JSON with a summary, cited claims (document and page), gaps and a manufacturer note.
+4. **Citation verification**: every claim is checked against the cited chunk (verdict `SUPPORTED`, `PARTIAL` or
+   `NOT_SUPPORTED`, plus lexical support); unsupported claims are removed and listed in `removed_claims`. If the chunk
+   limits the statement to an engine type ("On centrifugal flow engines") and the claim omits it, it becomes partial
+   with the condition annotated.
+5. **Statuses**: `answered`, `insufficient_evidence`, `requires_manufacturer_documentation` (the question asks for
+   figures or names an engine model: values with units are withheld, also in the summary) and `not_found`.
+6. The interface shows the status, the sources with page, the removed claims and the retrieval trace. Everything
+   comes through `/api/ask`.
 
-## Estructura
+## Structure
 
 ```
-databricks.yml              bundle: variables, targets dev y prod
+databricks.yml              bundle: variables, dev and prod targets
 resources/                  pipelines.yml, jobs.yml, serving.yml, app.yml
-src/00_setup.py             schema, volumes (raw, manuales, codigo), copia de los datos
+src/00_setup.py             schema, volumes (raw, manuals, code), data copy
 src/pipeline/               bronze.py, silver.py, gold.py (Lakeflow SDP)
-src/02_train.py             entrenamiento, validación por motor solo con train, registro y promoción
-src/03_score.py             validación de variables y puntuación de los 100 motores (gold_predicciones)
-src/04_rag_index.py         PDF a fragmentos, tabla con CDF, índice de AI Search
-src/05_eval_rag.py          recall@k y MRR del retrieval
-src/06_permisos_app.py      GRANT de lectura al service principal de la app
-src/07_eval_assistant.py    evaluación del asistente: dev y held-out, comprobaciones deterministas, juez independiente
-src/lib/                    lógica pura y testeable (sin Spark salvo spark_*.py)
+src/02_train.py             training, train-only validation by engine, registration and promotion
+src/03_score.py             feature validation and scoring of the 100 engines (gold_predictions)
+src/04_rag_index.py         PDF to chunks, table with CDF, AI Search index
+src/05_eval_rag.py          recall@k and MRR of the retrieval
+src/06_app_permissions.py   read GRANTs to the app service principal
+src/07_eval_assistant.py    assistant evaluation: dev and held-out, deterministic checks, independent judge
+src/lib/                    pure, testable logic (no Spark except spark_*.py)
 app/                        Databricks App: app.yaml, requirements.txt, app.py, rag.py, health_projection.py, static/index.html
-tests/                      pytest (142 pruebas: funciones puras, equivalencia Spark, API, 25 negativas, RAG, selección de modelo)
-scripts/                    entrenar_local.py (RMSE local), demo_local.py (app sin Databricks)
-data/cmapss/                datos de NASA y FUENTE.md
-eval/                       conjuntos de evaluación del RAG, resultados por ejecución, MANUAL_REVIEW.md, INFORME_RAG.md
-audit/                      01_BASELINE, 02_MODEL_VALIDATION, 03_RAG_VALIDATION, 04_SECURITY_QA, FINAL_READINESS_REPORT y evidence/
-portfolio/                  caso de estudio, capturas reales, carrusel (HTML, PDF, PNG), posts, guion de demo, SOURCES.md
+tests/                      pytest (142 tests: pure functions, Spark equivalence, API, 25 negative, RAG, model selection)
+scripts/                    train_local.py (local RMSE), demo_local.py (app without Databricks)
+data/cmapss/                NASA data and SOURCE.md
+eval/                       RAG evaluation sets, results per run (resultados/), MANUAL_REVIEW.md, RAG_REPORT.md
+audit/                      01_BASELINE, 02_MODEL_VALIDATION, 03_RAG_VALIDATION, 04_SECURITY_QA, FINAL_READINESS_REPORT and evidence/
+portfolio/                  case study, real screenshots, carousel (HTML, PDF, PNG), posts, demo script, SOURCES.md
 .github/workflows/          deploy.yml
+ruff.toml                   lint and format configuration (line length 110)
 ```
 
-## Cómo desplegar
+## Deployed names
 
-**Con la CLI (recomendado)**
+The code uses English Unity Catalog names: schema `maintenance`, volumes `raw`, `code` and `manuals`, tables
+`bronze_cmapss_readings`, `bronze_cmapss_rul`, `silver_readings`, `silver_rul_test`, `gold_features`,
+`gold_test_truth`, `gold_health_params`, `gold_health_curve`, `gold_quality_control`, `gold_model_metrics`,
+`gold_predictions` (columns `state`, `action`, `critical_threshold`, `watch_threshold`), `manual_chunks`,
+`manual_chunks_index` and `rag_eval_questions`; bundle `predictive-maintenance` with jobs `maintenance_end_to_end`,
+`maintenance_rag`, `maintenance_eval_assistant`, pipeline `maintenance_pipeline` and app `predictive-maintenance-<target>`.
+
+The audit (`audit/`, 13 to 15 October) and the evaluation results (`eval/resultados/`) were produced on the first
+deployment, which used Spanish names: schema `mantenimiento`, volumes `codigo` and `manuales`, tables
+`bronze_cmapss_lecturas`, `silver_lecturas`, `gold_test_verdad`, `gold_salud_parametros`, `gold_salud_curva`,
+`gold_control_calidad`, `gold_predicciones` (columns `estado`, `accion`, `umbral_critico`, `umbral_vigilar`),
+`rag_eval_preguntas`, bundle `mantenimiento-predictivo` and app `mantenimiento-predictivo-dev`. Those documents and
+evidence files keep the names as captured. The Spanish schema was left untouched in the workspace as a fallback and
+the app still accepts its legacy state values (`critico`, `vigilar`, `sano`). The AI Search endpoint keeps its
+original name `mantenimiento_ai_search` because Free Edition allows a single endpoint.
+
+## How to deploy
+
+**With the CLI (recommended)**
 
 ```bash
-databricks auth login --host https://<tu-workspace>
-databricks bundle validate -t dev --var warehouse_id=<id-del-warehouse>
-databricks bundle deploy   -t dev --var warehouse_id=<id-del-warehouse>
+databricks auth login --host https://<your-workspace>
+databricks bundle validate -t dev --var warehouse_id=<warehouse-id>
+databricks bundle deploy   -t dev --var warehouse_id=<warehouse-id>
 ```
 
-El host del workspace no se escribe en el bundle: va en un perfil de la CLI o en `DATABRICKS_HOST`. `warehouse_id` es el SQL warehouse
-2X-Small de Free Edition (Compute, SQL warehouses, Connection details).
+The workspace host is not written in the bundle: it goes in a CLI profile or in `DATABRICKS_HOST`. `warehouse_id`
+is the 2X-Small SQL warehouse of Free Edition (Compute, SQL warehouses, Connection details).
 
-**Workaround de lectura de workspace files.** En runtimes serverless recientes, leer ficheros normales del workspace desde un notebook puede
-fallar con `OSError: [Errno 5] Input/output error`. Por eso los notebooks buscan el paquete `lib` primero en el volume `codigo` y los datos se
-suben al volume `raw` con la CLI en lugar de copiarse desde el repositorio:
+**Workspace files read workaround.** On recent serverless runtimes, reading plain workspace files from a notebook
+can fail with `OSError: [Errno 5] Input/output error`. The notebooks therefore look for the `lib` package first in the
+`code` volume, and the data is uploaded to the `raw` volume with the CLI instead of being copied from the repository:
 
 ```bash
-databricks fs cp -r src/lib dbfs:/Volumes/workspace/mantenimiento/codigo/lib --overwrite
-databricks fs cp -r data/cmapss dbfs:/Volumes/workspace/mantenimiento/raw/cmapss --overwrite
+databricks fs cp -r src/lib dbfs:/Volumes/workspace/maintenance/code/lib --overwrite
+databricks fs cp app/rag.py dbfs:/Volumes/workspace/maintenance/code/rag.py --overwrite
+databricks fs cp -r eval dbfs:/Volumes/workspace/maintenance/code/eval --overwrite
+databricks fs cp -r data/cmapss dbfs:/Volumes/workspace/maintenance/raw/cmapss --overwrite
 ```
 
-Hay que repetir la primera copia cada vez que cambie `src/lib` (el bundle despliega el código, pero los notebooks cargan la copia del volume).
-`00_setup.py` crea los volumes y, si los datos ya están en `raw`, no vuelve a leerlos del workspace.
+The first copy must be repeated whenever `src/lib` changes (the bundle deploys the code, but the notebooks load the
+copy in the volume). `00_setup.py` creates the volumes and, if the data is already in `raw`, does not read it from
+the workspace again. On a brand-new workspace create the schema and the volumes first
+(`databricks schemas create maintenance workspace`, `databricks volumes create workspace maintenance raw MANAGED`,
+same for `code` and `manuals`) so that the copies above have a destination.
 
-**Orden de ejecución**
+**Run order**
 
-1. Desplegar el bundle. En el primer despliegue comenta la línea `resources/serving.yml` de `databricks.yml`: el endpoint necesita una versión del modelo que aún no existe.
-2. Subir `src/lib` y los datos a los volumes (comandos anteriores).
-3. Subir los PDF de los manuales públicos al volume `manuales`. Los PDF no están en el repositorio.
-4. Job `mantenimiento_end_to_end`: `00_setup`, pipeline bronze, silver y gold, `02_train` y `03_score`.
-5. Job `mantenimiento_rag`: `04_rag_index` y `05_eval_rag`. Crea el endpoint de AI Search la primera vez (tarda varios minutos).
-6. App: `databricks bundle run mantenimiento_app -t dev` o desde la UI. Después ejecuta `src/06_permisos_app.py` para dar lectura al service principal de la app.
-7. Serving (opcional): descomenta `resources/serving.yml`, fija `model_version` con la versión champion y vuelve a desplegar. El endpoint apunta a una
-   versión concreta, no sigue al alias. En `mode: development` el nombre real lleva prefijo de usuario (`dev_<usuario>_rul-model-dev`).
-8. Evaluación del asistente (opcional): job `mantenimiento_eval_assistant` con parámetros `dataset` (`dev` o `holdout`), `configs` y `eval_judge_endpoint`.
-   Los resultados se escriben en el volume `codigo` y se copian a `eval/resultados/`.
+1. Deploy the bundle. On the first deployment comment out the `resources/serving.yml` line of `databricks.yml`:
+   the endpoint needs a model version that does not exist yet.
+2. Upload `src/lib`, `app/rag.py`, `eval/` and the data to the volumes (commands above).
+3. Upload the public manual PDFs to the `manuals` volume. The PDFs are not in the repository.
+4. Job `maintenance_end_to_end`: `00_setup`, bronze, silver and gold pipeline, `02_train` and `03_score`.
+5. Job `maintenance_rag`: `04_rag_index` and `05_eval_rag`. Creates the AI Search endpoint the first time (takes
+   several minutes) and indexes the manuals (about 40 minutes for the 215 MB handbook).
+6. App: `databricks bundle run maintenance_app -t dev` or from the UI. Then run `src/06_app_permissions.py` (or the
+   equivalent `GRANT` statements) to give read access to the app service principal.
+7. Serving (optional): uncomment `resources/serving.yml`, set `model_version` to the champion version and deploy
+   again. The endpoint points to a specific version, it does not follow the alias. In `mode: development` the real
+   name carries a user prefix (`dev_<user>_rul-model-dev`).
+8. Assistant evaluation (optional): job `maintenance_eval_assistant` with parameters `dataset` (`dev` or `holdout`),
+   `configs` and `eval_judge_endpoint`. The results are written to the `code` volume and copied to `eval/resultados/`.
 
-**Antes de una demo**: `databricks apps start mantenimiento-predictivo-dev`, comprobar `/api/health` (warehouse, índice y LLM en `ok`) y, si el
-endpoint de serving no existe, `databricks bundle deploy -t dev`.
+**Before a demo**: `databricks apps start predictive-maintenance-dev`, check `/api/health` (warehouse, index and LLM
+at `ok`) and, if the serving endpoint does not exist, `databricks bundle deploy -t dev`.
 
-**CI/CD:** `.github/workflows/deploy.yml` ejecuta los tests en cada PR sin acceso a secretos, valida el bundle en PR y despliega a `dev` en cada push
-a `main` (entorno `dev`, para el que conviene configurar aprobación manual). Secretos del repositorio: `DATABRICKS_HOST`, `DATABRICKS_CLIENT_ID`,
-`DATABRICKS_CLIENT_SECRET` (OAuth M2M). Nunca hay tokens en el repositorio. El target `prod` existe como referencia; en Free Edition no hay service
-principals de cuenta para un `run_as` separado.
+**CI/CD:** `.github/workflows/deploy.yml` runs ruff and the tests on every PR without access to secrets, validates the
+bundle on PRs and deploys to `dev` on every push to `main` (environment `dev`, for which a manual approval rule is
+advisable). Repository secrets: `DATABRICKS_HOST`, `DATABRICKS_CLIENT_ID`, `DATABRICKS_CLIENT_SECRET` (OAuth M2M).
+There are never tokens in the repository. The `prod` target exists as a reference; Free Edition has no account-level
+service principals for a separate `run_as`.
 
-## Límites de Free Edition y lo que se observó
+## Free Edition limits and what was observed
 
-| Límite | Cómo se respeta o qué pasó |
+| Limit | How it is respected or what happened |
 |---|---|
-| Solo serverless, sin clústeres | Pipeline `serverless: true`; jobs con `environments` serverless; ningún clúster definido |
-| Internet restringido a dominios de confianza | Los datos viajan en el repositorio y se suben al volume; solo se usa `pip` en tiempo de ejecución (`pypdf`, `databricks-ai-search`) |
-| 1 SQL warehouse 2X-Small | La app consulta con ese warehouse, declarado como recurso con `CAN_USE`, con caché de 30 s. El 15 de octubre estuvo unos minutos sin poder arrancar (error transitorio de la plataforma) |
-| 1 endpoint de AI Search de 1 unidad | Se reutiliza si existe; índice `TRIGGERED` (sin sincronización continua) |
-| Las apps se paran solas | La app se paró a las 24 h y también minutos después de usarla el 15 de octubre: hay que arrancarla antes de cada demo. **La disponibilidad no es continua** |
-| Persistencia del endpoint de serving | El endpoint **desapareció del workspace** entre el 14 y el 15 de octubre sin registro accesible; se recreó con `bundle deploy -t dev`. No afecta al dashboard (lee la tabla por lotes) |
-| 1 pipeline activo por tipo | Un único pipeline en modo triggered, lanzado desde el job |
-| Máx. 5 tareas de job concurrentes | Jobs secuenciales, `max_concurrent_runs: 1` |
-| Serving sin GPU ni provisioned throughput | Endpoint CPU `Small` con scale to zero; el LLM es un endpoint pay-per-token de Foundation Model APIs |
-| Sin consola de cuenta | Sin federación OIDC: el CI usa OAuth M2M con un service principal del workspace |
+| Serverless only, no clusters | Pipeline `serverless: true`; jobs with serverless `environments`; no cluster defined |
+| Internet restricted to trusted domains | The data travels in the repository and is uploaded to the volume; only `pip` is used at run time (`pypdf`, `databricks-ai-search`) |
+| 1 SQL warehouse 2X-Small | The app queries with that warehouse, declared as a resource with `CAN_USE`, with a 30 s cache. On 15 October it could not start for a few minutes (transient platform error) |
+| 1 AI Search endpoint of 1 unit | Reused if it exists; `TRIGGERED` index (no continuous sync) |
+| Apps stop on their own | The app stopped after 24 h and also minutes after being used on 15 October: it must be started before every demo. **Availability is not continuous** |
+| Serving endpoint persistence | The endpoint **disappeared from the workspace** between 14 and 15 October without an accessible record; it was recreated with `bundle deploy -t dev`. It does not affect the dashboard (it reads the batch table) |
+| 1 active pipeline per type | A single pipeline in triggered mode, started from the job |
+| Max. 5 concurrent job tasks | Sequential jobs, `max_concurrent_runs: 1` |
+| Serving without GPU or provisioned throughput | CPU `Small` endpoint with scale to zero; the LLM is a pay-per-token Foundation Model APIs endpoint |
+| No account console | No OIDC federation: the CI uses OAuth M2M with a workspace service principal |
 
-## Seguridad
+## Security
 
-Resumen de `audit/04_SECURITY_QA.md` (22 controles, revalidados el 15 de octubre):
+Summary of `audit/04_SECURITY_QA.md` (22 controls, revalidated on 15 October):
 
-- Sin secretos en el árbol ni en el historial de Git; el host del workspace y los identificadores del warehouse y de la app se han sustituido por
-  marcadores en `audit/evidence/`.
-- La app exige sesión del workspace (`/api/*` responde 401 sin credenciales; `/healthz` responde 200 sin datos). `CAN_MANAGE` solo para el propietario y `admins`.
-- El service principal de la app tiene `USE CATALOG`, `USE SCHEMA` y `SELECT` sobre el schema, `CAN_USE` sobre el warehouse y nada más
-  (ni `MODIFY`, ni `EXECUTE` sobre el modelo, ni `CAN_QUERY` sobre el endpoint).
-- SQL con parámetros enlazados y nombres validados por regex; interfaz sin `innerHTML` (la salida del LLM se muestra como texto); logs sin preguntas del usuario ni tokens.
-- Errores explícitos: un fallo SQL devuelve 503 `data_unavailable`, nunca un estado vacío con 200; una RUL nula no se sustituye por 0 (25 pruebas negativas).
-- Prompt injection: pasajes y preguntas se tratan como datos, filtro de frases con forma de instrucción (EN, ES, FR) y verificación de cada afirmación mostrada.
-  La inyección dentro de un pasaje indexado no se probó en vivo.
-- `pip-audit` sin avisos en las dependencias directas; un aviso en `oauthlib` transitivo (no explotable: la app es cliente, no servidor OAuth).
+- No secrets in the tree or in the Git history; the workspace host and the warehouse and app identifiers were
+  replaced by placeholders in `audit/evidence/`.
+- The app requires a workspace session (`/api/*` answers 401 without credentials; `/healthz` answers 200 without
+  data). `CAN_MANAGE` only for the owner and `admins`.
+- The app service principal has `USE CATALOG`, `USE SCHEMA` and `SELECT` on the schema, `CAN_USE` on the warehouse
+  and nothing else (no `MODIFY`, no `EXECUTE` on the model, no `CAN_QUERY` on the endpoint).
+- SQL with bound parameters and names validated by regex; interface without `innerHTML` (the LLM output is shown
+  as text); logs without user questions or tokens.
+- Explicit errors: a SQL failure returns 503 `data_unavailable`, never an empty state with 200; a null RUL is not
+  replaced by 0 (25 negative tests).
+- Prompt injection: passages and questions are treated as data, instruction-like sentences are filtered (EN, ES,
+  FR) and every shown claim is verified. Injection inside an indexed passage was not tested live.
+- `pip-audit` with no warnings on the direct dependencies; one warning in transitive `oauthlib` (not exploitable:
+  the app is an OAuth client, not a server).
 
-Hallazgos abiertos (ninguno bloqueante para una demo): el endpoint de serving acepta nulos y valores absurdos sin error (D-02; `03_score.py` valida antes de
-puntuar y la app no lo usa), sin límite de tasa al LLM para usuarios del workspace (D-04), sin cabeceras CSP (D-06), rangos abiertos en `requirements-dev.txt` (D-07).
+Open findings (none blocking for a demo): the serving endpoint accepts nulls and absurd values without error (D-02;
+`03_score.py` validates before scoring and the app does not use it), no rate limit on the LLM for workspace users
+(D-04), no CSP headers (D-06), open ranges in `requirements-dev.txt` (D-07).
 
-## Tests y demo local
+## Tests and local demo
 
 ```bash
 pip install -r requirements-dev.txt
-python -m pytest -q -rs                # 142 pruebas; la equivalencia con Spark necesita Java (se omite si falta)
-python scripts/entrenar_local.py       # RMSE en test FD001 real (con --tune busca hiperparámetros por validación cruzada en train)
-python scripts/demo_local.py           # la app con datos locales, sin Databricks (el asistente responde con texto fijo)
+ruff check . && ruff format --check .
+python -m pytest -q -rs                # 142 tests; the Spark equivalence needs Java (skipped if missing)
+python scripts/train_local.py          # RMSE on the real FD001 test set (--tune searches hyperparameters with CV on train)
+python scripts/demo_local.py           # the app with local data, no Databricks (the assistant answers from a fake LLM)
 ```
 
-## Auditoría y portafolio
+## Audit and portfolio
 
-- `audit/FINAL_READINESS_REPORT.md`: criterios de aceptación, qué funciona realmente y problemas pendientes.
-- `audit/01_BASELINE.md`: recursos desplegados, inventario y revalidación del 15 de octubre.
-- `audit/02_MODEL_VALIDATION.md`: integridad de datos, reproducción bit a bit, explicación de 19,10 frente a 18,44, contaminación del test y protocolo nuevo, endpoint, pruebas negativas.
-- `audit/03_RAG_VALIDATION.md`: método, held-out de 85 preguntas, cambios en `rag.py` y su justificación, caso del HPC, limitaciones.
-- `audit/04_SECURITY_QA.md`: controles, hallazgos abiertos y revalidación.
-- `portfolio/CASE_STUDY_EN.md`, `portfolio/carousel/`, `portfolio/screenshots/` (capturas reales de la app desplegada, sin retoques), `portfolio/SOURCES.md` (de dónde sale cada cifra).
+- `audit/FINAL_READINESS_REPORT.md`: acceptance criteria, what really works and open issues.
+- `audit/01_BASELINE.md`: deployed resources, inventory and revalidation of 15 October.
+- `audit/02_MODEL_VALIDATION.md`: data integrity, bit-for-bit reproduction, 19.10 versus 18.44 explained, test
+  contamination and the new protocol, endpoint, negative tests.
+- `audit/03_RAG_VALIDATION.md`: method, 85-question held-out set, changes in `rag.py` and their justification, the
+  HPC case, limitations.
+- `audit/04_SECURITY_QA.md`: controls, open findings and revalidation.
+- `portfolio/CASE_STUDY_EN.md`, `portfolio/carousel/`, `portfolio/screenshots/` (real screenshots of the deployed
+  app, untouched), `portfolio/SOURCES.md` (where every figure comes from).
 
-## Método de trabajo
+## Working method
 
-Jonathan Rincon definió la arquitectura, los parámetros, la secuencia de trabajo y los criterios de aceptación, y revisó los resultados
-de cada fase. Las cifras de este README se han cotejado con los ficheros de `audit/`.
+Jonathan Rincon defined the architecture, the parameters, the work sequence and the acceptance criteria, and
+reviewed the results of every phase. The figures in this README were cross-checked against the files in `audit/`.
 
-## Coste cero y datos
+## Zero cost and data
 
-Todo corre en Free Edition, con cuotas de uso razonable. No hay servicios de pago ni claves externas.
+Everything runs on Free Edition, within its fair-use quotas. There are no paid services and no external keys.
 
-**Datos:** NASA C-MAPSS FD001 (Saxena et al., 2008, NASA Ames Prognostics Data Repository), dominio público.
-Procedencia y comprobaciones en `data/cmapss/FUENTE.md`. Los manuales del RAG usados en la evaluación son públicos (FAA-H-8083-32B y Saxena et al., 2008);
-no están en el repositorio. Si usas otros, revisa su licencia. El código es MIT (`LICENSE`).
+**Data:** NASA C-MAPSS FD001 (Saxena et al., 2008, NASA Ames Prognostics Data Repository), public domain.
+Provenance and checks in `data/cmapss/SOURCE.md`. The RAG manuals used in the evaluation are public
+(FAA-H-8083-32B and Saxena et al., 2008); they are not in the repository. If you use others, check their licence.
+The code is MIT (`LICENSE`).

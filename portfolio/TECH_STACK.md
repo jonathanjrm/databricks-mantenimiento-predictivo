@@ -9,11 +9,11 @@ requirements file is given.
 | Component | Use in the project | Notes |
 |---|---|---|
 | Databricks Asset Bundles | Declares pipeline, jobs, serving endpoint and app (`databricks.yml`, `resources/*.yml`); `bundle deploy -t dev` | Development mode prefixes resources with `[dev <user>]`; endpoint name becomes `dev_<user>_rul-model-dev` |
-| Unity Catalog | Catalog `workspace`, schema `mantenimiento`: volumes (raw data, manuals, code), Delta tables, registered model | App service principal has `USE SCHEMA` and `SELECT` only |
+| Unity Catalog | Catalog `workspace`, schema `maintenance` (audited deployment: `mantenimiento`): volumes (raw data, manuals, code), Delta tables, registered model | App service principal has `USE SCHEMA` and `SELECT` only |
 | Lakeflow Declarative Pipelines | Bronze, silver and gold tables with expectations; serverless | Previously Delta Live Tables |
 | Auto Loader | Ingestion of the C-MAPSS text files into bronze | 33,727 rows |
 | Delta Lake and Spark SQL | Storage format and window functions for the 85 features; `mergeSchema` for the new validation metrics | |
-| Databricks Jobs (serverless, environment version 6) | `mantenimiento_end_to_end` (setup, pipeline, train, score), `mantenimiento_rag`, `mantenimiento_eval_assistant` | |
+| Databricks Jobs (serverless, environment version 6) | `maintenance_end_to_end` (setup, pipeline, train, score), `maintenance_rag`, `maintenance_eval_assistant` | The audited deployment used the names `mantenimiento_*` |
 | MLflow 3.12.0 | Experiment tracking, model logging with signature, Unity Catalog model registry, alias `champion` | Local audit environment used MLflow 3.17.1 |
 | Model Serving | CPU Small, scale to zero, model version pinned by variable | Recreated by `bundle deploy` after it disappeared (D-12) |
 | AI Search (vector search) | Delta Sync index `manual_chunks_index` with managed embeddings (`databricks-gte-large-en`), hybrid retrieval | 720 chunks |

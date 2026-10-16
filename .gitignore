@@ -1,6 +1,7 @@
 __pycache__/
 *.pyc
 .pytest_cache/
+.ruff_cache/
 .venv/
 venv/
 .databricks/
@@ -10,9 +11,9 @@ venv/
 metastore_db/
 spark-warehouse/
 derby.log
-# PDF de los manuales: se suben al volume, no al repositorio
+# Manual PDFs: uploaded to the volume, not to the repository
 *.pdf
-# Herramientas y colas locales de la copia del PC (ejecutor de la CLI): no se versionan
+# Local tools and command queues of the PC copy (CLI runner): not versioned
 herramientas/
 logs/
 *.bat
@@ -20,5 +21,5 @@ cola/
 cola2/
 consultas/
 
-# Excepcion: el carrusel del portfolio si se versiona (no es un manual)
+# Exception: the portfolio carousel is versioned (it is not a manual)
 !portfolio/carousel/carousel.pdf

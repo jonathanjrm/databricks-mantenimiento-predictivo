@@ -45,7 +45,8 @@ target. Five stages:
    `/api/engines/{unit}/health`, `/api/ask`, `/api/health`.
 
 A design decision worth stating explicitly: the app does not call the serving endpoint. It reads the batch scoring table
-`gold_predicciones` and shows the model version and scoring time on screen. The endpoint is an independent inference path
+`gold_predicciones` (now `gold_predictions`; the audit used the first deployment's Spanish table names) and shows the model
+version and scoring time on screen. The endpoint is an independent inference path
 that the audit used to cross-check every value the dashboard displays.
 
 ## 4. Dataset: NASA C-MAPSS FD001
