@@ -37,7 +37,7 @@ jobs:
 
   validate:
     needs: test
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && vars.DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-latest
     env:
       DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
@@ -52,7 +52,8 @@ jobs:
 
   deploy-dev:
     needs: test
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # Runs only once Databricks credentials are configured (repository variable DEPLOY_ENABLED=true).
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-latest
     # Protected environment: configure a manual approval rule for "dev" in GitHub.
     environment: dev
