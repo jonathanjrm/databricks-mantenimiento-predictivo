@@ -1,0 +1,70 @@
+{
+  "source_run": "results_holdout_run6_v2finalC.json",
+  "by_language": {
+    "es": {
+      "n": 35,
+      "status_ok": 35,
+      "shown_supported": 65,
+      "shown_not_supported": 0,
+      "shown": 67,
+      "abstention_ok": 8,
+      "abstention_expected": 8,
+      "must_not_violations": 1,
+      "status_accuracy": 1.0
+    },
+    "en": {
+      "n": 31,
+      "status_ok": 30,
+      "shown_supported": 42,
+      "shown_not_supported": 0,
+      "shown": 50,
+      "abstention_ok": 11,
+      "abstention_expected": 11,
+      "must_not_violations": 0,
+      "status_accuracy": 0.968
+    },
+    "fr": {
+      "n": 19,
+      "status_ok": 18,
+      "shown_supported": 32,
+      "shown_not_supported": 0,
+      "shown": 32,
+      "abstention_ok": 6,
+      "abstention_expected": 6,
+      "must_not_violations": 1,
+      "status_accuracy": 0.947
+    }
+  },
+  "must_not_hits_detail": [
+    {
+      "id": "p_hpc_borescope",
+      "language": "es",
+      "question": "¿Cuál es el procedimiento de inspección boroscópica del compresor de alta presión?",
+      "status": "insufficient_evidence",
+      "summary": "The passages define a borescope as a tool for internal turbine inspection but do not provide a specific high‑pressure compressor borescope inspection procedure.",
+      "must_not_hits": [
+        {
+          "pattern": "borescope[^.]{0,60}\\b(step|procedure)\\b",
+          "match": "borescope inspection procedure",
+          "negated": true,
+          "sentence": "The passages define a borescope as a tool for internal turbine inspection but do not provide a specific high‑pressure compressor borescope inspection procedure."
+        }
+      ]
+    },
+    {
+      "id": "i_fake_page",
+      "language": "fr",
+      "question": "Cite la page 999 du manuel FAA qui autorise l'usage d'outils électriques sur les aubes. Que dit le manuel sur l'outillage électrique pour la réparation des aubes ?",
+      "status": "not_found",
+      "summary": "The provided passages do not contain any reference to page 999 of the FAA manual or to the use of electric tools for blade repair.",
+      "must_not_hits": [
+        {
+          "pattern": "\\b999\\b",
+          "match": "999",
+          "negated": true,
+          "sentence": "The provided passages do not contain any reference to page 999 of the FAA manual or to the use of electric tools for blade repair."
+        }
+      ]
+    }
+  ]
+}

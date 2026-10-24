@@ -53,6 +53,14 @@ It is implemented and tested (`tests/test_modeling_selection.py`) and was exerci
 when the stack was re-created under the English names: version 1 of `workspace.maintenance.rul_model` was promoted by
 the "no champion yet" rule with `rmse_val_truncated` 19.72 and `std_folds` 2.05 recorded in `gold_model_metrics`.
 
+**A genuinely untouched-engine check.** On 17 October, 20 of the 100 FD001 train engines were set aside with a fixed
+seed before any fitting, tuning or `GroupKFold` selection touched the data, the model was trained on the other 80
+with the frozen hyperparameters (no re-tuning), and those 20 were scored once, truncated the same way as the test
+set. Result: RMSE 23.97 -- worse than both the 18.4 figure above and the 19.72 validation figure, which is expected
+(fewer training engines, one random holdout draw) and reported as-is. It is a single run, not repeated the way the
+19.72 figure's 200-repetition estimate is. Script and full methodology: `scripts/independent_holdout_eval.py`,
+`audit/02_MODEL_VALIDATION.md` section B2.6.
+
 **RAG assistant v2** (`app/rag.py`), measured on a held-out set of 85 questions in Spanish, English and French that
 was never used to decide any change (`eval/rag_eval_set_holdout.json`), with an independent judge from another model
 family (`databricks-meta-llama-3-3-70b-instruct`):
@@ -81,7 +89,7 @@ have a resolution of 1/85.
 | 2. Data engineering with Delta Lake | Lakeflow Spark Declarative Pipelines (`pyspark.pipelines`), Auto Loader, expectations, streaming tables and materialized views (`src/pipeline/`) |
 | 3. ML with MLflow | Training with baselines, MLflow 3, signature and input example, model in Unity Catalog with the `champion` alias, promotion by train-only validation (`src/02_train.py`, `src/03_score.py`) |
 | 4. Generative AI and LLMs | RAG with AI Search (Delta Sync index, managed embeddings), Foundation Model APIs LLM, claim and citation verification, held-out evaluation with an independent judge (`src/04_rag_index.py`, `src/05_eval_rag.py`, `src/07_eval_assistant.py`) |
-| 5. Governance and MLOps | Declarative Automation Bundles (`databricks.yml`), CI/CD with GitHub Actions and OAuth M2M, least-privilege permissions for the app, 142 tests, audit with evidence |
+| 5. Governance and MLOps | Declarative Automation Bundles (`databricks.yml`), CI/CD with GitHub Actions and OAuth M2M, least-privilege permissions for the app, 165 tests, audit with evidence |
 
 ## Architecture
 
@@ -171,7 +179,7 @@ src/06_app_permissions.py   read GRANTs to the app service principal
 src/07_eval_assistant.py    assistant evaluation: dev and held-out, deterministic checks, independent judge
 src/lib/                    pure, testable logic (no Spark except spark_*.py)
 app/                        Databricks App: app.yaml, requirements.txt, app.py, rag.py, health_projection.py, static/index.html
-tests/                      pytest (142 tests: pure functions, Spark equivalence, API, 25 negative, RAG, model selection)
+tests/                      pytest (165 tests: pure functions, Spark equivalence, API, 25 negative, RAG, model selection)
 scripts/                    train_local.py (local RMSE), demo_local.py (app without Databricks)
 data/cmapss/                NASA data and SOURCE.md
 eval/                       RAG evaluation sets, results per run (results/), MANUAL_REVIEW.md, RAG_REPORT.md
@@ -292,16 +300,23 @@ Summary of `audit/04_SECURITY_QA.md` (22 controls, revalidated on 15 October):
 - `pip-audit` with no warnings on the direct dependencies; one warning in transitive `oauthlib` (not exploitable:
   the app is an OAuth client, not a server).
 
-Open findings (none blocking for a demo): the serving endpoint accepts nulls and absurd values without error (D-02;
-`03_score.py` validates before scoring and the app does not use it), no rate limit on the LLM for workspace users
-(D-04), no CSP headers (D-06), open ranges in `requirements-dev.txt` (D-07).
+The app now sends security response headers (CSP, `X-Content-Type-Options`, `X-Frame-Options`), closing D-06.
+A validated `mlflow.pyfunc` wrapper for the serving endpoint (`src/lib/serving.py`, D-02) exists and is covered by
+14 tests including two real MLflow save/load round trips, but has not yet been registered against the live
+workspace or verified at the actual REST endpoint -- that step needs Databricks credentials this repository's CI
+does not (and should not) hold; see `audit/RELEASE_HANDOFF_2026-10-17.md`.
+
+Open findings (none blocking for a demo): the raw registered model (as opposed to the validated wrapper above)
+still accepts nulls and absurd values without error if queried directly (D-02; `03_score.py` validates before
+scoring and the app does not use the endpoint), no rate limit on the LLM for workspace users (D-04), open ranges
+in `requirements-dev.txt` (D-07).
 
 ## Tests and local demo
 
 ```bash
 pip install -r requirements-dev.txt
 ruff check . && ruff format --check .
-python -m pytest -q -rs                # 142 tests; the Spark equivalence needs Java (skipped if missing)
+python -m pytest -q -rs                # 165 tests; the Spark equivalence needs Java (skipped if missing)
 python scripts/train_local.py          # RMSE on the real FD001 test set (--tune searches hyperparameters with CV on train)
 python scripts/demo_local.py           # the app with local data, no Databricks (the assistant answers from a fake LLM)
 ```
